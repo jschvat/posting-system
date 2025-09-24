@@ -1,0 +1,52 @@
+# Docker Compose configuration for PostgreSQL database
+version: '3.8'
+
+services:
+  # PostgreSQL database service
+  postgres:
+    image: postgres:15-alpine
+    container_name: posting_system_db
+    restart: always
+    environment:
+      # Database configuration
+      POSTGRES_DB: posting_system
+      POSTGRES_USER: dev_user
+      POSTGRES_PASSWORD: dev_password
+    ports:
+      # Expose PostgreSQL on port 5432
+      - "5432:5432"
+    volumes:
+      # Persist database data
+      - postgres_data:/var/lib/postgresql/data
+      # Initialize database with custom scripts if needed
+      - ./backend/database/init:/docker-entrypoint-initdb.d
+    healthcheck:
+      # Health check to ensure database is ready
+      test: ["CMD-SHELL", "pg_isready -U dev_user -d posting_system"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # pgAdmin for database management (optional)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: posting_system_pgadmin
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@localhost.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      # Access pgAdmin on port 8080
+      - "8080:80"
+    depends_on:
+      - postgres
+
+# Named volumes for data persistence
+volumes:
+  postgres_data:
+    driver: local
+
+# Custom network for service communication
+networks:
+  default:
+    name: posting_system_network
