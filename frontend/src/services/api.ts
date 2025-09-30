@@ -535,6 +535,12 @@ export const getMediaUrl = (media: Media): string => {
 // Helper function to get user avatar URL or default
 export const getUserAvatarUrl = (user: User): string => {
   if (user.avatar_url) {
+    // If avatar_url starts with '/', it's a relative path - prepend base URL
+    if (user.avatar_url.startsWith('/')) {
+      const baseUrl = getApiBaseUrl();
+      return `${baseUrl}${user.avatar_url}`;
+    }
+    // If it's already a full URL, return as-is
     return user.avatar_url;
   }
 

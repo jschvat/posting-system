@@ -141,17 +141,24 @@ const CommentItem = styled.div`
   }
 `;
 
-const CommentAvatar = styled.div`
+const CommentAvatar = styled.div<{ $hasImage?: boolean }>`
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: ${({ theme }) => theme.colors.primary};
+  background: ${({ theme, $hasImage }) => $hasImage ? 'transparent' : theme.colors.primary};
   display: flex;
   align-items: center;
   justify-content: center;
   color: white;
   font-weight: bold;
   font-size: 0.7rem;
+  overflow: hidden;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
   flex-shrink: 0;
 `;
 
@@ -190,17 +197,24 @@ const ReplyItem = styled.div`
   }
 `;
 
-const ReplyAvatar = styled.div`
+const ReplyAvatar = styled.div<{ $hasImage?: boolean }>`
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  background: ${({ theme }) => theme.colors.primary};
+  background: ${({ theme, $hasImage }) => $hasImage ? 'transparent' : theme.colors.primary};
   display: flex;
   align-items: center;
   justify-content: center;
   color: white;
   font-weight: bold;
   font-size: 0.6rem;
+  overflow: hidden;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
   flex-shrink: 0;
 `;
 
@@ -515,11 +529,19 @@ const PostCard: React.FC<PostCardProps> = ({ post, onUpdate }) => {
           </div>
         ) : (
           <CommentsList>
-            {comments.map((comment) => (
+            {comments.map((comment) => {
+              const commentAvatarUrl = comment.author ? getUserAvatarUrl(comment.author) : '';
+              const hasCommentAvatar = Boolean(comment.author?.avatar_url);
+
+              return (
               <div key={comment.id}>
                 <CommentItem>
-                  <CommentAvatar>
-                    {comment.author ? `${comment.author.first_name[0]}${comment.author.last_name[0]}` : 'U'}
+                  <CommentAvatar $hasImage={hasCommentAvatar}>
+                    {hasCommentAvatar && comment.author ? (
+                      <img src={commentAvatarUrl} alt={`${comment.author.first_name} ${comment.author.last_name}`} />
+                    ) : (
+                      comment.author ? `${comment.author.first_name[0]}${comment.author.last_name[0]}` : 'U'
+                    )}
                   </CommentAvatar>
                   <CommentContent>
                     <div>
@@ -535,10 +557,18 @@ const PostCard: React.FC<PostCardProps> = ({ post, onUpdate }) => {
                 {/* Render replies */}
                 {comment.replies && comment.replies.length > 0 && (
                   <div>
-                    {comment.replies.map((reply) => (
+                    {comment.replies.map((reply) => {
+                      const replyAvatarUrl = reply.author ? getUserAvatarUrl(reply.author) : '';
+                      const hasReplyAvatar = Boolean(reply.author?.avatar_url);
+
+                      return (
                       <ReplyItem key={reply.id}>
-                        <ReplyAvatar>
-                          {reply.author ? `${reply.author.first_name[0]}${reply.author.last_name[0]}` : 'U'}
+                        <ReplyAvatar $hasImage={hasReplyAvatar}>
+                          {hasReplyAvatar && reply.author ? (
+                            <img src={replyAvatarUrl} alt={`${reply.author.first_name} ${reply.author.last_name}`} />
+                          ) : (
+                            reply.author ? `${reply.author.first_name[0]}${reply.author.last_name[0]}` : 'U'
+                          )}
                         </ReplyAvatar>
                         <ReplyContent>
                           <div>
@@ -550,11 +580,13 @@ const PostCard: React.FC<PostCardProps> = ({ post, onUpdate }) => {
                           <ReplyTime>{formatTimeAgo(reply.created_at)}</ReplyTime>
                         </ReplyContent>
                       </ReplyItem>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
-            ))}
+              );
+            })}
 
             {comments.length === 0 && (
               <div style={{ textAlign: 'center', color: '#65676b', padding: '16px' }}>
