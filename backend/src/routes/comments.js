@@ -1,17 +1,21 @@
 /**
  * Comments routes for the social media platform API
  * Handles comments and nested replies on posts
+ * Pure PostgreSQL implementation - NO SEQUELIZE
  */
 
 const express = require('express');
 const { body, param, query, validationResult } = require('express-validator');
-const { Op } = require('sequelize');
-const db = require('../config/database');
+const { authenticate } = require('../middleware/auth');
+
+// Import PostgreSQL models
+const User = require('../models/User');
+const Post = require('../models/Post');
+const Comment = require('../models/Comment');
+const Media = require('../models/Media');
+const Reaction = require('../models/Reaction');
 
 const router = express.Router();
-
-// Import models (they will be available after database initialization)
-const getModels = () => db.models;
 
 /**
  * Validation middleware to check for validation errors
@@ -39,18 +43,20 @@ router.get('/post/:postId',
   [
     param('postId').isInt({ min: 1 }).withMessage('Post ID must be a positive integer'),
     query('sort').optional().isIn(['newest', 'oldest']).withMessage('Sort must be newest or oldest'),
-    query('limit').optional().isInt({ min: 1, max: 100 }).withMessage('Limit must be between 1 and 100')
+    query('limit').optional().isInt({ min: 1, max: 100 }).withMessage('Limit must be between 1 and 100'),
+    query('page').optional().isInt({ min: 1 }).withMessage('Page must be a positive integer')
   ],
   handleValidationErrors,
   async (req, res, next) => {
     try {
-      const { User, Post, Comment, Media, Reaction } = getModels();
       const postId = parseInt(req.params.postId);
       const sort = req.query.sort || 'oldest';
-      const limit = parseInt(req.query.limit) || 50;
+      const limit = parseInt(req.query.limit) || 10;
+      const page = parseInt(req.query.page) || 1;
+      const offset = (page - 1) * limit;
 
       // Verify post exists
-      const post = await Post.findByPk(postId);
+      const post = await Post.findById(postId);
       if (!post) {
         return res.status(404).json({
           success: false,
@@ -61,74 +67,92 @@ router.get('/post/:postId',
         });
       }
 
-      // Get all comments for the post
-      const orderClause = sort === 'newest'
-        ? [['created_at', 'DESC']]
-        : [['created_at', 'ASC']];
+      // Get total count of top-level comments for this post
+      const totalCountResult = await Comment.raw(
+        `SELECT COUNT(*) as total_count
+         FROM comments c
+         WHERE c.post_id = $1 AND c.is_published = true AND c.parent_id IS NULL`,
+        [postId]
+      );
+      const totalCount = parseInt(totalCountResult.rows[0].total_count);
 
-      const comments = await Comment.findAll({
-        where: {
-          post_id: postId,
-          is_published: true
-        },
-        limit,
-        order: orderClause,
-        include: [
-          {
-            model: User,
-            as: 'author',
-            attributes: ['id', 'username', 'first_name', 'last_name', 'avatar_url']
-          },
-          {
-            model: Media,
-            as: 'media',
-            required: false
-          },
-          {
-            model: Reaction,
-            as: 'reactions',
-            required: false,
-            attributes: ['emoji_name', 'emoji_unicode'],
-            include: [{
-              model: User,
-              as: 'user',
-              attributes: ['id', 'username']
-            }]
+      // Get all comments for the post with author and reaction data
+      const orderDirection = sort === 'newest' ? 'DESC' : 'ASC';
+
+      // Get paginated comments for the post with media info (only top-level comments)
+      const commentsResult = await Comment.raw(
+        `SELECT c.*,
+                u.username, u.first_name, u.last_name, u.avatar_url,
+                m.id as media_id, m.filename, m.mime_type, m.file_size
+         FROM comments c
+         LEFT JOIN users u ON c.user_id = u.id
+         LEFT JOIN media m ON c.id = m.comment_id
+         WHERE c.post_id = $1 AND c.is_published = true AND c.parent_id IS NULL
+         ORDER BY c.created_at ${orderDirection}
+         LIMIT $2 OFFSET $3`,
+        [postId, limit, offset]
+      );
+
+      // Get all replies for the returned top-level comments
+      const commentIds = commentsResult.rows.map(c => c.id);
+      let repliesResult = { rows: [] };
+      if (commentIds.length > 0) {
+        repliesResult = await Comment.raw(
+          `SELECT c.*,
+                  u.username, u.first_name, u.last_name, u.avatar_url,
+                  m.id as media_id, m.filename, m.mime_type, m.file_size
+           FROM comments c
+           LEFT JOIN users u ON c.user_id = u.id
+           LEFT JOIN media m ON c.id = m.comment_id
+           WHERE c.parent_id = ANY($1) AND c.is_published = true
+           ORDER BY c.created_at ${orderDirection}`,
+          [commentIds]
+        );
+      }
+
+      // Combine comments and replies
+      const allComments = [...commentsResult.rows, ...repliesResult.rows];
+
+      // Get all comment IDs (including replies) for bulk reaction query
+      const allCommentIds = allComments.map(comment => comment.id);
+
+      // Get all reaction counts in a single optimized query
+      let reactionCountsMap = new Map();
+      if (allCommentIds.length > 0) {
+        const reactionsResult = await Comment.raw(
+          `SELECT comment_id, emoji_name, COUNT(*) as count
+           FROM reactions
+           WHERE comment_id = ANY($1)
+           GROUP BY comment_id, emoji_name
+           ORDER BY comment_id, count DESC`,
+          [allCommentIds]
+        );
+
+        // Build reaction counts map
+        reactionsResult.rows.forEach(row => {
+          const commentId = row.comment_id;
+          if (!reactionCountsMap.has(commentId)) {
+            reactionCountsMap.set(commentId, []);
           }
-        ]
-      });
+          reactionCountsMap.get(commentId).push({
+            emoji_name: row.emoji_name,
+            count: parseInt(row.count)
+          });
+        });
+      }
 
       // Build hierarchical comment tree
       const commentMap = new Map();
       const rootComments = [];
 
-      // Process comments to include reaction counts and prepare for tree building
-      const processedComments = comments.map(comment => {
-        const commentJson = comment.toJSON();
+      // Process comments and add reaction data
+      const processedComments = allComments.map(comment => {
+        const commentData = Comment.getCommentData(comment);
 
-        // Group reactions by emoji and count them
-        const reactionCounts = {};
-        if (commentJson.reactions) {
-          commentJson.reactions.forEach(reaction => {
-            const key = reaction.emoji_name;
-            if (!reactionCounts[key]) {
-              reactionCounts[key] = {
-                emoji_name: reaction.emoji_name,
-                emoji_unicode: reaction.emoji_unicode,
-                count: 0,
-                users: []
-              };
-            }
-            reactionCounts[key].count++;
-            reactionCounts[key].users.push(reaction.user);
-          });
-        }
-
-        commentJson.reaction_counts = Object.values(reactionCounts);
-        commentJson.replies = [];
-        delete commentJson.reactions;
-
-        return commentJson;
+        // Add reaction counts from our bulk query
+        commentData.reaction_counts = reactionCountsMap.get(comment.id) || [];
+        commentData.replies = [];
+        return commentData;
       });
 
       // Create map of all comments
@@ -164,13 +188,26 @@ router.get('/post/:postId',
 
       sortReplies(rootComments);
 
+      // Calculate pagination info
+      const totalPages = Math.ceil(totalCount / limit);
+      const hasNextPage = page < totalPages;
+      const hasPrevPage = page > 1;
+
       res.json({
         success: true,
         data: {
           post_id: postId,
           comments: rootComments,
-          total_count: comments.length,
-          sort
+          total_count: totalCount,
+          sort,
+          pagination: {
+            current_page: page,
+            total_pages: totalPages,
+            total_count: totalCount,
+            limit,
+            has_next_page: hasNextPage,
+            has_prev_page: hasPrevPage
+          }
         }
       });
 
@@ -191,54 +228,21 @@ router.get('/:id',
   handleValidationErrors,
   async (req, res, next) => {
     try {
-      const { User, Comment, Media, Reaction } = getModels();
       const commentId = parseInt(req.params.id);
 
-      // Find comment with all associations
-      const comment = await Comment.findByPk(commentId, {
-        include: [
-          {
-            model: User,
-            as: 'author',
-            attributes: ['id', 'username', 'first_name', 'last_name', 'avatar_url']
-          },
-          {
-            model: Media,
-            as: 'media',
-            required: false
-          },
-          {
-            model: Comment,
-            as: 'replies',
-            required: false,
-            where: { is_published: true },
-            include: [
-              {
-                model: User,
-                as: 'author',
-                attributes: ['id', 'username', 'first_name', 'last_name', 'avatar_url']
-              },
-              {
-                model: Media,
-                as: 'media',
-                required: false
-              }
-            ]
-          },
-          {
-            model: Reaction,
-            as: 'reactions',
-            required: false,
-            include: [{
-              model: User,
-              as: 'user',
-              attributes: ['id', 'username']
-            }]
-          }
-        ]
-      });
+      // Find comment with media and user associations
+      const commentResult = await Comment.raw(
+        `SELECT c.*,
+                u.username, u.first_name, u.last_name, u.avatar_url,
+                m.id as media_id, m.filename, m.mime_type, m.file_size
+         FROM comments c
+         LEFT JOIN users u ON c.user_id = u.id
+         LEFT JOIN media m ON c.id = m.comment_id
+         WHERE c.id = $1`,
+        [commentId]
+      );
 
-      if (!comment) {
+      if (commentResult.rows.length === 0) {
         return res.status(404).json({
           success: false,
           error: {
@@ -248,33 +252,28 @@ router.get('/:id',
         });
       }
 
-      // Process comment data
-      const commentJson = comment.toJSON();
+      const comment = commentResult.rows[0];
+      const commentData = Comment.getCommentData(comment);
 
-      // Group reactions by emoji and count them
-      const reactionCounts = {};
-      if (commentJson.reactions) {
-        commentJson.reactions.forEach(reaction => {
-          const key = reaction.emoji_name;
-          if (!reactionCounts[key]) {
-            reactionCounts[key] = {
-              emoji_name: reaction.emoji_name,
-              emoji_unicode: reaction.emoji_unicode,
-              count: 0,
-              users: []
-            };
-          }
-          reactionCounts[key].count++;
-          reactionCounts[key].users.push(reaction.user);
-        });
+      // Get reaction counts separately
+      try {
+        const reactionCounts = await Reaction.getCommentReactionCounts(comment.id);
+        commentData.reaction_counts = reactionCounts;
+      } catch (error) {
+        commentData.reaction_counts = [];
       }
 
-      commentJson.reaction_counts = Object.values(reactionCounts);
-      delete commentJson.reactions;
+      // Get replies separately
+      try {
+        const replies = await Comment.getReplies(comment.id);
+        commentData.replies = replies;
+      } catch (error) {
+        commentData.replies = [];
+      }
 
       res.json({
         success: true,
-        data: commentJson
+        data: commentData
       });
 
     } catch (error) {
@@ -288,20 +287,20 @@ router.get('/:id',
  * Create a new comment or reply
  */
 router.post('/',
+  authenticate,
   [
     body('post_id').isInt({ min: 1 }).withMessage('Post ID is required and must be a positive integer'),
-    body('user_id').isInt({ min: 1 }).withMessage('User ID is required and must be a positive integer'),
     body('content').trim().isLength({ min: 1, max: 2000 }).withMessage('Content must be between 1 and 2000 characters'),
     body('parent_id').optional().isInt({ min: 1 }).withMessage('Parent ID must be a positive integer')
   ],
   handleValidationErrors,
   async (req, res, next) => {
     try {
-      const { User, Post, Comment } = getModels();
-      const { post_id, user_id, content, parent_id } = req.body;
+      const { post_id, content, parent_id } = req.body;
+      const user_id = req.user.id; // Get user from authentication
 
       // Verify post exists
-      const post = await Post.findByPk(post_id);
+      const post = await Post.findById(post_id);
       if (!post) {
         return res.status(404).json({
           success: false,
@@ -312,21 +311,9 @@ router.post('/',
         });
       }
 
-      // Verify user exists
-      const user = await User.findByPk(user_id);
-      if (!user) {
-        return res.status(404).json({
-          success: false,
-          error: {
-            message: 'User not found',
-            type: 'NOT_FOUND'
-          }
-        });
-      }
-
       // If parent_id is provided, verify parent comment exists and belongs to same post
       if (parent_id) {
-        const parentComment = await Comment.findByPk(parent_id);
+        const parentComment = await Comment.findById(parent_id);
         if (!parentComment) {
           return res.status(404).json({
             success: false,
@@ -368,13 +355,15 @@ router.post('/',
       });
 
       // Fetch the comment with author info
-      const newComment = await Comment.findByPk(comment.id, {
-        include: [{
-          model: User,
-          as: 'author',
-          attributes: ['id', 'username', 'first_name', 'last_name', 'avatar_url']
-        }]
-      });
+      const commentResult = await Comment.raw(
+        `SELECT c.*, u.username, u.first_name, u.last_name, u.avatar_url
+         FROM comments c
+         LEFT JOIN users u ON c.user_id = u.id
+         WHERE c.id = $1`,
+        [comment.id]
+      );
+
+      const newComment = Comment.getCommentData(commentResult.rows[0]);
 
       res.status(201).json({
         success: true,
@@ -383,7 +372,37 @@ router.post('/',
       });
 
     } catch (error) {
-      next(error);
+      console.error('Comment creation error:', error);
+
+      // Handle specific validation errors
+      if (error.message.includes('Maximum comment nesting depth exceeded')) {
+        return res.status(400).json({
+          success: false,
+          error: {
+            message: error.message,
+            type: 'MAX_DEPTH_EXCEEDED'
+          }
+        });
+      }
+
+      if (error.message.includes('Parent comment must belong to the same post')) {
+        return res.status(400).json({
+          success: false,
+          error: {
+            message: error.message,
+            type: 'INVALID_PARENT'
+          }
+        });
+      }
+
+      res.status(500).json({
+        success: false,
+        error: {
+          message: 'Failed to create comment',
+          type: 'INTERNAL_ERROR',
+          details: error.message
+        }
+      });
     }
   }
 );
@@ -400,12 +419,11 @@ router.put('/:id',
   handleValidationErrors,
   async (req, res, next) => {
     try {
-      const { User, Comment } = getModels();
       const commentId = parseInt(req.params.id);
       const { content } = req.body;
 
       // Find the comment
-      const comment = await Comment.findByPk(commentId);
+      const comment = await Comment.findById(commentId);
       if (!comment) {
         return res.status(404).json({
           success: false,
@@ -416,24 +434,21 @@ router.put('/:id',
         });
       }
 
-      // Check if user can edit this comment (TODO: Implement proper authentication)
-      // For now, assume any user can edit any comment (will be fixed with authentication)
-
       // Update comment content
-      await comment.update({ content });
+      const updatedComment = await Comment.update(commentId, { content });
 
       // Fetch updated comment with author info
-      const updatedComment = await Comment.findByPk(commentId, {
-        include: [{
-          model: User,
-          as: 'author',
-          attributes: ['id', 'username', 'first_name', 'last_name', 'avatar_url']
-        }]
-      });
+      const commentResult = await Comment.raw(
+        `SELECT c.*, u.username, u.first_name, u.last_name, u.avatar_url
+         FROM comments c
+         LEFT JOIN users u ON c.user_id = u.id
+         WHERE c.id = $1`,
+        [commentId]
+      );
 
       res.json({
         success: true,
-        data: updatedComment,
+        data: Comment.getCommentData(commentResult.rows[0]),
         message: 'Comment updated successfully'
       });
 
@@ -454,11 +469,10 @@ router.delete('/:id',
   handleValidationErrors,
   async (req, res, next) => {
     try {
-      const { Comment } = getModels();
       const commentId = parseInt(req.params.id);
 
       // Find the comment
-      const comment = await Comment.findByPk(commentId);
+      const comment = await Comment.findById(commentId);
       if (!comment) {
         return res.status(404).json({
           success: false,
@@ -469,16 +483,15 @@ router.delete('/:id',
         });
       }
 
-      // Check if user can delete this comment (TODO: Implement proper authentication)
-      // For now, assume any user can delete any comment (will be fixed with authentication)
-
       // Count replies that will be deleted
-      const replyCount = await Comment.count({
-        where: { parent_id: commentId }
-      });
+      const replyCountResult = await Comment.raw(
+        'SELECT COUNT(*) as count FROM comments WHERE parent_id = $1',
+        [commentId]
+      );
+      const replyCount = parseInt(replyCountResult.rows[0].count);
 
       // Delete the comment (cascading deletes will handle replies and reactions)
-      await comment.destroy();
+      await Comment.delete(commentId);
 
       res.json({
         success: true,
@@ -504,13 +517,12 @@ router.get('/:id/replies',
   handleValidationErrors,
   async (req, res, next) => {
     try {
-      const { User, Comment, Media, Reaction } = getModels();
       const commentId = parseInt(req.params.id);
       const sort = req.query.sort || 'oldest';
       const limit = parseInt(req.query.limit) || 20;
 
       // Verify parent comment exists
-      const parentComment = await Comment.findByPk(commentId);
+      const parentComment = await Comment.findById(commentId);
       if (!parentComment) {
         return res.status(404).json({
           success: false,
@@ -521,60 +533,55 @@ router.get('/:id/replies',
         });
       }
 
-      // Get replies
-      const orderClause = sort === 'newest'
-        ? [['created_at', 'DESC']]
-        : [['created_at', 'ASC']];
+      // Get replies with proper sorting and media
+      const orderDirection = sort === 'newest' ? 'DESC' : 'ASC';
+      const repliesResult = await Comment.raw(
+        `SELECT c.*,
+                u.username, u.first_name, u.last_name, u.avatar_url,
+                m.id as media_id, m.filename, m.mime_type, m.file_size
+         FROM comments c
+         LEFT JOIN users u ON c.user_id = u.id
+         LEFT JOIN media m ON c.id = m.comment_id
+         WHERE c.parent_id = $1 AND c.is_published = true
+         ORDER BY c.created_at ${orderDirection}
+         LIMIT $2`,
+        [commentId, limit]
+      );
 
-      const replies = await Comment.findAll({
-        where: {
-          parent_id: commentId,
-          is_published: true
-        },
-        limit,
-        order: orderClause,
-        include: [
-          {
-            model: User,
-            as: 'author',
-            attributes: ['id', 'username', 'first_name', 'last_name', 'avatar_url']
-          },
-          {
-            model: Media,
-            as: 'media',
-            required: false
-          },
-          {
-            model: Reaction,
-            as: 'reactions',
-            required: false,
-            attributes: ['emoji_name', 'emoji_unicode']
+      // Get all reply IDs for bulk reaction query
+      const replyIds = repliesResult.rows.map(comment => comment.id);
+
+      // Get all reaction counts in a single optimized query
+      let reactionCountsMap = new Map();
+      if (replyIds.length > 0) {
+        const reactionsResult = await Comment.raw(
+          `SELECT comment_id, emoji_name, COUNT(*) as count
+           FROM reactions
+           WHERE comment_id = ANY($1)
+           GROUP BY comment_id, emoji_name
+           ORDER BY comment_id, count DESC`,
+          [replyIds]
+        );
+
+        // Build reaction counts map
+        reactionsResult.rows.forEach(row => {
+          const commentId = row.comment_id;
+          if (!reactionCountsMap.has(commentId)) {
+            reactionCountsMap.set(commentId, []);
           }
-        ]
-      });
+          reactionCountsMap.get(commentId).push({
+            emoji_name: row.emoji_name,
+            count: parseInt(row.count)
+          });
+        });
+      }
 
       // Process replies to include reaction counts
-      const processedReplies = replies.map(reply => {
-        const replyJson = reply.toJSON();
-        const reactionCounts = {};
-
-        if (replyJson.reactions) {
-          replyJson.reactions.forEach(reaction => {
-            const key = reaction.emoji_name;
-            if (!reactionCounts[key]) {
-              reactionCounts[key] = {
-                emoji_name: reaction.emoji_name,
-                emoji_unicode: reaction.emoji_unicode,
-                count: 0
-              };
-            }
-            reactionCounts[key].count++;
-          });
-        }
-
-        replyJson.reaction_counts = Object.values(reactionCounts);
-        delete replyJson.reactions;
-        return replyJson;
+      const processedReplies = repliesResult.rows.map(comment => {
+        const reply = Comment.getCommentData(comment);
+        // Add reaction counts from our bulk query
+        reply.reaction_counts = reactionCountsMap.get(comment.id) || [];
+        return reply;
       });
 
       res.json({
@@ -582,7 +589,7 @@ router.get('/:id/replies',
         data: {
           parent_comment_id: commentId,
           replies: processedReplies,
-          total_count: replies.length,
+          total_count: processedReplies.length,
           sort
         }
       });

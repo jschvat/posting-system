@@ -7,6 +7,7 @@ import axios, { AxiosResponse } from 'axios';
 import {
   ApiResponse,
   PaginatedResponse,
+  PaginationInfo,
   Post,
   Comment,
   User,
@@ -19,8 +20,11 @@ import {
   EmojiOption
 } from '../types';
 
-// API base URL from environment variable or default
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:3001/api';
+// Import centralized configuration
+import { getApiBaseUrl } from '../config/app.config';
+
+// API base URL from centralized configuration
+const API_BASE_URL = `${getApiBaseUrl()}/api`;
 
 // Create axios instance with default configuration
 const apiClient = axios.create({
@@ -115,7 +119,7 @@ export const postsApi = {
   /**
    * Create a new post
    */
-  createPost: async (data: PostFormData & { user_id: number }): Promise<ApiResponse<Post>> => {
+  createPost: async (data: PostFormData): Promise<ApiResponse<Post>> => {
     return apiRequest<ApiResponse<Post>>('POST', '/posts', data);
   },
 
@@ -142,10 +146,12 @@ export const commentsApi = {
   getPostComments: async (postId: number, params?: {
     sort?: 'newest' | 'oldest';
     limit?: number;
-  }): Promise<ApiResponse<{ post_id: number; comments: Comment[]; total_count: number; sort: string }>> => {
+    page?: number;
+  }): Promise<ApiResponse<{ post_id: number; comments: Comment[]; total_count: number; sort: string; pagination: PaginationInfo }>> => {
     const searchParams = new URLSearchParams();
     if (params?.sort) searchParams.append('sort', params.sort);
     if (params?.limit) searchParams.append('limit', params.limit.toString());
+    if (params?.page) searchParams.append('page', params.page.toString());
 
     return apiRequest<ApiResponse<any>>('GET', `/comments/post/${postId}?${searchParams}`);
   },
@@ -160,7 +166,7 @@ export const commentsApi = {
   /**
    * Create a new comment or reply
    */
-  createComment: async (data: CommentFormData & { post_id: number; user_id: number }): Promise<ApiResponse<Comment>> => {
+  createComment: async (data: CommentFormData & { post_id: number }): Promise<ApiResponse<Comment>> => {
     return apiRequest<ApiResponse<Comment>>('POST', '/comments', data);
   },
 
@@ -263,7 +269,6 @@ export const mediaApi = {
    */
   uploadFiles: async (data: {
     files: File[];
-    user_id: number;
     post_id?: number;
     comment_id?: number;
     alt_text?: string;
@@ -275,8 +280,7 @@ export const mediaApi = {
       formData.append('files', file);
     });
 
-    // Add other fields
-    formData.append('user_id', data.user_id.toString());
+    // Add other fields (user_id is now handled by authentication)
     if (data.post_id) formData.append('post_id', data.post_id.toString());
     if (data.comment_id) formData.append('comment_id', data.comment_id.toString());
     if (data.alt_text) formData.append('alt_text', data.alt_text);
@@ -356,7 +360,6 @@ export const reactionsApi = {
    * Toggle reaction on a post
    */
   togglePostReaction: async (postId: number, data: {
-    user_id: number;
     emoji_name: string;
     emoji_unicode?: string;
   }): Promise<ApiResponse<{ action: string; reaction: Reaction | null; reaction_counts: ReactionCount[] }>> => {
@@ -367,7 +370,6 @@ export const reactionsApi = {
    * Toggle reaction on a comment
    */
   toggleCommentReaction: async (commentId: number, data: {
-    user_id: number;
     emoji_name: string;
     emoji_unicode?: string;
   }): Promise<ApiResponse<{ action: string; reaction: Reaction | null; reaction_counts: ReactionCount[] }>> => {
@@ -443,12 +445,90 @@ export const reactionsApi = {
   },
 };
 
+// Authentication API
+export const authApi = {
+  /**
+   * Register a new user
+   */
+  register: async (data: {
+    username: string;
+    email: string;
+    password: string;
+    first_name: string;
+    last_name: string;
+    bio?: string;
+  }): Promise<ApiResponse<{ user: User; token: string }>> => {
+    return apiRequest<ApiResponse<any>>('POST', '/auth/register', data);
+  },
+
+  /**
+   * Login user
+   */
+  login: async (data: {
+    username: string;
+    password: string;
+  }): Promise<ApiResponse<{ user: User; token: string }>> => {
+    return apiRequest<ApiResponse<any>>('POST', '/auth/login', {
+      identifier: data.username,
+      password: data.password
+    });
+  },
+
+  /**
+   * Logout user
+   */
+  logout: async (): Promise<ApiResponse<void>> => {
+    return apiRequest<ApiResponse<void>>('POST', '/auth/logout');
+  },
+
+  /**
+   * Get current user profile
+   */
+  getProfile: async (): Promise<ApiResponse<User>> => {
+    return apiRequest<ApiResponse<User>>('GET', '/auth/me');
+  },
+
+  /**
+   * Update current user profile
+   */
+  updateProfile: async (data: Partial<UserFormData>): Promise<ApiResponse<User>> => {
+    return apiRequest<ApiResponse<User>>('PUT', '/auth/profile', data);
+  },
+
+  /**
+   * Change password
+   */
+  changePassword: async (data: {
+    current_password: string;
+    new_password: string;
+  }): Promise<ApiResponse<void>> => {
+    return apiRequest<ApiResponse<void>>('PUT', '/auth/password', data);
+  },
+
+  /**
+   * Request password reset
+   */
+  requestPasswordReset: async (data: { email: string }): Promise<ApiResponse<void>> => {
+    return apiRequest<ApiResponse<void>>('POST', '/auth/forgot-password', data);
+  },
+
+  /**
+   * Reset password with token
+   */
+  resetPassword: async (data: {
+    token: string;
+    new_password: string;
+  }): Promise<ApiResponse<void>> => {
+    return apiRequest<ApiResponse<void>>('POST', '/auth/reset-password', data);
+  },
+};
+
 // Export the configured axios client for custom requests
 export { apiClient };
 
 // Helper function to get media URL
 export const getMediaUrl = (media: Media): string => {
-  const baseUrl = process.env.REACT_APP_API_BASE_URL || 'http://localhost:3001';
+  const baseUrl = getApiBaseUrl();
   return `${baseUrl}/uploads/${media.file_path}`;
 };
 

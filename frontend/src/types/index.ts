@@ -43,6 +43,7 @@ export interface Post extends BaseEntity {
   preview?: string;
   is_edited?: boolean;
   word_count?: number;
+  comment_count?: number;
   author?: User;
   media?: Media[];
   comments?: Comment[];
