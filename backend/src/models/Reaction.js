@@ -1,325 +1,196 @@
 /**
  * Reaction model for the social media platform
- * Handles emoji reactions on posts and comments
+ * Raw SQL implementation
  */
 
-const { DataTypes, Model } = require('sequelize');
+const BaseModel = require('./BaseModel');
 
-class Reaction extends Model {
+class Reaction extends BaseModel {
+  constructor() {
+    super('reactions');
+  }
+
   /**
-   * Initialize the Reaction model with sequelize instance
-   * @param {Sequelize} sequelize - Sequelize instance
+   * Create a new reaction
+   * @param {Object} reactionData - Reaction data
+   * @returns {Object} Created reaction
    */
-  static initModel(sequelize) {
-    Reaction.init({
-      // Primary key
-      id: {
-        type: DataTypes.INTEGER,
-        primaryKey: true,
-        autoIncrement: true,
-        comment: 'Unique identifier for the reaction'
-      },
+  async create(reactionData) {
+    // Normalize emoji name (lowercase, replace spaces with underscores)
+    if (reactionData.emoji_name) {
+      reactionData.emoji_name = reactionData.emoji_name
+        .toLowerCase()
+        .replace(/\s+/g, '_')
+        .replace(/[^a-z0-9_]/g, '');
+    }
 
-      // Foreign key to User
-      user_id: {
-        type: DataTypes.INTEGER,
-        allowNull: false,
-        references: {
-          model: 'users',
-          key: 'id'
-        },
-        onDelete: 'CASCADE',
-        comment: 'ID of the user who made the reaction'
-      },
+    // Validate reaction association (must be on either post or comment, not both)
+    if (!reactionData.post_id && !reactionData.comment_id) {
+      throw new Error('Reaction must be on either a post or comment');
+    }
+    if (reactionData.post_id && reactionData.comment_id) {
+      throw new Error('Reaction cannot be on both a post and comment');
+    }
 
-      // Foreign key to Post (optional - for post reactions)
-      post_id: {
-        type: DataTypes.INTEGER,
-        allowNull: true,
-        references: {
-          model: 'posts',
-          key: 'id'
-        },
-        onDelete: 'CASCADE',
-        comment: 'ID of the post this reaction is on'
-      },
-
-      // Foreign key to Comment (optional - for comment reactions)
-      comment_id: {
-        type: DataTypes.INTEGER,
-        allowNull: true,
-        references: {
-          model: 'comments',
-          key: 'id'
-        },
-        onDelete: 'CASCADE',
-        comment: 'ID of the comment this reaction is on'
-      },
-
-      // Emoji information
-      emoji_unicode: {
-        type: DataTypes.STRING(20),
-        allowNull: false,
-        validate: {
-          len: {
-            args: [1, 20],
-            msg: 'Emoji unicode must be between 1 and 20 characters'
-          },
-          notEmpty: {
-            msg: 'Emoji unicode cannot be empty'
-          }
-        },
-        comment: 'Unicode representation of the emoji'
-      },
-
-      emoji_name: {
-        type: DataTypes.STRING(50),
-        allowNull: false,
-        validate: {
-          len: {
-            args: [1, 50],
-            msg: 'Emoji name must be between 1 and 50 characters'
-          },
-          notEmpty: {
-            msg: 'Emoji name cannot be empty'
-          },
-          isAlphanumeric: {
-            msg: 'Emoji name can only contain letters, numbers, and underscores'
-          }
-        },
-        comment: 'Human-readable name of the emoji (e.g., thumbs_up, heart, laugh)'
-      },
-
-      // Timestamp
-      created_at: {
-        type: DataTypes.DATE,
-        allowNull: false,
-        defaultValue: DataTypes.NOW,
-        comment: 'When the reaction was created'
-      }
-    }, {
-      sequelize,
-      modelName: 'Reaction',
-      tableName: 'reactions',
-      timestamps: false, // Only created_at, reactions are not updated
-      underscored: true,
-
-      // Model indexes for performance
-      indexes: [
-        {
-          fields: ['user_id']
-        },
-        {
-          fields: ['post_id']
-        },
-        {
-          fields: ['comment_id']
-        },
-        {
-          fields: ['emoji_name']
-        },
-        {
-          fields: ['post_id', 'emoji_name']
-        },
-        {
-          fields: ['comment_id', 'emoji_name']
-        },
-        {
-          fields: ['created_at']
-        },
-        // Unique constraints to prevent duplicate reactions
-        {
-          unique: true,
-          fields: ['user_id', 'post_id', 'emoji_unicode'],
-          name: 'unique_user_post_emoji'
-        },
-        {
-          unique: true,
-          fields: ['user_id', 'comment_id', 'emoji_unicode'],
-          name: 'unique_user_comment_emoji'
-        }
-      ],
-
-      // Custom validation
-      validate: {
-        // Ensure reaction is on either a post or comment, not both
-        reactionAssociation() {
-          if (!this.post_id && !this.comment_id) {
-            throw new Error('Reaction must be on either a post or comment');
-          }
-          if (this.post_id && this.comment_id) {
-            throw new Error('Reaction cannot be on both a post and comment');
-          }
-        }
-      },
-
-      // Model scopes for common queries
-      scopes: {
-        // Post reactions only
-        postReactions: {
-          where: {
-            post_id: {
-              [sequelize.Sequelize.Op.not]: null
-            }
-          }
-        },
-
-        // Comment reactions only
-        commentReactions: {
-          where: {
-            comment_id: {
-              [sequelize.Sequelize.Op.not]: null
-            }
-          }
-        },
-
-        // Reactions with user information
-        withUser: {
-          include: [{
-            model: sequelize.models?.User || 'User',
-            as: 'user',
-            attributes: ['id', 'username', 'first_name', 'last_name', 'avatar_url']
-          }]
-        },
-
-        // Recent reactions (last 24 hours)
-        recent: {
-          where: {
-            created_at: {
-              [sequelize.Sequelize.Op.gte]: new Date(Date.now() - 24 * 60 * 60 * 1000)
-            }
-          }
-        }
-      },
-
-      // Model hooks
-      hooks: {
-        beforeValidate: (reaction) => {
-          // Normalize emoji name (lowercase, replace spaces with underscores)
-          if (reaction.emoji_name) {
-            reaction.emoji_name = reaction.emoji_name
-              .toLowerCase()
-              .replace(/\s+/g, '_')
-              .replace(/[^a-z0-9_]/g, '');
-          }
-
-          // Trim unicode
-          if (reaction.emoji_unicode) {
-            reaction.emoji_unicode = reaction.emoji_unicode.trim();
-          }
-        }
-      }
-    });
-
-    return Reaction;
+    const reaction = await super.create(reactionData);
+    return this.getReactionData(reaction);
   }
 
   /**
    * Get aggregated reaction counts for a post
    * @param {number} postId - ID of the post
-   * @returns {Promise<Array>} Array of reaction counts grouped by emoji
+   * @returns {Promise<Array>} Array of reaction counts grouped by type
    */
-  static async getPostReactionCounts(postId) {
-    return await Reaction.findAll({
-      attributes: [
-        'emoji_name',
-        'emoji_unicode',
-        [this.sequelize.fn('COUNT', this.sequelize.col('id')), 'count']
-      ],
-      where: {
-        post_id: postId
-      },
-      group: ['emoji_name', 'emoji_unicode'],
-      order: [[this.sequelize.col('count'), 'DESC']]
-    });
+  async getPostReactionCounts(postId) {
+    const result = await this.raw(
+      `SELECT emoji_name,
+              COUNT(*) as count
+       FROM reactions
+       WHERE post_id = $1
+       GROUP BY emoji_name
+       ORDER BY count DESC`,
+      [postId]
+    );
+
+    return result.rows.map(row => ({
+      emoji_name: row.emoji_name,
+      count: parseInt(row.count)
+    }));
   }
 
   /**
    * Get aggregated reaction counts for a comment
    * @param {number} commentId - ID of the comment
-   * @returns {Promise<Array>} Array of reaction counts grouped by emoji
+   * @returns {Promise<Array>} Array of reaction counts grouped by type
    */
-  static async getCommentReactionCounts(commentId) {
-    return await Reaction.findAll({
-      attributes: [
-        'emoji_name',
-        'emoji_unicode',
-        [this.sequelize.fn('COUNT', this.sequelize.col('id')), 'count']
-      ],
-      where: {
-        comment_id: commentId
-      },
-      group: ['emoji_name', 'emoji_unicode'],
-      order: [[this.sequelize.col('count'), 'DESC']]
-    });
+  async getCommentReactionCounts(commentId) {
+    const result = await this.raw(
+      `SELECT emoji_name,
+              COUNT(*) as count
+       FROM reactions
+       WHERE comment_id = $1
+       GROUP BY emoji_name
+       ORDER BY count DESC`,
+      [commentId]
+    );
+
+    return result.rows.map(row => ({
+      emoji_name: row.emoji_name,
+      count: parseInt(row.count)
+    }));
   }
 
   /**
    * Get user's reaction on a specific post
    * @param {number} userId - ID of the user
    * @param {number} postId - ID of the post
-   * @returns {Promise<Reaction|null>} User's reaction or null
+   * @returns {Promise<Object|null>} User's reaction or null
    */
-  static async getUserPostReaction(userId, postId) {
-    return await Reaction.findOne({
-      where: {
-        user_id: userId,
-        post_id: postId
-      }
-    });
+  async getUserPostReaction(userId, postId) {
+    const result = await this.raw(
+      'SELECT * FROM reactions WHERE user_id = $1 AND post_id = $2',
+      [userId, postId]
+    );
+
+    return result.rows[0] ? this.getReactionData(result.rows[0]) : null;
   }
 
   /**
    * Get user's reaction on a specific comment
    * @param {number} userId - ID of the user
    * @param {number} commentId - ID of the comment
-   * @returns {Promise<Reaction|null>} User's reaction or null
+   * @returns {Promise<Object|null>} User's reaction or null
    */
-  static async getUserCommentReaction(userId, commentId) {
-    return await Reaction.findOne({
-      where: {
-        user_id: userId,
-        comment_id: commentId
-      }
-    });
+  async getUserCommentReaction(userId, commentId) {
+    const result = await this.raw(
+      'SELECT * FROM reactions WHERE user_id = $1 AND comment_id = $2',
+      [userId, commentId]
+    );
+
+    return result.rows[0] ? this.getReactionData(result.rows[0]) : null;
   }
 
   /**
-   * Toggle reaction on a post (add if doesn't exist, remove if exists with same emoji, update if different emoji)
+   * Get reactions for a post with user info
+   * @param {number} postId - Post ID
+   * @param {number} limit - Limit
+   * @param {number} offset - Offset
+   * @returns {Array} Array of reactions with user info
+   */
+  async getPostReactions(postId, limit = 50, offset = 0) {
+    const result = await this.raw(
+      `SELECT r.*,
+              u.username, u.first_name, u.last_name, u.avatar_url
+       FROM reactions r
+       JOIN users u ON r.user_id = u.id
+       WHERE r.post_id = $1
+       ORDER BY r.created_at DESC
+       LIMIT $2 OFFSET $3`,
+      [postId, limit, offset]
+    );
+
+    return result.rows.map(reaction => this.getReactionData(reaction));
+  }
+
+  /**
+   * Get reactions for a comment with user info
+   * @param {number} commentId - Comment ID
+   * @param {number} limit - Limit
+   * @param {number} offset - Offset
+   * @returns {Array} Array of reactions with user info
+   */
+  async getCommentReactions(commentId, limit = 50, offset = 0) {
+    const result = await this.raw(
+      `SELECT r.*,
+              u.username, u.first_name, u.last_name, u.avatar_url
+       FROM reactions r
+       JOIN users u ON r.user_id = u.id
+       WHERE r.comment_id = $1
+       ORDER BY r.created_at DESC
+       LIMIT $2 OFFSET $3`,
+      [commentId, limit, offset]
+    );
+
+    return result.rows.map(reaction => this.getReactionData(reaction));
+  }
+
+  /**
+   * Toggle reaction on a post (add if doesn't exist, remove if exists with same type, update if different type)
    * @param {number} userId - ID of the user
    * @param {number} postId - ID of the post
-   * @param {string} emojiUnicode - Unicode of the emoji
-   * @param {string} emojiName - Name of the emoji
+   * @param {string} reactionType - Type of the reaction (like, dislike, love, etc.)
+   * @param {string} emojiUnicode - Unicode representation of the emoji
    * @returns {Promise<Object>} Result object with action and reaction data
    */
-  static async togglePostReaction(userId, postId, emojiUnicode, emojiName) {
-    const existingReaction = await Reaction.getUserPostReaction(userId, postId);
+  async togglePostReaction(userId, postId, reactionType, emojiUnicode = '👍') {
+    const existingReaction = await this.getUserPostReaction(userId, postId);
 
     if (existingReaction) {
-      if (existingReaction.emoji_unicode === emojiUnicode) {
-        // Same emoji - remove reaction
-        await existingReaction.destroy();
+      if (existingReaction.emoji_name === reactionType) {
+        // Same reaction type - remove reaction
+        await this.delete(existingReaction.id);
         return {
           action: 'removed',
           reaction: null
         };
       } else {
-        // Different emoji - update reaction
-        existingReaction.emoji_unicode = emojiUnicode;
-        existingReaction.emoji_name = emojiName;
-        await existingReaction.save();
+        // Different reaction type - update reaction
+        const updatedReaction = await this.update(existingReaction.id, {
+          emoji_name: reactionType,
+          emoji_unicode: emojiUnicode
+        });
         return {
           action: 'updated',
-          reaction: existingReaction
+          reaction: this.getReactionData(updatedReaction)
         };
       }
     } else {
       // No existing reaction - create new one
-      const newReaction = await Reaction.create({
+      const newReaction = await this.create({
         user_id: userId,
         post_id: postId,
-        emoji_unicode: emojiUnicode,
-        emoji_name: emojiName
+        emoji_name: reactionType,
+        emoji_unicode: emojiUnicode
       });
       return {
         action: 'added',
@@ -332,38 +203,39 @@ class Reaction extends Model {
    * Toggle reaction on a comment (similar to post reaction)
    * @param {number} userId - ID of the user
    * @param {number} commentId - ID of the comment
-   * @param {string} emojiUnicode - Unicode of the emoji
-   * @param {string} emojiName - Name of the emoji
+   * @param {string} reactionType - Type of the reaction (like, dislike, love, etc.)
+   * @param {string} emojiUnicode - Unicode representation of the emoji
    * @returns {Promise<Object>} Result object with action and reaction data
    */
-  static async toggleCommentReaction(userId, commentId, emojiUnicode, emojiName) {
-    const existingReaction = await Reaction.getUserCommentReaction(userId, commentId);
+  async toggleCommentReaction(userId, commentId, reactionType, emojiUnicode = '👍') {
+    const existingReaction = await this.getUserCommentReaction(userId, commentId);
 
     if (existingReaction) {
-      if (existingReaction.emoji_unicode === emojiUnicode) {
-        // Same emoji - remove reaction
-        await existingReaction.destroy();
+      if (existingReaction.emoji_name === reactionType) {
+        // Same reaction type - remove reaction
+        await this.delete(existingReaction.id);
         return {
           action: 'removed',
           reaction: null
         };
       } else {
-        // Different emoji - update reaction
-        existingReaction.emoji_unicode = emojiUnicode;
-        existingReaction.emoji_name = emojiName;
-        await existingReaction.save();
+        // Different reaction type - update reaction
+        const updatedReaction = await this.update(existingReaction.id, {
+          emoji_name: reactionType,
+          emoji_unicode: emojiUnicode
+        });
         return {
           action: 'updated',
-          reaction: existingReaction
+          reaction: this.getReactionData(updatedReaction)
         };
       }
     } else {
       // No existing reaction - create new one
-      const newReaction = await Reaction.create({
+      const newReaction = await this.create({
         user_id: userId,
         comment_id: commentId,
-        emoji_unicode: emojiUnicode,
-        emoji_name: emojiName
+        emoji_name: reactionType,
+        emoji_unicode: emojiUnicode
       });
       return {
         action: 'added',
@@ -373,48 +245,96 @@ class Reaction extends Model {
   }
 
   /**
+   * Remove user's reaction from a post
+   * @param {number} userId - ID of the user
+   * @param {number} postId - ID of the post
+   * @returns {Promise<boolean>} True if reaction was removed
+   */
+  async removePostReaction(userId, postId) {
+    const reaction = await this.getUserPostReaction(userId, postId);
+    if (reaction) {
+      await this.delete(reaction.id);
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Remove user's reaction from a comment
+   * @param {number} userId - ID of the user
+   * @param {number} commentId - ID of the comment
+   * @returns {Promise<boolean>} True if reaction was removed
+   */
+  async removeCommentReaction(userId, commentId) {
+    const reaction = await this.getUserCommentReaction(userId, commentId);
+    if (reaction) {
+      await this.delete(reaction.id);
+      return true;
+    }
+    return false;
+  }
+
+  /**
    * Check if this is a post reaction
+   * @param {Object} reaction - Reaction object
    * @returns {boolean} Whether this reaction is on a post
    */
-  isPostReaction() {
-    return this.post_id !== null;
+  isPostReaction(reaction) {
+    return reaction.post_id !== null;
   }
 
   /**
    * Check if this is a comment reaction
+   * @param {Object} reaction - Reaction object
    * @returns {boolean} Whether this reaction is on a comment
    */
-  isCommentReaction() {
-    return this.comment_id !== null;
+  isCommentReaction(reaction) {
+    return reaction.comment_id !== null;
   }
 
   /**
    * Get reaction data with computed fields
+   * @param {Object} reaction - Raw reaction data from database
    * @returns {Object} Reaction data with additional computed fields
    */
-  getReactionData() {
+  getReactionData(reaction) {
+    if (!reaction) return null;
+
     return {
-      id: this.id,
-      user_id: this.user_id,
-      post_id: this.post_id,
-      comment_id: this.comment_id,
-      emoji_unicode: this.emoji_unicode,
-      emoji_name: this.emoji_name,
-      created_at: this.created_at,
+      id: reaction.id,
+      user_id: reaction.user_id,
+      post_id: reaction.post_id,
+      comment_id: reaction.comment_id,
+      emoji_name: reaction.emoji_name,
+      emoji_unicode: reaction.emoji_unicode,
+      created_at: reaction.created_at,
+      updated_at: reaction.updated_at,
+
+      // Author information (if joined)
+      author: reaction.username ? {
+        id: reaction.user_id,
+        username: reaction.username,
+        first_name: reaction.first_name,
+        last_name: reaction.last_name,
+        full_name: `${reaction.first_name} ${reaction.last_name}`,
+        avatar_url: reaction.avatar_url
+      } : undefined,
+
+      // User information (alias for author, for test compatibility)
+      user: reaction.username ? {
+        id: reaction.user_id,
+        username: reaction.username,
+        first_name: reaction.first_name,
+        last_name: reaction.last_name,
+        full_name: `${reaction.first_name} ${reaction.last_name}`,
+        avatar_url: reaction.avatar_url
+      } : undefined,
 
       // Helper flags
-      is_post_reaction: this.isPostReaction(),
-      is_comment_reaction: this.isCommentReaction()
+      is_post_reaction: this.isPostReaction(reaction),
+      is_comment_reaction: this.isCommentReaction(reaction)
     };
-  }
-
-  /**
-   * Convert to JSON (automatically called by JSON.stringify)
-   * @returns {Object} JSON representation
-   */
-  toJSON() {
-    return this.getReactionData();
   }
 }
 
-module.exports = Reaction;
+module.exports = new Reaction();

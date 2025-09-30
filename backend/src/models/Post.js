@@ -1,216 +1,163 @@
 /**
  * Post model for the social media platform
- * Handles main posts created by users with content and privacy settings
+ * Raw SQL implementation
  */
 
-const { DataTypes, Model } = require('sequelize');
+const BaseModel = require('./BaseModel');
 
-class Post extends Model {
+class Post extends BaseModel {
+  constructor() {
+    super('posts');
+  }
+
   /**
-   * Initialize the Post model with sequelize instance
-   * @param {Sequelize} sequelize - Sequelize instance
+   * Create a new post
+   * @param {Object} postData - Post data
+   * @returns {Object} Created post
    */
-  static initModel(sequelize) {
-    Post.init({
-      // Primary key
-      id: {
-        type: DataTypes.INTEGER,
-        primaryKey: true,
-        autoIncrement: true,
-        comment: 'Unique identifier for the post'
-      },
+  async create(postData) {
+    // Trim whitespace from content
+    if (postData.content) {
+      postData.content = postData.content.trim();
+    }
 
-      // Foreign key to User
-      user_id: {
-        type: DataTypes.INTEGER,
-        allowNull: false,
-        references: {
-          model: 'users',
-          key: 'id'
-        },
-        onDelete: 'CASCADE',
-        comment: 'ID of the user who created the post'
-      },
+    // Set default values
+    postData.privacy_level = postData.privacy_level || 'public';
+    postData.is_published = postData.is_published !== false; // default true unless explicitly false
+    postData.is_archived = postData.is_archived || false;
 
-      // Post content
-      content: {
-        type: DataTypes.TEXT,
-        allowNull: false,
-        validate: {
-          len: {
-            args: [1, 10000],
-            msg: 'Post content must be between 1 and 10000 characters'
-          },
-          notEmpty: {
-            msg: 'Post content cannot be empty'
-          }
-        },
-        comment: 'Main text content of the post'
-      },
+    const post = await super.create(postData);
+    return this.getPostData(post);
+  }
 
-      // Privacy and publishing settings
-      privacy_level: {
-        type: DataTypes.ENUM('public', 'friends', 'private'),
-        defaultValue: 'public',
-        allowNull: false,
-        validate: {
-          isIn: {
-            args: [['public', 'friends', 'private']],
-            msg: 'Privacy level must be public, friends, or private'
-          }
-        },
-        comment: 'Privacy level of the post'
-      },
+  /**
+   * Get posts by user ID with pagination
+   * @param {number} userId - User ID
+   * @param {number} limit - Limit
+   * @param {number} offset - Offset
+   * @returns {Array} Array of posts
+   */
+  async getByUserId(userId, limit = 10, offset = 0) {
+    const result = await this.raw(
+      `SELECT p.*,
+              u.username, u.first_name, u.last_name, u.avatar_url,
+              COUNT(r.id) as reaction_count,
+              COUNT(c.id) as comment_count
+       FROM posts p
+       JOIN users u ON p.user_id = u.id
+       LEFT JOIN reactions r ON p.id = r.post_id
+       LEFT JOIN comments c ON p.id = c.post_id
+       WHERE p.user_id = $1 AND p.is_published = true
+       GROUP BY p.id, u.id
+       ORDER BY p.created_at DESC
+       LIMIT $2 OFFSET $3`,
+      [userId, limit, offset]
+    );
 
-      is_published: {
-        type: DataTypes.BOOLEAN,
-        defaultValue: true,
-        allowNull: false,
-        comment: 'Whether the post is published and visible'
-      },
+    return result.rows.map(post => this.getPostData(post));
+  }
 
-      // Timestamps
-      created_at: {
-        type: DataTypes.DATE,
-        allowNull: false,
-        defaultValue: DataTypes.NOW,
-        comment: 'When the post was created'
-      },
+  /**
+   * Get public posts with pagination (feed)
+   * @param {number} limit - Limit
+   * @param {number} offset - Offset
+   * @returns {Array} Array of public posts
+   */
+  async getPublicPosts(limit = 10, offset = 0) {
+    const result = await this.raw(
+      `SELECT p.*,
+              u.username, u.first_name, u.last_name, u.avatar_url,
+              COUNT(r.id) as reaction_count,
+              COUNT(c.id) as comment_count
+       FROM posts p
+       JOIN users u ON p.user_id = u.id
+       LEFT JOIN reactions r ON p.id = r.post_id
+       LEFT JOIN comments c ON p.id = c.post_id
+       WHERE p.privacy_level = 'public' AND p.is_published = true AND p.is_archived = false
+       GROUP BY p.id, u.id
+       ORDER BY p.created_at DESC
+       LIMIT $1 OFFSET $2`,
+      [limit, offset]
+    );
 
-      updated_at: {
-        type: DataTypes.DATE,
-        allowNull: false,
-        defaultValue: DataTypes.NOW,
-        comment: 'When the post was last updated'
-      }
-    }, {
-      sequelize,
-      modelName: 'Post',
-      tableName: 'posts',
-      timestamps: true,
-      underscored: true,
+    return result.rows.map(post => this.getPostData(post));
+  }
 
-      // Model indexes for performance
-      indexes: [
-        {
-          fields: ['user_id']
-        },
-        {
-          fields: ['created_at']
-        },
-        {
-          fields: ['user_id', 'created_at']
-        },
-        {
-          fields: ['privacy_level']
-        },
-        {
-          fields: ['is_published']
-        },
-        {
-          fields: ['is_published', 'privacy_level', 'created_at']
-        }
-      ],
+  /**
+   * Get post by ID with author and counts
+   * @param {number} postId - Post ID
+   * @returns {Object|null} Post with author info
+   */
+  async getByIdWithAuthor(postId) {
+    const result = await this.raw(
+      `SELECT p.*,
+              u.username, u.first_name, u.last_name, u.avatar_url,
+              COUNT(r.id) as reaction_count,
+              COUNT(c.id) as comment_count
+       FROM posts p
+       JOIN users u ON p.user_id = u.id
+       LEFT JOIN reactions r ON p.id = r.post_id
+       LEFT JOIN comments c ON p.id = c.post_id
+       WHERE p.id = $1
+       GROUP BY p.id, u.id`,
+      [postId]
+    );
 
-      // Model scopes for common queries
-      scopes: {
-        // Only published posts
-        published: {
-          where: {
-            is_published: true
-          }
-        },
+    return result.rows[0] ? this.getPostData(result.rows[0]) : null;
+  }
 
-        // Only public posts
-        public: {
-          where: {
-            privacy_level: 'public',
-            is_published: true
-          }
-        },
-
-        // Posts with user information
-        withAuthor: {
-          include: [{
-            model: sequelize.models?.User || 'User',
-            as: 'author',
-            attributes: ['id', 'username', 'first_name', 'last_name', 'avatar_url']
-          }]
-        },
-
-        // Posts with media
-        withMedia: {
-          include: [{
-            model: sequelize.models?.Media || 'Media',
-            as: 'media',
-            required: false
-          }]
-        },
-
-        // Recent posts (last 30 days)
-        recent: {
-          where: {
-            created_at: {
-              [sequelize.Sequelize.Op.gte]: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
-            }
-          }
-        }
-      },
-
-      // Model hooks
-      hooks: {
-        beforeValidate: (post) => {
-          // Trim whitespace from content
-          if (post.content) {
-            post.content = post.content.trim();
-          }
-        }
-      }
-    });
-
-    return Post;
+  /**
+   * Archive/unarchive a post
+   * @param {number} postId - Post ID
+   * @param {boolean} archived - Whether to archive or unarchive
+   * @returns {Object|null} Updated post
+   */
+  async setArchived(postId, archived = true) {
+    return await this.update(postId, { is_archived: archived });
   }
 
   /**
    * Get abbreviated post content (for previews)
+   * @param {string} content - Post content
    * @param {number} maxLength - Maximum length of preview
    * @returns {string} Abbreviated content
    */
-  getPreview(maxLength = 200) {
-    if (!this.content) return '';
+  getPreview(content, maxLength = 200) {
+    if (!content) return '';
 
-    if (this.content.length <= maxLength) {
-      return this.content;
+    if (content.length <= maxLength) {
+      return content;
     }
 
-    return this.content.substring(0, maxLength).trim() + '...';
+    return content.substring(0, maxLength).trim() + '...';
   }
 
   /**
    * Check if user can view this post
+   * @param {Object} post - Post object
    * @param {Object} user - User object to check permissions for
    * @returns {boolean} Whether user can view the post
    */
-  canUserView(user) {
+  canUserView(post, user) {
     // Post is not published
-    if (!this.is_published) {
-      return user && user.id === this.user_id;
+    if (!post.is_published) {
+      return user && user.id === post.user_id;
     }
 
     // Public posts can be viewed by anyone
-    if (this.privacy_level === 'public') {
+    if (post.privacy_level === 'public') {
       return true;
     }
 
     // Private posts can only be viewed by the author
-    if (this.privacy_level === 'private') {
-      return user && user.id === this.user_id;
+    if (post.privacy_level === 'private') {
+      return user && user.id === post.user_id;
     }
 
     // Friends posts require friend relationship (not implemented yet)
-    if (this.privacy_level === 'friends') {
+    if (post.privacy_level === 'friends') {
       if (!user) return false;
-      if (user.id === this.user_id) return true;
+      if (user.id === post.user_id) return true;
       // TODO: Implement friend relationship check
       return false;
     }
@@ -220,50 +167,68 @@ class Post extends Model {
 
   /**
    * Check if user can edit this post
+   * @param {Object} post - Post object
    * @param {Object} user - User object to check permissions for
    * @returns {boolean} Whether user can edit the post
    */
-  canUserEdit(user) {
-    return user && user.id === this.user_id;
+  canUserEdit(post, user) {
+    return user && user.id === post.user_id;
   }
 
   /**
    * Check if user can delete this post
+   * @param {Object} post - Post object
    * @param {Object} user - User object to check permissions for
    * @returns {boolean} Whether user can delete the post
    */
-  canUserDelete(user) {
-    return user && user.id === this.user_id;
+  canUserDelete(post, user) {
+    return user && user.id === post.user_id;
   }
 
   /**
    * Get post data with computed fields
+   * @param {Object} post - Raw post data from database
    * @returns {Object} Post data with additional computed fields
    */
-  getPostData() {
+  getPostData(post) {
+    if (!post) return null;
+
+    // Ensure boolean fields are properly typed
+    const normalizedPost = {
+      ...post,
+      is_published: Boolean(post.is_published),
+      is_archived: Boolean(post.is_archived)
+    };
+
     return {
-      id: this.id,
-      user_id: this.user_id,
-      content: this.content,
-      preview: this.getPreview(),
-      privacy_level: this.privacy_level,
-      is_published: this.is_published,
-      created_at: this.created_at,
-      updated_at: this.updated_at,
+      id: normalizedPost.id,
+      user_id: normalizedPost.user_id,
+      content: normalizedPost.content,
+      preview: this.getPreview(normalizedPost.content),
+      privacy_level: normalizedPost.privacy_level,
+      is_published: normalizedPost.is_published,
+      is_archived: normalizedPost.is_archived,
+      scheduled_for: normalizedPost.scheduled_for,
+      created_at: normalizedPost.created_at,
+      updated_at: normalizedPost.updated_at,
+
+      // Author information (if joined)
+      author: normalizedPost.username ? {
+        id: normalizedPost.user_id,
+        username: normalizedPost.username,
+        first_name: normalizedPost.first_name,
+        last_name: normalizedPost.last_name,
+        full_name: `${normalizedPost.first_name} ${normalizedPost.last_name}`,
+        avatar_url: normalizedPost.avatar_url
+      } : undefined,
 
       // Additional computed fields
-      is_edited: this.updated_at > this.created_at,
-      word_count: this.content ? this.content.split(/\s+/).length : 0
+      is_edited: new Date(normalizedPost.updated_at) > new Date(normalizedPost.created_at),
+      word_count: normalizedPost.content ? normalizedPost.content.split(/\s+/).length : 0,
+      reaction_count: parseInt(normalizedPost.reaction_count) || 0,
+      comment_count: parseInt(normalizedPost.comment_count) || 0
     };
-  }
-
-  /**
-   * Convert to JSON (automatically called by JSON.stringify)
-   * @returns {Object} JSON representation
-   */
-  toJSON() {
-    return this.getPostData();
   }
 }
 
-module.exports = Post;
+module.exports = new Post();

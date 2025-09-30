@@ -1,0 +1,437 @@
+{
+  "timestamp": "2025-09-25T15:50:09.743Z",
+  "data": {
+    "users": [
+      {
+        "id": 1,
+        "username": "alice_wonder",
+        "email": "alice@example.com",
+        "first_name": "Alice",
+        "last_name": "Wonder",
+        "bio": "🚀 Software engineer passionate about creating amazing user experiences. Love coding, traveling, and photography!",
+        "avatar_url": "https://images.unsplash.com/photo-1494790108755-2616b612b29c?w=150&h=150&fit=crop&crop=face",
+        "is_active": true,
+        "created_at": "2025-09-24T17:13:14.226Z",
+        "updated_at": "2025-09-24T17:13:14.226Z"
+      },
+      {
+        "id": 2,
+        "username": "bob_builder",
+        "email": "bob@example.com",
+        "first_name": "Bob",
+        "last_name": "Builder",
+        "bio": "🏗️ Full-stack developer and tech enthusiast. Building the future one line of code at a time.",
+        "avatar_url": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face",
+        "is_active": true,
+        "created_at": "2025-09-24T17:13:14.226Z",
+        "updated_at": "2025-09-24T17:13:14.226Z"
+      },
+      {
+        "id": 3,
+        "username": "carol_creative",
+        "email": "carol@example.com",
+        "first_name": "Carol",
+        "last_name": "Creative",
+        "bio": "🎨 Designer and creative thinker. Turning ideas into beautiful digital experiences.",
+        "avatar_url": "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face",
+        "is_active": true,
+        "created_at": "2025-09-24T17:13:14.226Z",
+        "updated_at": "2025-09-24T17:13:14.226Z"
+      },
+      {
+        "id": 4,
+        "username": "david_dev",
+        "email": "david@example.com",
+        "first_name": "David",
+        "last_name": "Developer",
+        "bio": "⚡ JavaScript ninja and React enthusiast. Always learning, always building.",
+        "avatar_url": "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face",
+        "is_active": true,
+        "created_at": "2025-09-24T17:13:14.226Z",
+        "updated_at": "2025-09-24T17:13:14.226Z"
+      },
+      {
+        "id": 5,
+        "username": "emma_explorer",
+        "email": "emma@example.com",
+        "first_name": "Emma",
+        "last_name": "Explorer",
+        "bio": "🌍 Digital nomad and adventure seeker. Sharing stories from around the world.",
+        "avatar_url": "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&h=150&fit=crop&crop=face",
+        "is_active": true,
+        "created_at": "2025-09-24T17:13:14.226Z",
+        "updated_at": "2025-09-24T17:13:14.226Z"
+      }
+    ],
+    "posts": [
+      {
+        "id": 1,
+        "user_id": 1,
+        "content": "🎉 Just launched my new personal portfolio website! After weeks of coding and designing, I'm finally ready to share my work with the world.\n\nBuilt with React, TypeScript, and Node.js - featuring:\n✨ Responsive design\n🚀 Fast loading times\n📱 Mobile-first approach\n🎨 Beautiful animations\n\nCheck it out and let me know what you think! Feedback is always welcome.\n\n#WebDevelopment #React #Portfolio #NewProject",
+        "privacy_level": "public",
+        "is_published": true,
+        "created_at": "2025-09-24T15:13:14.226Z",
+        "updated_at": "2025-09-24T15:13:14.226Z"
+      },
+      {
+        "id": 2,
+        "user_id": 2,
+        "content": "🏗️ Working on an exciting new project using microservices architecture!\n\nThe challenge: Building a scalable e-commerce platform that can handle millions of users.\n\nCurrent tech stack:\n- Node.js & Express for APIs\n- PostgreSQL for data persistence\n- Redis for caching\n- Docker for containerization\n- Kubernetes for orchestration\n\nIt's fascinating how each service can be developed, deployed, and scaled independently. The complexity is worth it for the flexibility and resilience it provides.\n\nWhat's your experience with microservices? Any tips for a fellow builder?\n\n#Microservices #NodeJS #Kubernetes #TechTalk",
+        "privacy_level": "public",
+        "is_published": true,
+        "created_at": "2025-09-24T13:13:14.226Z",
+        "updated_at": "2025-09-24T13:13:14.226Z"
+      },
+      {
+        "id": 3,
+        "user_id": 3,
+        "content": "🎨 Design inspiration of the day!\n\nJust finished reading \"Design Systems\" by Alla Kholmatova, and I'm blown away by the insights on building consistent, scalable design languages.\n\nKey takeaways:\n• Design systems are more than just style guides\n• They should evolve with your product and team\n• Documentation is crucial for adoption\n• Start small and grow organically\n\nCurrently working on establishing a design system for our startup. It's incredible how much time and effort it saves once properly implemented.\n\nWhat design systems inspire you the most? Drop your favorites below! 👇\n\n#DesignSystems #UXDesign #UIDesign #DesignThinking",
+        "privacy_level": "public",
+        "is_published": true,
+        "created_at": "2025-09-24T11:13:14.226Z",
+        "updated_at": "2025-09-24T11:13:14.226Z"
+      },
+      {
+        "id": 4,
+        "user_id": 4,
+        "content": "⚡ JavaScript tip of the day: Array.reduce() is your friend!\n\nInstead of writing multiple loops, you can transform and aggregate data in a single pass:\n\n```javascript\nconst orders = [\n  { status: 'completed', amount: 100 },\n  { status: 'pending', amount: 50 },\n  { status: 'completed', amount: 200 }\n];\n\n// Get total of completed orders\nconst completedTotal = orders.reduce((sum, order) => {\n  return order.status === 'completed' ? sum + order.amount : sum;\n}, 0);\n\nconsole.log(completedTotal); // 300\n```\n\nThe beauty of reduce() is its versatility - you can build objects, arrays, or any data structure you need.\n\nWhat's your favorite JavaScript array method? Share your go-to patterns!\n\n#JavaScript #WebDev #CodeTips #Programming",
+        "privacy_level": "public",
+        "is_published": true,
+        "created_at": "2025-09-24T09:13:14.226Z",
+        "updated_at": "2025-09-24T09:13:14.226Z"
+      },
+      {
+        "id": 5,
+        "user_id": 5,
+        "content": "🌍 Greetings from the beautiful city of Prague!\n\nCurrently working remotely from this stunning location while building a new travel planning app. There's something magical about coding with a view of centuries-old architecture.\n\nThe app I'm building will help fellow digital nomads find:\n📍 Best co-working spaces\n☕ Reliable wifi cafes\n🏠 Nomad-friendly accommodations\n🤝 Local tech communities\n\nPrague has been incredible for inspiration - the blend of history and modern tech scene is perfect. Already connected with amazing developers at local meetups.\n\nNext stop: Berlin! Where should I explore for the best developer communities?\n\n#DigitalNomad #RemoteWork #Prague #TravelApp #TechCommunity",
+        "privacy_level": "public",
+        "is_published": true,
+        "created_at": "2025-09-24T05:13:14.226Z",
+        "updated_at": "2025-09-24T05:13:14.226Z"
+      },
+      {
+        "id": 6,
+        "user_id": 1,
+        "content": "📸 Behind the scenes of yesterday's product photoshoot!\n\nSpent the day capturing the essence of our new mobile app interface. It's amazing how the right lighting and composition can make UI screenshots come alive.\n\nPhotography and design have more in common than people think:\n- Both require attention to detail\n- Composition is everything\n- Understanding your audience is key\n- Sometimes less is more\n\nThe photos will be used for our upcoming landing page redesign. Can't wait to see how they perform in user testing!\n\nAnyone else find unexpected connections between their hobbies and professional work?\n\n#Photography #ProductDesign #UI #CreativeProcess",
+        "privacy_level": "public",
+        "is_published": true,
+        "created_at": "2025-09-23T17:13:14.226Z",
+        "updated_at": "2025-09-23T17:13:14.226Z"
+      },
+      {
+        "id": 7,
+        "user_id": 2,
+        "content": "🔧 Weekend project update: Building a home automation system!\n\nStarted with simple goals:\n- Control lights with voice commands\n- Monitor temperature and humidity\n- Automate morning routines\n\nTech stack:\n- Raspberry Pi 4 as the hub\n- Node.js for the backend logic\n- React Native app for mobile control\n- Home Assistant for device integration\n\nThe learning curve was steep, but seeing my coffee maker start brewing when my alarm goes off is pure magic! ☕\n\nNext features to add:\n- Security camera integration\n- Smart irrigation for plants\n- Energy usage monitoring\n\nDIY smart home > expensive commercial systems. Who else is building their own setup?\n\n#HomeAutomation #RaspberryPi #IoT #SmartHome #WeekendProject",
+        "privacy_level": "public",
+        "is_published": true,
+        "created_at": "2025-09-22T17:13:14.226Z",
+        "updated_at": "2025-09-22T17:13:14.226Z"
+      }
+    ],
+    "comments": [
+      {
+        "id": 1,
+        "post_id": 1,
+        "user_id": 2,
+        "parent_id": null,
+        "content": "Wow, this looks incredible Alice! 🔥 The animations are so smooth and the design is really clean. I especially love the project showcase section.",
+        "is_published": true,
+        "created_at": "2025-09-24T15:43:14.226Z",
+        "updated_at": "2025-09-24T15:43:14.226Z"
+      },
+      {
+        "id": 2,
+        "post_id": 1,
+        "user_id": 3,
+        "parent_id": null,
+        "content": "Beautiful work! The color scheme and typography choices are spot on. How long did it take you to complete?",
+        "is_published": true,
+        "created_at": "2025-09-24T16:01:14.226Z",
+        "updated_at": "2025-09-24T16:01:14.226Z"
+      },
+      {
+        "id": 3,
+        "post_id": 1,
+        "user_id": 1,
+        "parent_id": 2,
+        "content": "Thanks Carol! It took about 3 weeks working evenings and weekends. The design phase took the longest - I went through so many iterations! 😅",
+        "is_published": true,
+        "created_at": "2025-09-24T16:13:14.226Z",
+        "updated_at": "2025-09-24T16:13:14.226Z"
+      },
+      {
+        "id": 4,
+        "post_id": 2,
+        "user_id": 4,
+        "parent_id": null,
+        "content": "Great architecture choice! I've been working with microservices for 2 years now. My advice: invest heavily in monitoring and logging from day one. Distributed tracing is a lifesaver!",
+        "is_published": true,
+        "created_at": "2025-09-24T13:43:14.226Z",
+        "updated_at": "2025-09-24T13:43:14.226Z"
+      },
+      {
+        "id": 5,
+        "post_id": 2,
+        "user_id": 5,
+        "parent_id": null,
+        "content": "This sounds like an amazing project! Are you using any service mesh like Istio? We found it really helpful for managing service-to-service communication.",
+        "is_published": true,
+        "created_at": "2025-09-24T14:01:14.226Z",
+        "updated_at": "2025-09-24T14:01:14.226Z"
+      },
+      {
+        "id": 6,
+        "post_id": 2,
+        "user_id": 2,
+        "parent_id": 5,
+        "content": "We're evaluating Istio actually! Currently using NGINX for load balancing but looking to add more sophisticated traffic management. How's your experience been?",
+        "is_published": true,
+        "created_at": "2025-09-24T14:13:14.226Z",
+        "updated_at": "2025-09-24T14:13:14.226Z"
+      },
+      {
+        "id": 7,
+        "post_id": 3,
+        "user_id": 1,
+        "parent_id": null,
+        "content": "I'm a huge fan of Material Design and Atlassian Design System! They're so well documented and the components are really thoughtful.",
+        "is_published": true,
+        "created_at": "2025-09-24T11:43:14.226Z",
+        "updated_at": "2025-09-24T11:43:14.226Z"
+      },
+      {
+        "id": 8,
+        "post_id": 3,
+        "user_id": 4,
+        "parent_id": null,
+        "content": "Shopify's Polaris is another excellent example! The way they handle component variations and states is really impressive. Perfect for complex interfaces.",
+        "is_published": true,
+        "created_at": "2025-09-24T12:01:14.226Z",
+        "updated_at": "2025-09-24T12:01:14.226Z"
+      },
+      {
+        "id": 9,
+        "post_id": 4,
+        "user_id": 3,
+        "parent_id": null,
+        "content": "Love this example! Array.map() is probably my most used method, but reduce() is definitely the most powerful. It's like the Swiss Army knife of array methods! 🔧",
+        "is_published": true,
+        "created_at": "2025-09-24T09:43:14.226Z",
+        "updated_at": "2025-09-24T09:43:14.226Z"
+      },
+      {
+        "id": 10,
+        "post_id": 4,
+        "user_id": 5,
+        "parent_id": null,
+        "content": "Great tip! I also love using Array.some() and Array.every() for validation logic. They make code so much more readable than traditional loops.",
+        "is_published": true,
+        "created_at": "2025-09-24T10:01:14.226Z",
+        "updated_at": "2025-09-24T10:01:14.226Z"
+      },
+      {
+        "id": 11,
+        "post_id": 5,
+        "user_id": 2,
+        "parent_id": null,
+        "content": "Prague is amazing! For Berlin, definitely check out Factory Berlin and Rocket Internet. The startup scene there is incredible. Also, don't miss the Berlin.JS meetups!",
+        "is_published": true,
+        "created_at": "2025-09-24T05:43:14.226Z",
+        "updated_at": "2025-09-24T05:43:14.226Z"
+      },
+      {
+        "id": 12,
+        "post_id": 5,
+        "user_id": 3,
+        "parent_id": null,
+        "content": "Your travel app idea sounds fantastic! As someone who struggled to find good co-working spaces while traveling, this would be so helpful. Let me know when you need beta testers! ✈️",
+        "is_published": true,
+        "created_at": "2025-09-24T06:01:14.226Z",
+        "updated_at": "2025-09-24T06:01:14.226Z"
+      }
+    ],
+    "media": [],
+    "reactions": [
+      {
+        "id": 1,
+        "user_id": 2,
+        "post_id": 1,
+        "comment_id": null,
+        "emoji_unicode": "👍",
+        "emoji_name": "thumbs_up",
+        "created_at": "2025-09-24T17:13:14.226Z"
+      },
+      {
+        "id": 2,
+        "user_id": 3,
+        "post_id": 1,
+        "comment_id": null,
+        "emoji_unicode": "❤️",
+        "emoji_name": "heart",
+        "created_at": "2025-09-24T17:13:14.226Z"
+      },
+      {
+        "id": 3,
+        "user_id": 4,
+        "post_id": 1,
+        "comment_id": null,
+        "emoji_unicode": "🔥",
+        "emoji_name": "fire",
+        "created_at": "2025-09-24T17:13:14.226Z"
+      },
+      {
+        "id": 4,
+        "user_id": 5,
+        "post_id": 1,
+        "comment_id": null,
+        "emoji_unicode": "👏",
+        "emoji_name": "clap",
+        "created_at": "2025-09-24T17:13:14.226Z"
+      },
+      {
+        "id": 5,
+        "user_id": 1,
+        "post_id": 2,
+        "comment_id": null,
+        "emoji_unicode": "👍",
+        "emoji_name": "thumbs_up",
+        "created_at": "2025-09-24T17:13:14.226Z"
+      },
+      {
+        "id": 6,
+        "user_id": 3,
+        "post_id": 2,
+        "comment_id": null,
+        "emoji_unicode": "🤔",
+        "emoji_name": "thinking",
+        "created_at": "2025-09-24T17:13:14.226Z"
+      },
+      {
+        "id": 7,
+        "user_id": 4,
+        "post_id": 2,
+        "comment_id": null,
+        "emoji_unicode": "🔥",
+        "emoji_name": "fire",
+        "created_at": "2025-09-24T17:13:14.226Z"
+      },
+      {
+        "id": 8,
+        "user_id": 1,
+        "post_id": 3,
+        "comment_id": null,
+        "emoji_unicode": "❤️",
+        "emoji_name": "heart",
+        "created_at": "2025-09-24T17:13:14.226Z"
+      },
+      {
+        "id": 9,
+        "user_id": 2,
+        "post_id": 3,
+        "comment_id": null,
+        "emoji_unicode": "👍",
+        "emoji_name": "thumbs_up",
+        "created_at": "2025-09-24T17:13:14.226Z"
+      },
+      {
+        "id": 10,
+        "user_id": 4,
+        "post_id": 3,
+        "comment_id": null,
+        "emoji_unicode": "👏",
+        "emoji_name": "clap",
+        "created_at": "2025-09-24T17:13:14.226Z"
+      },
+      {
+        "id": 11,
+        "user_id": 1,
+        "post_id": 4,
+        "comment_id": null,
+        "emoji_unicode": "🔥",
+        "emoji_name": "fire",
+        "created_at": "2025-09-24T17:13:14.226Z"
+      },
+      {
+        "id": 12,
+        "user_id": 2,
+        "post_id": 4,
+        "comment_id": null,
+        "emoji_unicode": "👍",
+        "emoji_name": "thumbs_up",
+        "created_at": "2025-09-24T17:13:14.226Z"
+      },
+      {
+        "id": 13,
+        "user_id": 3,
+        "post_id": 4,
+        "comment_id": null,
+        "emoji_unicode": "💡",
+        "emoji_name": "bulb",
+        "created_at": "2025-09-24T17:13:14.226Z"
+      },
+      {
+        "id": 14,
+        "user_id": 1,
+        "post_id": 5,
+        "comment_id": null,
+        "emoji_unicode": "✈️",
+        "emoji_name": "airplane",
+        "created_at": "2025-09-24T17:13:14.226Z"
+      },
+      {
+        "id": 15,
+        "user_id": 2,
+        "post_id": 5,
+        "comment_id": null,
+        "emoji_unicode": "👍",
+        "emoji_name": "thumbs_up",
+        "created_at": "2025-09-24T17:13:14.226Z"
+      },
+      {
+        "id": 16,
+        "user_id": 3,
+        "post_id": 5,
+        "comment_id": null,
+        "emoji_unicode": "🌍",
+        "emoji_name": "earth",
+        "created_at": "2025-09-24T17:13:14.226Z"
+      },
+      {
+        "id": 17,
+        "user_id": 1,
+        "post_id": null,
+        "comment_id": 1,
+        "emoji_unicode": "❤️",
+        "emoji_name": "heart",
+        "created_at": "2025-09-24T17:13:14.226Z"
+      },
+      {
+        "id": 18,
+        "user_id": 3,
+        "post_id": null,
+        "comment_id": 1,
+        "emoji_unicode": "👍",
+        "emoji_name": "thumbs_up",
+        "created_at": "2025-09-24T17:13:14.226Z"
+      },
+      {
+        "id": 19,
+        "user_id": 2,
+        "post_id": null,
+        "comment_id": 4,
+        "emoji_unicode": "🙏",
+        "emoji_name": "pray",
+        "created_at": "2025-09-24T17:13:14.226Z"
+      },
+      {
+        "id": 20,
+        "user_id": 4,
+        "post_id": null,
+        "comment_id": 7,
+        "emoji_unicode": "👍",
+        "emoji_name": "thumbs_up",
+        "created_at": "2025-09-24T17:13:14.226Z"
+      }
+    ]
+  }
+}

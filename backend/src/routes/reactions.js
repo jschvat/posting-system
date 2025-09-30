@@ -1,17 +1,20 @@
 /**
  * Reactions routes for the social media platform API
  * Handles emoji reactions on posts and comments
+ * Pure PostgreSQL implementation - NO SEQUELIZE
  */
 
 const express = require('express');
 const { body, param, query, validationResult } = require('express-validator');
-const { Op } = require('sequelize');
-const db = require('../config/database');
+const { authenticate } = require('../middleware/auth');
+
+// Import PostgreSQL models
+const Reaction = require('../models/Reaction');
+const User = require('../models/User');
+const Post = require('../models/Post');
+const Comment = require('../models/Comment');
 
 const router = express.Router();
-
-// Import models (they will be available after database initialization)
-const getModels = () => db.models;
 
 /**
  * Validation middleware to check for validation errors
@@ -35,66 +38,61 @@ const handleValidationErrors = (req, res, next) => {
  * Common emoji mappings for validation and normalization
  */
 const COMMON_EMOJIS = {
-  'like': '👍',
-  'thumbs_up': '👍',
-  'love': '❤️',
-  'heart': '❤️',
-  'laugh': '😂',
-  'haha': '😂',
-  'wow': '😮',
-  'surprised': '😮',
-  'sad': '😢',
-  'cry': '😢',
-  'angry': '😠',
-  'mad': '😠',
-  'care': '🤗',
-  'hug': '🤗',
-  'fire': '🔥',
-  'clap': '👏',
-  'party': '🎉',
-  'celebrate': '🎉',
-  'thinking': '🤔',
-  'cool': '😎'
+  'like': 'like',
+  'thumbs_up': 'like',
+  'love': 'love',
+  'heart': 'love',
+  'laugh': 'laugh',
+  'haha': 'laugh',
+  'wow': 'wow',
+  'surprised': 'wow',
+  'sad': 'sad',
+  'cry': 'sad',
+  'angry': 'angry',
+  'mad': 'angry'
 };
 
 /**
- * Helper function to normalize emoji input
+ * Get default emoji unicode for a given emoji name
  */
-const normalizeEmoji = (emojiName, emojiUnicode) => {
-  // If no unicode provided, try to get it from common emojis
-  if (!emojiUnicode && COMMON_EMOJIS[emojiName.toLowerCase()]) {
-    return {
-      name: emojiName.toLowerCase(),
-      unicode: COMMON_EMOJIS[emojiName.toLowerCase()]
-    };
-  }
-
-  return {
-    name: emojiName.toLowerCase().replace(/[^a-z0-9_]/g, ''),
-    unicode: emojiUnicode
+function getDefaultEmojiUnicode(emojiName) {
+  const defaults = {
+    'like': '👍',
+    'love': '❤️',
+    'laugh': '😂',
+    'wow': '😮',
+    'sad': '😢',
+    'angry': '😠'
   };
-};
+  return defaults[emojiName] || '👍'; // Default to thumbs up
+}
 
 /**
  * POST /api/reactions/post/:postId
  * Add or toggle reaction on a post
  */
 router.post('/post/:postId',
+  authenticate,
   [
-    param('postId').isInt({ min: 1 }).withMessage('Post ID must be a positive integer'),
-    body('user_id').isInt({ min: 1 }).withMessage('User ID is required and must be a positive integer'),
-    body('emoji_name').trim().isLength({ min: 1, max: 50 }).withMessage('Emoji name must be between 1 and 50 characters'),
-    body('emoji_unicode').optional().trim().isLength({ min: 1, max: 20 }).withMessage('Emoji unicode must be between 1 and 20 characters')
+    param('postId').isInt().withMessage('Post ID must be an integer'),
+    body('emoji_name').trim().isLength({ min: 1, max: 50 }).withMessage('Reaction type is required (1-50 characters)'),
+    body('emoji_unicode').optional().isString().withMessage('Emoji unicode must be a string')
   ],
   handleValidationErrors,
   async (req, res, next) => {
     try {
-      const { User, Post, Reaction } = getModels();
       const postId = parseInt(req.params.postId);
-      const { user_id, emoji_name, emoji_unicode } = req.body;
+      const { emoji_name, emoji_unicode } = req.body;
 
-      // Verify post exists
-      const post = await Post.findByPk(postId);
+      // Normalize reaction type - remove spaces, special chars (but keep underscores), convert to lowercase
+      const cleanedName = emoji_name.toLowerCase().replace(/[^a-z0-9_]/g, '');
+      const normalizedType = COMMON_EMOJIS[cleanedName] || cleanedName;
+
+      // Get default emoji unicode if not provided
+      const emojiUnicode = emoji_unicode || getDefaultEmojiUnicode(normalizedType);
+
+      // Check if post exists
+      const post = await Post.findById(postId);
       if (!post) {
         return res.status(404).json({
           success: false,
@@ -105,38 +103,18 @@ router.post('/post/:postId',
         });
       }
 
-      // Verify user exists
-      const user = await User.findByPk(user_id);
-      if (!user) {
-        return res.status(404).json({
-          success: false,
-          error: {
-            message: 'User not found',
-            type: 'NOT_FOUND'
-          }
-        });
-      }
-
-      // Normalize emoji input
-      const normalizedEmoji = normalizeEmoji(emoji_name, emoji_unicode);
-
       // Toggle reaction
-      const result = await Reaction.togglePostReaction(
-        user_id,
-        postId,
-        normalizedEmoji.unicode,
-        normalizedEmoji.name
-      );
+      const result = await Reaction.togglePostReaction(req.user.id, postId, normalizedType, emojiUnicode);
 
       // Get updated reaction counts
-      const reactionCounts = await Reaction.getPostReactionCounts(postId);
+      const counts = await Reaction.getPostReactionCounts(postId);
 
       res.json({
         success: true,
         data: {
           action: result.action,
           reaction: result.reaction,
-          reaction_counts: reactionCounts
+          reaction_counts: counts
         },
         message: `Reaction ${result.action} successfully`
       });
@@ -152,21 +130,27 @@ router.post('/post/:postId',
  * Add or toggle reaction on a comment
  */
 router.post('/comment/:commentId',
+  authenticate,
   [
-    param('commentId').isInt({ min: 1 }).withMessage('Comment ID must be a positive integer'),
-    body('user_id').isInt({ min: 1 }).withMessage('User ID is required and must be a positive integer'),
-    body('emoji_name').trim().isLength({ min: 1, max: 50 }).withMessage('Emoji name must be between 1 and 50 characters'),
-    body('emoji_unicode').optional().trim().isLength({ min: 1, max: 20 }).withMessage('Emoji unicode must be between 1 and 20 characters')
+    param('commentId').isInt().withMessage('Comment ID must be an integer'),
+    body('emoji_name').trim().isLength({ min: 1, max: 50 }).withMessage('Reaction type is required (1-50 characters)'),
+    body('emoji_unicode').optional().isString().withMessage('Emoji unicode must be a string')
   ],
   handleValidationErrors,
   async (req, res, next) => {
     try {
-      const { User, Comment, Reaction } = getModels();
       const commentId = parseInt(req.params.commentId);
-      const { user_id, emoji_name, emoji_unicode } = req.body;
+      const { emoji_name, emoji_unicode } = req.body;
 
-      // Verify comment exists
-      const comment = await Comment.findByPk(commentId);
+      // Normalize reaction type - remove spaces, special chars (but keep underscores), convert to lowercase
+      const cleanedName = emoji_name.toLowerCase().replace(/[^a-z0-9_]/g, '');
+      const normalizedType = COMMON_EMOJIS[cleanedName] || cleanedName;
+
+      // Get default emoji unicode if not provided
+      const emojiUnicode = emoji_unicode || getDefaultEmojiUnicode(normalizedType);
+
+      // Check if comment exists
+      const comment = await Comment.findById(commentId);
       if (!comment) {
         return res.status(404).json({
           success: false,
@@ -177,38 +161,18 @@ router.post('/comment/:commentId',
         });
       }
 
-      // Verify user exists
-      const user = await User.findByPk(user_id);
-      if (!user) {
-        return res.status(404).json({
-          success: false,
-          error: {
-            message: 'User not found',
-            type: 'NOT_FOUND'
-          }
-        });
-      }
-
-      // Normalize emoji input
-      const normalizedEmoji = normalizeEmoji(emoji_name, emoji_unicode);
-
       // Toggle reaction
-      const result = await Reaction.toggleCommentReaction(
-        user_id,
-        commentId,
-        normalizedEmoji.unicode,
-        normalizedEmoji.name
-      );
+      const result = await Reaction.toggleCommentReaction(req.user.id, commentId, normalizedType, emojiUnicode);
 
       // Get updated reaction counts
-      const reactionCounts = await Reaction.getCommentReactionCounts(commentId);
+      const counts = await Reaction.getCommentReactionCounts(commentId);
 
       res.json({
         success: true,
         data: {
           action: result.action,
           reaction: result.reaction,
-          reaction_counts: reactionCounts
+          reaction_counts: counts
         },
         message: `Reaction ${result.action} successfully`
       });
@@ -221,22 +185,25 @@ router.post('/comment/:commentId',
 
 /**
  * GET /api/reactions/post/:postId
- * Get all reactions for a specific post
+ * Get reaction counts and details for a post
  */
 router.get('/post/:postId',
   [
-    param('postId').isInt({ min: 1 }).withMessage('Post ID must be a positive integer'),
-    query('include_users').optional().isBoolean().withMessage('Include users must be a boolean')
+    param('postId').isInt().withMessage('Post ID must be an integer'),
+    query('include_users').optional().isBoolean().withMessage('Include users must be boolean'),
+    query('limit').optional().isInt({ min: 1, max: 100 }).withMessage('Limit must be 1-100'),
+    query('offset').optional().isInt({ min: 0 }).withMessage('Offset must be >= 0')
   ],
   handleValidationErrors,
   async (req, res, next) => {
     try {
-      const { Post, Reaction, User } = getModels();
       const postId = parseInt(req.params.postId);
       const includeUsers = req.query.include_users === 'true';
+      const limit = parseInt(req.query.limit) || 50;
+      const offset = parseInt(req.query.offset) || 0;
 
-      // Verify post exists
-      const post = await Post.findByPk(postId);
+      // Check if post exists
+      const post = await Post.findById(postId);
       if (!post) {
         return res.status(404).json({
           success: false,
@@ -248,29 +215,21 @@ router.get('/post/:postId',
       }
 
       // Get reaction counts
-      const reactionCounts = await Reaction.getPostReactionCounts(postId);
+      const counts = await Reaction.getPostReactionCounts(postId);
 
-      let detailedReactions = null;
+      let reactions = null;
       if (includeUsers) {
-        // Get detailed reactions with user information
-        detailedReactions = await Reaction.findAll({
-          where: { post_id: postId },
-          include: [{
-            model: User,
-            as: 'user',
-            attributes: ['id', 'username', 'first_name', 'last_name', 'avatar_url']
-          }],
-          order: [['created_at', 'DESC']]
-        });
+        reactions = await Reaction.getPostReactions(postId, limit, offset);
       }
 
       res.json({
         success: true,
         data: {
           post_id: postId,
-          reaction_counts: reactionCounts,
-          total_reactions: reactionCounts.reduce((sum, r) => sum + parseInt(r.dataValues?.count || r.count || 0), 0),
-          ...(includeUsers && { detailed_reactions: detailedReactions })
+          total_reactions: counts.reduce((sum, count) => sum + parseInt(count.count), 0),
+          reaction_counts: counts,
+          reactions: reactions,
+          detailed_reactions: reactions
         }
       });
 
@@ -282,22 +241,25 @@ router.get('/post/:postId',
 
 /**
  * GET /api/reactions/comment/:commentId
- * Get all reactions for a specific comment
+ * Get reaction counts and details for a comment
  */
 router.get('/comment/:commentId',
   [
-    param('commentId').isInt({ min: 1 }).withMessage('Comment ID must be a positive integer'),
-    query('include_users').optional().isBoolean().withMessage('Include users must be a boolean')
+    param('commentId').isInt().withMessage('Comment ID must be an integer'),
+    query('include_users').optional().isBoolean().withMessage('Include users must be boolean'),
+    query('limit').optional().isInt({ min: 1, max: 100 }).withMessage('Limit must be 1-100'),
+    query('offset').optional().isInt({ min: 0 }).withMessage('Offset must be >= 0')
   ],
   handleValidationErrors,
   async (req, res, next) => {
     try {
-      const { Comment, Reaction, User } = getModels();
       const commentId = parseInt(req.params.commentId);
       const includeUsers = req.query.include_users === 'true';
+      const limit = parseInt(req.query.limit) || 50;
+      const offset = parseInt(req.query.offset) || 0;
 
-      // Verify comment exists
-      const comment = await Comment.findByPk(commentId);
+      // Check if comment exists
+      const comment = await Comment.findById(commentId);
       if (!comment) {
         return res.status(404).json({
           success: false,
@@ -309,29 +271,21 @@ router.get('/comment/:commentId',
       }
 
       // Get reaction counts
-      const reactionCounts = await Reaction.getCommentReactionCounts(commentId);
+      const counts = await Reaction.getCommentReactionCounts(commentId);
 
-      let detailedReactions = null;
+      let reactions = null;
       if (includeUsers) {
-        // Get detailed reactions with user information
-        detailedReactions = await Reaction.findAll({
-          where: { comment_id: commentId },
-          include: [{
-            model: User,
-            as: 'user',
-            attributes: ['id', 'username', 'first_name', 'last_name', 'avatar_url']
-          }],
-          order: [['created_at', 'DESC']]
-        });
+        reactions = await Reaction.getCommentReactions(commentId, limit, offset);
       }
 
       res.json({
         success: true,
         data: {
           comment_id: commentId,
-          reaction_counts: reactionCounts,
-          total_reactions: reactionCounts.reduce((sum, r) => sum + parseInt(r.dataValues?.count || r.count || 0), 0),
-          ...(includeUsers && { detailed_reactions: detailedReactions })
+          total_reactions: counts.reduce((sum, count) => sum + parseInt(count.count), 0),
+          reaction_counts: counts,
+          reactions: reactions,
+          detailed_reactions: reactions
         }
       });
 
@@ -343,27 +297,33 @@ router.get('/comment/:commentId',
 
 /**
  * GET /api/reactions/user/:userId
- * Get all reactions by a specific user
+ * Get paginated reactions by a user
  */
 router.get('/user/:userId',
   [
-    param('userId').isInt({ min: 1 }).withMessage('User ID must be a positive integer'),
-    query('page').optional().isInt({ min: 1 }).withMessage('Page must be a positive integer'),
-    query('limit').optional().isInt({ min: 1, max: 50 }).withMessage('Limit must be between 1 and 50'),
-    query('type').optional().isIn(['post', 'comment']).withMessage('Type must be post or comment')
+    param('userId').isInt().withMessage('User ID must be an integer'),
+    query('type').optional().isIn(['post', 'comment']).withMessage('Type must be post or comment'),
+    query('emoji_name').optional().isString().withMessage('Reaction type must be a string'),
+    query('limit').optional().isInt({ min: 1, max: 100 }).withMessage('Limit must be 1-100'),
+    query('offset').optional().isInt({ min: 0 }).withMessage('Offset must be >= 0')
   ],
   handleValidationErrors,
   async (req, res, next) => {
     try {
-      const { User, Reaction, Post, Comment } = getModels();
       const userId = parseInt(req.params.userId);
-      const page = parseInt(req.query.page) || 1;
-      const limit = parseInt(req.query.limit) || 20;
-      const offset = (page - 1) * limit;
       const type = req.query.type;
+      const reactionType = req.query.emoji_name;
+      const limit = parseInt(req.query.limit) || 20;
+      let offset = parseInt(req.query.offset) || 0;
 
-      // Verify user exists
-      const user = await User.findByPk(userId);
+      // Support page parameter as well
+      if (req.query.page) {
+        const page = parseInt(req.query.page);
+        offset = (page - 1) * limit;
+      }
+
+      // Check if user exists
+      const user = await User.findById(userId);
       if (!user) {
         return res.status(404).json({
           success: false,
@@ -374,59 +334,97 @@ router.get('/user/:userId',
         });
       }
 
-      // Build where clause
-      const whereClause = { user_id: userId };
+      // Build query conditions
+      let whereClause = 'r.user_id = $1';
+      const params = [userId];
+      let paramIndex = 2;
+
       if (type === 'post') {
-        whereClause.post_id = { [Op.not]: null };
+        whereClause += ` AND r.post_id IS NOT NULL`;
       } else if (type === 'comment') {
-        whereClause.comment_id = { [Op.not]: null };
+        whereClause += ` AND r.comment_id IS NOT NULL`;
       }
 
-      // Get reactions with associated posts/comments
-      const { count, rows: reactions } = await Reaction.findAndCountAll({
-        where: whereClause,
-        limit,
-        offset,
-        order: [['created_at', 'DESC']],
-        include: [
-          {
-            model: Post,
-            as: 'post',
-            required: false,
-            include: [{
-              model: User,
-              as: 'author',
-              attributes: ['id', 'username', 'first_name', 'last_name', 'avatar_url']
-            }]
-          },
-          {
-            model: Comment,
-            as: 'comment',
-            required: false,
-            include: [{
-              model: User,
-              as: 'author',
-              attributes: ['id', 'username', 'first_name', 'last_name', 'avatar_url']
-            }]
-          }
-        ]
-      });
+      if (reactionType) {
+        whereClause += ` AND r.emoji_name = $${paramIndex}`;
+        params.push(reactionType);
+        paramIndex++;
+      }
 
-      // Calculate pagination info
-      const totalPages = Math.ceil(count / limit);
+      // Add limit and offset
+      const limitClause = `LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+      params.push(limit, offset);
+
+      const query = `
+        SELECT r.*,
+               CASE
+                 WHEN r.post_id IS NOT NULL THEN (
+                   SELECT json_build_object(
+                     'id', p.id,
+                     'content', LEFT(p.content, 100),
+                     'author', json_build_object(
+                       'id', u.id,
+                       'username', u.username,
+                       'first_name', u.first_name,
+                       'last_name', u.last_name
+                     )
+                   )
+                   FROM posts p
+                   JOIN users u ON p.user_id = u.id
+                   WHERE p.id = r.post_id
+                 )
+                 ELSE NULL
+               END as post_info,
+               CASE
+                 WHEN r.comment_id IS NOT NULL THEN (
+                   SELECT json_build_object(
+                     'id', c.id,
+                     'content', LEFT(c.content, 100),
+                     'author', json_build_object(
+                       'id', u.id,
+                       'username', u.username,
+                       'first_name', u.first_name,
+                       'last_name', u.last_name
+                     )
+                   )
+                   FROM comments c
+                   JOIN users u ON c.user_id = u.id
+                   WHERE c.id = r.comment_id
+                 )
+                 ELSE NULL
+               END as comment_info
+        FROM reactions r
+        WHERE ${whereClause}
+        ORDER BY r.created_at DESC
+        ${limitClause}
+      `;
+
+      const result = await Reaction.raw(query, params);
+
+      // Process reactions to match expected format
+      const processedReactions = result.rows.map(row => ({
+        id: row.id,
+        user_id: row.user_id,
+        post_id: row.post_id,
+        comment_id: row.comment_id,
+        emoji_name: row.emoji_name,
+        emoji_unicode: row.emoji_unicode,
+        created_at: row.created_at,
+        updated_at: row.updated_at,
+        post: row.post_info,
+        comment: row.comment_info
+      }));
 
       res.json({
         success: true,
         data: {
-          user: user.getPublicData(),
-          reactions,
+          user: User.getPublicData(user),
+          reactions: processedReactions,
           pagination: {
-            current_page: page,
-            total_pages: totalPages,
-            total_count: count,
             limit,
-            has_next_page: page < totalPages,
-            has_prev_page: page > 1
+            offset,
+            current_page: Math.floor(offset / limit) + 1,
+            has_more: processedReactions.length === limit
           }
         }
       });
@@ -442,17 +440,17 @@ router.get('/user/:userId',
  * Delete a specific reaction
  */
 router.delete('/:id',
+  authenticate,
   [
-    param('id').isInt({ min: 1 }).withMessage('Reaction ID must be a positive integer')
+    param('id').isInt().withMessage('Reaction ID must be an integer')
   ],
   handleValidationErrors,
   async (req, res, next) => {
     try {
-      const { Reaction } = getModels();
       const reactionId = parseInt(req.params.id);
 
-      // Find the reaction
-      const reaction = await Reaction.findByPk(reactionId);
+      // Get reaction to check ownership
+      const reaction = await Reaction.findById(reactionId);
       if (!reaction) {
         return res.status(404).json({
           success: false,
@@ -463,28 +461,32 @@ router.delete('/:id',
         });
       }
 
-      // Check if user can delete this reaction (TODO: Implement proper authentication)
-      // For now, assume any user can delete any reaction (will be fixed with authentication)
-
-      // Store reference for response
-      const postId = reaction.post_id;
-      const commentId = reaction.comment_id;
+      // Check ownership (only reaction owner can delete)
+      if (reaction.user_id !== req.user.id) {
+        return res.status(403).json({
+          success: false,
+          error: {
+            message: 'You can only delete your own reactions',
+            type: 'AUTHORIZATION_ERROR'
+          }
+        });
+      }
 
       // Delete the reaction
-      await reaction.destroy();
+      await Reaction.delete(reactionId);
 
-      // Get updated reaction counts
-      let reactionCounts;
-      if (postId) {
-        reactionCounts = await Reaction.getPostReactionCounts(postId);
-      } else if (commentId) {
-        reactionCounts = await Reaction.getCommentReactionCounts(commentId);
+      // Get updated counts
+      let counts = [];
+      if (reaction.post_id) {
+        counts = await Reaction.getPostReactionCounts(reaction.post_id);
+      } else if (reaction.comment_id) {
+        counts = await Reaction.getCommentReactionCounts(reaction.comment_id);
       }
 
       res.json({
         success: true,
         data: {
-          reaction_counts: reactionCounts
+          reaction_counts: counts
         },
         message: 'Reaction deleted successfully'
       });
@@ -497,67 +499,95 @@ router.delete('/:id',
 
 /**
  * GET /api/reactions/emoji-list
- * Get list of available emojis with their unicode values
+ * Get list of available emojis
  */
 router.get('/emoji-list', (req, res) => {
-  const emojiList = Object.entries(COMMON_EMOJIS).map(([name, unicode]) => ({
-    name,
-    unicode,
-    display_name: name.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
-  }));
+  const emojiList = [
+    { name: 'like', unicode: '👍', display_name: 'Like' },
+    { name: 'love', unicode: '❤️', display_name: 'Love' },
+    { name: 'laugh', unicode: '😂', display_name: 'Laugh' },
+    { name: 'wow', unicode: '😮', display_name: 'Wow' },
+    { name: 'sad', unicode: '😢', display_name: 'Sad' },
+    { name: 'angry', unicode: '😠', display_name: 'Angry' }
+  ];
 
   res.json({
     success: true,
     data: {
       emojis: emojiList,
-      total_count: emojiList.length
+      total_count: emojiList.length,
+      common_mappings: COMMON_EMOJIS
     }
   });
 });
 
 /**
  * GET /api/reactions/stats/popular
- * Get most popular emoji reactions across the platform
+ * Get popular emoji statistics
  */
 router.get('/stats/popular',
   [
-    query('days').optional().isInt({ min: 1, max: 365 }).withMessage('Days must be between 1 and 365'),
-    query('limit').optional().isInt({ min: 1, max: 50 }).withMessage('Limit must be between 1 and 50')
+    query('period').optional().isIn(['day', 'week', 'month', 'year']).withMessage('Period must be day, week, month, or year'),
+    query('limit').optional().isInt({ min: 1, max: 50 }).withMessage('Limit must be 1-50')
   ],
   handleValidationErrors,
   async (req, res, next) => {
     try {
-      const { Reaction } = getModels();
-      const days = parseInt(req.query.days) || 30;
+      const period = req.query.period || 'week';
       const limit = parseInt(req.query.limit) || 10;
 
       // Calculate date range
-      const dateFrom = new Date();
-      dateFrom.setDate(dateFrom.getDate() - days);
+      let dateFrom;
+      const now = new Date();
+      switch (period) {
+        case 'day':
+          dateFrom = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+          break;
+        case 'week':
+          dateFrom = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          break;
+        case 'month':
+          dateFrom = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+          break;
+        case 'year':
+          dateFrom = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+          break;
+      }
 
-      // Get popular emojis
-      const popularEmojis = await Reaction.findAll({
-        attributes: [
-          'emoji_name',
-          'emoji_unicode',
-          [db.fn('COUNT', db.col('id')), 'usage_count']
-        ],
-        where: {
-          created_at: {
-            [Op.gte]: dateFrom
-          }
-        },
-        group: ['emoji_name', 'emoji_unicode'],
-        order: [[db.col('usage_count'), 'DESC']],
-        limit
-      });
+      const query = `
+        SELECT emoji_name,
+               COUNT(*) as usage_count,
+               COUNT(DISTINCT user_id) as unique_users
+        FROM reactions
+        WHERE created_at >= $1
+        GROUP BY emoji_name
+        ORDER BY usage_count DESC
+        LIMIT $2
+      `;
+
+      const result = await Reaction.raw(query, [dateFrom, limit]);
+
+      // Calculate total count
+      const totalCount = result.rows.reduce((sum, row) => sum + parseInt(row.usage_count), 0);
+
+      // Format period display name
+      const periodDisplay = {
+        'day': 'Last 24 hours',
+        'week': 'Last 7 days',
+        'month': 'Last 30 days',
+        'year': 'Last 365 days'
+      }[period];
 
       res.json({
         success: true,
         data: {
-          popular_emojis: popularEmojis,
-          period: `Last ${days} days`,
-          total_count: popularEmojis.length
+          period: periodDisplay,
+          popular_emojis: result.rows.map(row => ({
+            emoji_name: row.emoji_name,
+            usage_count: parseInt(row.usage_count),
+            unique_users: parseInt(row.unique_users)
+          })),
+          total_count: totalCount
         }
       });
 

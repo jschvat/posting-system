@@ -118,7 +118,7 @@ const errorHandler = (err, req, res, next) => {
 
   // Default error response
   const statusCode = error.statusCode || 500;
-  const message = error.message || 'Internal Server Error';
+  const message = error.statusCode ? error.message : 'Internal server error'; // Use default for unknown errors
   const type = error.type || 'SERVER_ERROR';
 
   // Prepare error response
@@ -127,9 +127,11 @@ const errorHandler = (err, req, res, next) => {
     error: {
       message,
       type,
+      // Include details if provided in the original error
+      ...(err.details && { details: err.details }),
       ...(process.env.NODE_ENV === 'development' && {
         stack: err.stack,
-        details: error
+        errorDetails: error
       })
     }
   };
@@ -137,7 +139,7 @@ const errorHandler = (err, req, res, next) => {
   // Don't include stack trace in production
   if (process.env.NODE_ENV === 'production') {
     delete errorResponse.error.stack;
-    delete errorResponse.error.details;
+    delete errorResponse.error.errorDetails;
   }
 
   res.status(statusCode).json(errorResponse);

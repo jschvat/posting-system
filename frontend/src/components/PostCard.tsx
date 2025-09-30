@@ -2,7 +2,7 @@
  * PostCard Component - displays individual posts in the feed
  */
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import styled from 'styled-components';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -12,6 +12,20 @@ import { useAuth } from '../contexts/AuthContext';
 import ReactionPicker from './ReactionPicker';
 import ReactionsPopup from './ReactionsPopup';
 import CommentForm from './CommentForm';
+
+// Utility function for formatting time ago
+const formatTimeAgo = (dateString: string) => {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+  if (diffInSeconds < 60) return 'Just now';
+  if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
+  if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
+  if (diffInSeconds < 2592000) return `${Math.floor(diffInSeconds / 86400)}d ago`;
+
+  return date.toLocaleDateString();
+};
 
 const Card = styled.article`
   background: ${({ theme }) => theme.colors.surface};
@@ -262,6 +276,56 @@ interface PostCardProps {
   onUpdate?: () => void;
 }
 
+// Recursive comment rendering component
+const CommentRenderer: React.FC<{ comment: Comment; depth?: number }> = ({ comment, depth = 0 }) => {
+  const commentAvatarUrl = comment.author ? getUserAvatarUrl(comment.author) : '';
+  const hasCommentAvatar = Boolean(comment.author?.avatar_url);
+  const isReply = depth > 0;
+  const maxDepth = 5; // Maximum nesting depth for visual indentation
+
+  const Avatar = isReply ? ReplyAvatar : CommentAvatar;
+  const Content = isReply ? ReplyContent : CommentContent;
+  const Author = isReply ? ReplyAuthor : CommentAuthor;
+  const Text = isReply ? ReplyText : CommentText;
+  const Time = isReply ? ReplyTime : CommentTime;
+  const Item = isReply ? ReplyItem : CommentItem;
+
+  const indentLevel = Math.min(depth, maxDepth);
+  const marginLeft = indentLevel * 20; // 20px per level of nesting
+
+  return (
+    <div style={{ marginLeft: `${marginLeft}px` }}>
+      <Item>
+        <Avatar $hasImage={hasCommentAvatar}>
+          {hasCommentAvatar && comment.author ? (
+            <img src={commentAvatarUrl} alt={`${comment.author.first_name} ${comment.author.last_name}`} />
+          ) : (
+            comment.author ? `${comment.author.first_name[0]}${comment.author.last_name[0]}` : 'U'
+          )}
+        </Avatar>
+        <Content>
+          <div>
+            <Author>
+              {comment.author ? `${comment.author.first_name} ${comment.author.last_name}` : 'Unknown User'}
+            </Author>
+          </div>
+          <Text>{comment.content}</Text>
+          <Time>{formatTimeAgo(comment.created_at)}</Time>
+        </Content>
+      </Item>
+
+      {/* Recursively render all nested replies */}
+      {comment.replies && comment.replies.length > 0 && (
+        <div>
+          {comment.replies.map((reply) => (
+            <CommentRenderer key={reply.id} comment={reply} depth={depth + 1} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 const PostCard: React.FC<PostCardProps> = ({ post, onUpdate }) => {
   const { state } = useAuth();
   const queryClient = useQueryClient();
@@ -270,6 +334,10 @@ const PostCard: React.FC<PostCardProps> = ({ post, onUpdate }) => {
   const [allComments, setAllComments] = useState<Comment[]>([]);
   const [hasMoreComments, setHasMoreComments] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+
+  // Scroll position tracking
+  const commentsListRef = useRef<HTMLDivElement>(null);
+  const [scrollAnchorElement, setScrollAnchorElement] = useState<HTMLElement | null>(null);
 
   // Get author avatar
   const authorAvatarUrl = post.author ? getUserAvatarUrl(post.author) : '';
@@ -301,9 +369,30 @@ const PostCard: React.FC<PostCardProps> = ({ post, onUpdate }) => {
     }
   }, [commentsData, currentPage]);
 
+  // Restore scroll position after loading more comments
+  useEffect(() => {
+    if (currentPage > 1 && !isLoadingMore && scrollAnchorElement && showComments) {
+      // Use setTimeout to ensure DOM is fully updated after new comments are rendered
+      setTimeout(() => {
+        scrollAnchorElement.scrollIntoView({
+          behavior: 'auto',
+          block: 'center'
+        });
+        setScrollAnchorElement(null); // Reset after restoration
+      }, 100);
+    }
+  }, [isLoadingMore, currentPage, scrollAnchorElement, showComments]);
+
   // Load more comments function
   const loadMoreComments = () => {
     if (!hasMoreComments || isLoadingMore) return;
+
+    // Use the last comment as scroll anchor
+    if (commentsListRef.current && commentsListRef.current.children.length > 0) {
+      const lastComment = commentsListRef.current.children[commentsListRef.current.children.length - 1] as HTMLElement;
+      setScrollAnchorElement(lastComment);
+    }
+
     setIsLoadingMore(true);
     setCurrentPage(prev => prev + 1);
   };
@@ -312,7 +401,6 @@ const PostCard: React.FC<PostCardProps> = ({ post, onUpdate }) => {
   const toggleCommentsView = () => {
     if (!showComments) {
       setCurrentPage(1);
-      setAllComments([]);
       setHasMoreComments(false);
     }
     setShowComments(!showComments);
@@ -446,18 +534,6 @@ const PostCard: React.FC<PostCardProps> = ({ post, onUpdate }) => {
     toggleCommentsView();
   };
 
-  const formatTimeAgo = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-
-    if (diffInSeconds < 60) return 'Just now';
-    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
-    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
-    if (diffInSeconds < 2592000) return `${Math.floor(diffInSeconds / 86400)}d ago`;
-
-    return date.toLocaleDateString();
-  };
 
   return (
     <Card>
@@ -528,65 +604,10 @@ const PostCard: React.FC<PostCardProps> = ({ post, onUpdate }) => {
             Loading comments...
           </div>
         ) : (
-          <CommentsList>
-            {comments.map((comment) => {
-              const commentAvatarUrl = comment.author ? getUserAvatarUrl(comment.author) : '';
-              const hasCommentAvatar = Boolean(comment.author?.avatar_url);
-
-              return (
-              <div key={comment.id}>
-                <CommentItem>
-                  <CommentAvatar $hasImage={hasCommentAvatar}>
-                    {hasCommentAvatar && comment.author ? (
-                      <img src={commentAvatarUrl} alt={`${comment.author.first_name} ${comment.author.last_name}`} />
-                    ) : (
-                      comment.author ? `${comment.author.first_name[0]}${comment.author.last_name[0]}` : 'U'
-                    )}
-                  </CommentAvatar>
-                  <CommentContent>
-                    <div>
-                      <CommentAuthor>
-                        {comment.author ? `${comment.author.first_name} ${comment.author.last_name}` : 'Unknown User'}
-                      </CommentAuthor>
-                    </div>
-                    <CommentText>{comment.content}</CommentText>
-                    <CommentTime>{formatTimeAgo(comment.created_at)}</CommentTime>
-                  </CommentContent>
-                </CommentItem>
-
-                {/* Render replies */}
-                {comment.replies && comment.replies.length > 0 && (
-                  <div>
-                    {comment.replies.map((reply) => {
-                      const replyAvatarUrl = reply.author ? getUserAvatarUrl(reply.author) : '';
-                      const hasReplyAvatar = Boolean(reply.author?.avatar_url);
-
-                      return (
-                      <ReplyItem key={reply.id}>
-                        <ReplyAvatar $hasImage={hasReplyAvatar}>
-                          {hasReplyAvatar && reply.author ? (
-                            <img src={replyAvatarUrl} alt={`${reply.author.first_name} ${reply.author.last_name}`} />
-                          ) : (
-                            reply.author ? `${reply.author.first_name[0]}${reply.author.last_name[0]}` : 'U'
-                          )}
-                        </ReplyAvatar>
-                        <ReplyContent>
-                          <div>
-                            <ReplyAuthor>
-                              {reply.author ? `${reply.author.first_name} ${reply.author.last_name}` : 'Unknown User'}
-                            </ReplyAuthor>
-                          </div>
-                          <ReplyText>{reply.content}</ReplyText>
-                          <ReplyTime>{formatTimeAgo(reply.created_at)}</ReplyTime>
-                        </ReplyContent>
-                      </ReplyItem>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-              );
-            })}
+          <CommentsList ref={commentsListRef}>
+            {comments.map((comment) => (
+              <CommentRenderer key={comment.id} comment={comment} depth={0} />
+            ))}
 
             {comments.length === 0 && (
               <div style={{ textAlign: 'center', color: '#65676b', padding: '16px' }}>

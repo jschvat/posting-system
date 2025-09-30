@@ -1,67 +1,58 @@
 /**
- * Database configuration and connection setup using Sequelize
- * Handles PostgreSQL connection with environment-based configuration
+ * PostgreSQL database connection and query utilities
+ * Raw SQL implementation without ORM
  */
 
-const { Sequelize } = require('sequelize');
+const { Pool } = require('pg');
 require('dotenv').config();
 
-// Database connection parameters from environment variables
-const dbConfig = {
-  host: process.env.DB_HOST || 'localhost',
-  port: process.env.DB_PORT || 5432,
-  database: process.env.DB_NAME || 'posting_system',
-  username: process.env.DB_USER || 'dev_user',
-  password: process.env.DB_PASSWORD || 'dev_password',
-  dialect: 'postgres',
-  logging: process.env.NODE_ENV === 'development' ? console.log : false,
+// Import centralized configuration
+const { config } = require('../../../config/app.config');
 
-  // Connection pool configuration
-  pool: {
-    max: 20,        // Maximum number of connections in pool
-    min: 0,         // Minimum number of connections in pool
-    acquire: 60000, // Maximum time to get connection (ms)
-    idle: 10000,    // Maximum time connection can be idle (ms)
-  },
+// Database connection pool
+let pool;
 
-  // SSL configuration (for production)
-  dialectOptions: {
-    ssl: process.env.DB_SSL === 'true' ? {
-      require: true,
+/**
+ * Initialize database connection pool
+ */
+function initializeDatabase() {
+  const dbConfig = {
+    host: config.database.postgres.host,
+    port: config.database.postgres.port,
+    database: config.database.postgres.database,
+    user: config.database.postgres.username,
+    password: config.database.postgres.password,
+    ssl: config.database.postgres.ssl ? {
       rejectUnauthorized: false
-    } : false
-  },
+    } : false,
+    ...config.database.postgres.pool
+  };
 
-  // Timezone configuration
-  timezone: '+00:00',
+  pool = new Pool(dbConfig);
 
-  // Model definitions
-  define: {
-    // Use snake_case for database columns
-    underscored: true,
-    // Add createdAt and updatedAt timestamps
-    timestamps: true,
-    // Use singular table names
-    freezeTableName: true,
-    // Add paranoid (soft delete) support
-    paranoid: false,
-  }
-};
+  // Handle pool events
+  pool.on('error', (err) => {
+    console.error('Unexpected error on idle client', err);
+    process.exit(-1);
+  });
 
-// Create Sequelize instance
-const sequelize = new Sequelize(
-  dbConfig.database,
-  dbConfig.username,
-  dbConfig.password,
-  dbConfig
-);
+  pool.on('connect', () => {
+    if (config.database.logging) {
+      console.log('✅ Connected to PostgreSQL database');
+    }
+  });
+
+  return pool;
+}
 
 /**
  * Test database connection
  */
 async function testConnection() {
   try {
-    await sequelize.authenticate();
+    const client = await pool.connect();
+    await client.query('SELECT NOW()');
+    client.release();
     console.log('✅ Database connection has been established successfully.');
     return true;
   } catch (error) {
@@ -71,156 +62,93 @@ async function testConnection() {
 }
 
 /**
- * Initialize database models and associations
+ * Execute a SQL query
+ * @param {string} text - SQL query text
+ * @param {Array} params - Query parameters
+ * @returns {Object} Query result
  */
-async function initializeDatabase() {
+async function query(text, params = []) {
+  // In test environment, use the global test database
+  if (process.env.NODE_ENV === 'test' && global.testDb) {
+    const { query: testQuery } = require('../__tests__/testDb');
+    return await testQuery(text, params);
+  }
+
+  const start = Date.now();
+
   try {
-    // Import all models
-    const User = require('../models/User');
-    const Post = require('../models/Post');
-    const Comment = require('../models/Comment');
-    const Media = require('../models/Media');
-    const Reaction = require('../models/Reaction');
+    if (!pool) {
+      throw new Error('Database pool not initialized. Call initializeDatabase() first.');
+    }
 
-    // Initialize models with sequelize instance
-    User.initModel(sequelize);
-    Post.initModel(sequelize);
-    Comment.initModel(sequelize);
-    Media.initModel(sequelize);
-    Reaction.initModel(sequelize);
+    const result = await pool.query(text, params);
+    const duration = Date.now() - start;
 
-    // Setup model associations
-    setupAssociations();
+    if (config.database.logging) {
+      console.log('Executed query', { text, duration, rows: result.rowCount });
+    }
 
-    console.log('✅ Database models initialized successfully.');
-    return true;
+    return result;
   } catch (error) {
-    console.error('❌ Failed to initialize database models:', error);
+    console.error('Database query error:', {
+      text,
+      params,
+      error: error.message
+    });
     throw error;
   }
 }
 
 /**
- * Setup model associations/relationships
+ * Execute a transaction
+ * @param {Function} callback - Function that receives client and executes queries
+ * @returns {*} Result of the callback
  */
-function setupAssociations() {
-  const { User, Post, Comment, Media, Reaction } = sequelize.models;
+async function transaction(callback) {
+  const client = await pool.connect();
 
-  // User associations
-  User.hasMany(Post, {
-    foreignKey: 'user_id',
-    as: 'posts',
-    onDelete: 'CASCADE'
-  });
-  User.hasMany(Comment, {
-    foreignKey: 'user_id',
-    as: 'comments',
-    onDelete: 'CASCADE'
-  });
-  User.hasMany(Media, {
-    foreignKey: 'user_id',
-    as: 'media',
-    onDelete: 'CASCADE'
-  });
-  User.hasMany(Reaction, {
-    foreignKey: 'user_id',
-    as: 'reactions',
-    onDelete: 'CASCADE'
-  });
-
-  // Post associations
-  Post.belongsTo(User, {
-    foreignKey: 'user_id',
-    as: 'author'
-  });
-  Post.hasMany(Comment, {
-    foreignKey: 'post_id',
-    as: 'comments',
-    onDelete: 'CASCADE'
-  });
-  Post.hasMany(Media, {
-    foreignKey: 'post_id',
-    as: 'media',
-    onDelete: 'CASCADE'
-  });
-  Post.hasMany(Reaction, {
-    foreignKey: 'post_id',
-    as: 'reactions',
-    onDelete: 'CASCADE'
-  });
-
-  // Comment associations
-  Comment.belongsTo(User, {
-    foreignKey: 'user_id',
-    as: 'author'
-  });
-  Comment.belongsTo(Post, {
-    foreignKey: 'post_id',
-    as: 'post'
-  });
-  Comment.belongsTo(Comment, {
-    foreignKey: 'parent_id',
-    as: 'parent'
-  });
-  Comment.hasMany(Comment, {
-    foreignKey: 'parent_id',
-    as: 'replies',
-    onDelete: 'CASCADE'
-  });
-  Comment.hasMany(Media, {
-    foreignKey: 'comment_id',
-    as: 'media',
-    onDelete: 'CASCADE'
-  });
-  Comment.hasMany(Reaction, {
-    foreignKey: 'comment_id',
-    as: 'reactions',
-    onDelete: 'CASCADE'
-  });
-
-  // Media associations
-  Media.belongsTo(User, {
-    foreignKey: 'user_id',
-    as: 'uploader'
-  });
-  Media.belongsTo(Post, {
-    foreignKey: 'post_id',
-    as: 'post'
-  });
-  Media.belongsTo(Comment, {
-    foreignKey: 'comment_id',
-    as: 'comment'
-  });
-
-  // Reaction associations
-  Reaction.belongsTo(User, {
-    foreignKey: 'user_id',
-    as: 'user'
-  });
-  Reaction.belongsTo(Post, {
-    foreignKey: 'post_id',
-    as: 'post'
-  });
-  Reaction.belongsTo(Comment, {
-    foreignKey: 'comment_id',
-    as: 'comment'
-  });
+  try {
+    await client.query('BEGIN');
+    const result = await callback(client);
+    await client.query('COMMIT');
+    return result;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 /**
- * Close database connection
+ * Close database connection pool
  */
 async function closeConnection() {
   try {
-    await sequelize.close();
-    console.log('✅ Database connection closed.');
+    await pool.end();
+    console.log('✅ Database connection pool closed.');
   } catch (error) {
     console.error('❌ Error closing database connection:', error);
   }
 }
 
-// Export sequelize instance and utility functions
-module.exports = sequelize;
-module.exports.testConnection = testConnection;
-module.exports.initializeDatabase = initializeDatabase;
-module.exports.closeConnection = closeConnection;
+/**
+ * Get a direct client from the pool (for advanced usage)
+ */
+async function getClient() {
+  return await pool.connect();
+}
+
+// Export database utilities
+module.exports = {
+  initializeDatabase,
+  testConnection,
+  query,
+  transaction,
+  closeConnection,
+  getClient,
+  // Getter for the pool instance
+  get pool() {
+    return pool;
+  }
+};

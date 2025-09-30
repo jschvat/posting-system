@@ -10,12 +10,18 @@ const { body, param, query, validationResult } = require('express-validator');
 const path = require('path');
 const fs = require('fs').promises;
 const { v4: uuidv4 } = require('uuid');
-const db = require('../config/database');
+const { authenticate } = require('../middleware/auth');
+
+// Import centralized configuration
+const { config } = require('../../../config/app.config');
+
+// Import PostgreSQL models
+const User = require('../models/User');
+const Post = require('../models/Post');
+const Comment = require('../models/Comment');
+const Media = require('../models/Media');
 
 const router = express.Router();
-
-// Import models (they will be available after database initialization)
-const getModels = () => db.models;
 
 /**
  * Validation middleware to check for validation errors
@@ -40,7 +46,7 @@ const handleValidationErrors = (req, res, next) => {
  */
 const storage = multer.diskStorage({
   destination: async (req, file, cb) => {
-    const uploadDir = path.join(__dirname, '../../../uploads');
+    const uploadDir = path.join(__dirname, config.upload.uploadDir);
     const subDir = file.mimetype.startsWith('image/') ? 'images' : 'media';
     const fullPath = path.join(uploadDir, subDir);
 
@@ -60,16 +66,11 @@ const storage = multer.diskStorage({
 
 // File filter to allow only specific file types
 const fileFilter = (req, file, cb) => {
-  const allowedImageTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-  const allowedVideoTypes = ['video/mp4', 'video/webm', 'video/ogg'];
-  const allowedAudioTypes = ['audio/mp3', 'audio/wav', 'audio/ogg'];
-  const allowedDocTypes = ['application/pdf', 'text/plain'];
-
   const allowedTypes = [
-    ...allowedImageTypes,
-    ...allowedVideoTypes,
-    ...allowedAudioTypes,
-    ...allowedDocTypes
+    ...config.upload.allowedImageTypes,
+    ...config.upload.allowedVideoTypes,
+    ...config.upload.allowedAudioTypes,
+    ...config.upload.allowedDocumentTypes
   ];
 
   if (allowedTypes.includes(file.mimetype)) {
@@ -84,8 +85,8 @@ const upload = multer({
   storage,
   fileFilter,
   limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB limit
-    files: 5 // Maximum 5 files per upload
+    fileSize: config.upload.maxFileSize,
+    files: config.upload.maxFiles
   }
 });
 
@@ -94,9 +95,9 @@ const upload = multer({
  * Upload media files (images, videos, audio, documents)
  */
 router.post('/upload',
-  upload.array('files', 5), // Allow up to 5 files
+  authenticate, // Require authentication
+  upload.array('files', config.upload.maxFiles), // Allow up to configured max files
   [
-    body('user_id').isInt({ min: 1 }).withMessage('User ID is required and must be a positive integer'),
     body('post_id').optional().isInt({ min: 1 }).withMessage('Post ID must be a positive integer'),
     body('comment_id').optional().isInt({ min: 1 }).withMessage('Comment ID must be a positive integer'),
     body('alt_text').optional().trim().isLength({ max: 500 }).withMessage('Alt text cannot exceed 500 characters')
@@ -104,8 +105,11 @@ router.post('/upload',
   handleValidationErrors,
   async (req, res, next) => {
     try {
-      const { User, Post, Comment, Media } = getModels();
-      const { user_id, post_id, comment_id, alt_text } = req.body;
+      // Models already imported
+      const { post_id, comment_id, alt_text } = req.body;
+
+      // Use authenticated user's ID
+      const user_id = req.user.id;
 
       // Validate that files were uploaded
       if (!req.files || req.files.length === 0) {
@@ -139,21 +143,9 @@ router.post('/upload',
         });
       }
 
-      // Verify user exists
-      const user = await User.findByPk(user_id);
-      if (!user) {
-        return res.status(404).json({
-          success: false,
-          error: {
-            message: 'User not found',
-            type: 'NOT_FOUND'
-          }
-        });
-      }
-
       // Verify post or comment exists
       if (post_id) {
-        const post = await Post.findByPk(post_id);
+        const post = await Post.findById(post_id);
         if (!post) {
           return res.status(404).json({
             success: false,
@@ -166,7 +158,7 @@ router.post('/upload',
       }
 
       if (comment_id) {
-        const comment = await Comment.findByPk(comment_id);
+        const comment = await Comment.findById(comment_id);
         if (!comment) {
           return res.status(404).json({
             success: false,
@@ -197,9 +189,9 @@ router.post('/upload',
             if (file.size > 1024 * 1024) { // If larger than 1MB
               const optimizedPath = file.path.replace(path.extname(file.path), '_optimized' + path.extname(file.path));
               await sharp(file.path)
-                .jpeg({ quality: 80 })
-                .png({ quality: 80 })
-                .webp({ quality: 80 })
+                .jpeg({ quality: config.upload.imageQuality })
+                .png({ quality: config.upload.imageQuality })
+                .webp({ quality: config.upload.imageQuality })
                 .toFile(optimizedPath);
 
               // Replace original with optimized version
@@ -211,12 +203,12 @@ router.post('/upload',
             // Generate thumbnail for images
             const thumbnailPath = file.path.replace(path.extname(file.path), '_thumb' + path.extname(file.path));
             await sharp(file.path)
-              .resize(300, 300, { fit: 'inside', withoutEnlargement: true })
+              .resize(config.upload.thumbnailSize, config.upload.thumbnailSize, { fit: 'inside', withoutEnlargement: true })
               .toFile(thumbnailPath);
           }
 
           // Get relative path for database storage
-          const relativePath = path.relative(path.join(__dirname, '../../../uploads'), processedPath);
+          const relativePath = path.relative(path.join(__dirname, config.upload.uploadDir), processedPath);
 
           // Create media record in database
           const media = await Media.create({
@@ -279,17 +271,18 @@ router.get('/:id',
   handleValidationErrors,
   async (req, res, next) => {
     try {
-      const { User, Media } = getModels();
+      // Models already imported
       const mediaId = parseInt(req.params.id);
 
-      // Find media with uploader info
-      const media = await Media.findByPk(mediaId, {
-        include: [{
-          model: User,
-          as: 'uploader',
-          attributes: ['id', 'username', 'first_name', 'last_name', 'avatar_url']
-        }]
-      });
+      // Find media with uploader info using raw SQL
+      const mediaResult = await Media.raw(
+        `SELECT m.*, u.username, u.first_name, u.last_name, u.avatar_url
+         FROM media m
+         LEFT JOIN users u ON m.user_id = u.id
+         WHERE m.id = $1`,
+        [mediaId]
+      );
+      const media = mediaResult.rows[0];
 
       if (!media) {
         return res.status(404).json({
@@ -324,12 +317,12 @@ router.get('/post/:postId',
   handleValidationErrors,
   async (req, res, next) => {
     try {
-      const { Post, Media, User } = getModels();
+      // Models already imported
       const postId = parseInt(req.params.postId);
       const mediaType = req.query.type;
 
       // Verify post exists
-      const post = await Post.findByPk(postId);
+      const post = await Post.findById(postId);
       if (!post) {
         return res.status(404).json({
           success: false,
@@ -340,22 +333,22 @@ router.get('/post/:postId',
         });
       }
 
-      // Build where clause
-      const whereClause = { post_id: postId };
+      // Get media files with uploader info using raw SQL
+      let sql = `SELECT m.*, u.username, u.first_name, u.last_name, u.avatar_url
+                 FROM media m
+                 LEFT JOIN users u ON m.user_id = u.id
+                 WHERE m.post_id = $1`;
+      const params = [postId];
+
       if (mediaType) {
-        whereClause.media_type = mediaType;
+        sql += ` AND m.media_type = $2`;
+        params.push(mediaType);
       }
 
-      // Get media files
-      const media = await Media.findAll({
-        where: whereClause,
-        order: [['created_at', 'ASC']],
-        include: [{
-          model: User,
-          as: 'uploader',
-          attributes: ['id', 'username', 'first_name', 'last_name', 'avatar_url']
-        }]
-      });
+      sql += ` ORDER BY m.created_at ASC`;
+
+      const mediaResult = await Media.raw(sql, params);
+      const media = mediaResult.rows;
 
       res.json({
         success: true,
@@ -384,12 +377,12 @@ router.get('/comment/:commentId',
   handleValidationErrors,
   async (req, res, next) => {
     try {
-      const { Comment, Media, User } = getModels();
+      // Models already imported
       const commentId = parseInt(req.params.commentId);
       const mediaType = req.query.type;
 
       // Verify comment exists
-      const comment = await Comment.findByPk(commentId);
+      const comment = await Comment.findById(commentId);
       if (!comment) {
         return res.status(404).json({
           success: false,
@@ -400,22 +393,22 @@ router.get('/comment/:commentId',
         });
       }
 
-      // Build where clause
-      const whereClause = { comment_id: commentId };
+      // Get media files with uploader info using raw SQL
+      let sql = `SELECT m.*, u.username, u.first_name, u.last_name, u.avatar_url
+                 FROM media m
+                 LEFT JOIN users u ON m.user_id = u.id
+                 WHERE m.comment_id = $1`;
+      const params = [commentId];
+
       if (mediaType) {
-        whereClause.media_type = mediaType;
+        sql += ` AND m.media_type = $2`;
+        params.push(mediaType);
       }
 
-      // Get media files
-      const media = await Media.findAll({
-        where: whereClause,
-        order: [['created_at', 'ASC']],
-        include: [{
-          model: User,
-          as: 'uploader',
-          attributes: ['id', 'username', 'first_name', 'last_name', 'avatar_url']
-        }]
-      });
+      sql += ` ORDER BY m.created_at ASC`;
+
+      const mediaResult = await Media.raw(sql, params);
+      const media = mediaResult.rows;
 
       res.json({
         success: true,
@@ -444,12 +437,12 @@ router.put('/:id',
   handleValidationErrors,
   async (req, res, next) => {
     try {
-      const { Media } = getModels();
+      // Models already imported
       const mediaId = parseInt(req.params.id);
       const { alt_text } = req.body;
 
       // Find the media
-      const media = await Media.findByPk(mediaId);
+      const media = await Media.findById(mediaId);
       if (!media) {
         return res.status(404).json({
           success: false,
@@ -467,11 +460,11 @@ router.put('/:id',
       const updateData = {};
       if (alt_text !== undefined) updateData.alt_text = alt_text;
 
-      await media.update(updateData);
+      const updatedMedia = await Media.update(mediaId, updateData);
 
       res.json({
         success: true,
-        data: media,
+        data: updatedMedia,
         message: 'Media updated successfully'
       });
 
@@ -492,11 +485,11 @@ router.delete('/:id',
   handleValidationErrors,
   async (req, res, next) => {
     try {
-      const { Media } = getModels();
+      // Models already imported
       const mediaId = parseInt(req.params.id);
 
       // Find the media
-      const media = await Media.findByPk(mediaId);
+      const media = await Media.findById(mediaId);
       if (!media) {
         return res.status(404).json({
           success: false,
@@ -530,7 +523,7 @@ router.delete('/:id',
       }
 
       // Delete the media record
-      await media.destroy();
+      await Media.delete(mediaId);
 
       res.json({
         success: true,
@@ -557,7 +550,7 @@ router.get('/user/:userId',
   handleValidationErrors,
   async (req, res, next) => {
     try {
-      const { User, Media } = getModels();
+      // Models already imported
       const userId = parseInt(req.params.userId);
       const page = parseInt(req.query.page) || 1;
       const limit = parseInt(req.query.limit) || 20;
@@ -565,7 +558,7 @@ router.get('/user/:userId',
       const mediaType = req.query.type;
 
       // Verify user exists
-      const user = await User.findByPk(userId);
+      const user = await User.findById(userId);
       if (!user) {
         return res.status(404).json({
           success: false,
@@ -576,24 +569,36 @@ router.get('/user/:userId',
         });
       }
 
-      // Build where clause
-      const whereClause = { user_id: userId };
+      // Get total count
+      let countSql = `SELECT COUNT(*) as count FROM media WHERE user_id = $1`;
+      const countParams = [userId];
       if (mediaType) {
-        whereClause.media_type = mediaType;
+        countSql += ` AND media_type = $2`;
+        countParams.push(mediaType);
       }
 
-      // Get media files with pagination
-      const { count, rows: media } = await Media.findAndCountAll({
-        where: whereClause,
-        limit,
-        offset,
-        order: [['created_at', 'DESC']],
-        include: [{
-          model: User,
-          as: 'uploader',
-          attributes: ['id', 'username', 'first_name', 'last_name', 'avatar_url']
-        }]
-      });
+      const countResult = await Media.raw(countSql, countParams);
+      const count = parseInt(countResult.rows[0].count);
+
+      // Get media files with uploader info using raw SQL
+      let sql = `SELECT m.*, u.username, u.first_name, u.last_name, u.avatar_url
+                 FROM media m
+                 LEFT JOIN users u ON m.user_id = u.id
+                 WHERE m.user_id = $1`;
+      const params = [userId];
+      let paramIndex = 2;
+
+      if (mediaType) {
+        sql += ` AND m.media_type = $${paramIndex}`;
+        params.push(mediaType);
+        paramIndex++;
+      }
+
+      sql += ` ORDER BY m.created_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+      params.push(limit, offset);
+
+      const mediaResult = await Media.raw(sql, params);
+      const media = mediaResult.rows;
 
       // Calculate pagination info
       const totalPages = Math.ceil(count / limit);
@@ -601,7 +606,7 @@ router.get('/user/:userId',
       res.json({
         success: true,
         data: {
-          user: user.getPublicData(),
+          user: User.getUserData(user),
           media,
           pagination: {
             current_page: page,

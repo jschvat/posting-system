@@ -1,17 +1,20 @@
 /**
  * Users routes for the social media platform API
  * Handles user-related operations including profiles, creation, and management
+ * Pure PostgreSQL implementation - NO SEQUELIZE
  */
 
 const express = require('express');
 const { body, param, query, validationResult } = require('express-validator');
-const { Op } = require('sequelize');
-const db = require('../config/database');
+const { authenticate, requireModifyPermission } = require('../middleware/auth');
+
+// Import PostgreSQL models
+const User = require('../models/User');
+const Post = require('../models/Post');
+const Comment = require('../models/Comment');
+const Reaction = require('../models/Reaction');
 
 const router = express.Router();
-
-// Import models (they will be available after database initialization)
-const getModels = () => db.models;
 
 /**
  * Validation middleware to check for validation errors
@@ -45,61 +48,60 @@ router.get('/',
   handleValidationErrors,
   async (req, res, next) => {
     try {
-      const { User, Post } = getModels();
-
-      // Parse query parameters with defaults
       const page = parseInt(req.query.page) || 1;
       const limit = parseInt(req.query.limit) || 20;
       const offset = (page - 1) * limit;
       const search = req.query.search;
       const active = req.query.active;
 
-      // Build where clause for filtering
-      const whereClause = {};
+      // Build WHERE clause
+      let whereClause = '1=1';
+      const params = [];
+      let paramIndex = 1;
 
       // Add active filter
       if (active !== undefined) {
-        whereClause.is_active = active === 'true';
+        whereClause += ` AND u.is_active = $${paramIndex}`;
+        params.push(active === 'true');
+        paramIndex++;
       }
 
       // Add search filter
       if (search) {
-        whereClause[Op.or] = [
-          { username: { [Op.iLike]: `%${search}%` } },
-          { first_name: { [Op.iLike]: `%${search}%` } },
-          { last_name: { [Op.iLike]: `%${search}%` } }
-        ];
+        whereClause += ` AND (u.username ILIKE $${paramIndex} OR u.first_name ILIKE $${paramIndex} OR u.last_name ILIKE $${paramIndex})`;
+        params.push(`%${search}%`);
+        paramIndex++;
       }
 
-      // Fetch users with post counts
-      const { count, rows: users } = await User.findAndCountAll({
-        where: whereClause,
-        limit,
-        offset,
-        order: [['created_at', 'DESC']],
-        attributes: {
-          include: [
-            [
-              db.fn('COUNT', db.col('posts.id')),
-              'post_count'
-            ]
-          ]
-        },
-        include: [{
-          model: Post,
-          as: 'posts',
-          attributes: [],
-          required: false,
-          where: { is_published: true }
-        }],
-        group: ['User.id'],
-        distinct: true
-      });
+      // Get total count
+      const countResult = await User.raw(
+        `SELECT COUNT(DISTINCT u.id) as count
+         FROM users u
+         WHERE ${whereClause}`,
+        params
+      );
+      const totalCount = parseInt(countResult.rows[0].count);
+
+      // Get users with post counts
+      const usersResult = await User.raw(
+        `SELECT u.*,
+                COUNT(p.id) as post_count
+         FROM users u
+         LEFT JOIN posts p ON u.id = p.user_id AND p.is_published = true
+         WHERE ${whereClause}
+         GROUP BY u.id
+         ORDER BY u.created_at DESC
+         LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`,
+        [...params, limit, offset]
+      );
+
+      const users = usersResult.rows.map(user => ({
+        ...User.getUserData(user),
+        post_count: parseInt(user.post_count)
+      }));
 
       // Calculate pagination info
-      const totalPages = Math.ceil(count / limit);
-      const hasNextPage = page < totalPages;
-      const hasPrevPage = page > 1;
+      const totalPages = Math.ceil(totalCount / limit);
 
       res.json({
         success: true,
@@ -108,10 +110,10 @@ router.get('/',
           pagination: {
             current_page: page,
             total_pages: totalPages,
-            total_count: count,
+            total_count: totalCount,
             limit,
-            has_next_page: hasNextPage,
-            has_prev_page: hasPrevPage
+            has_next_page: page < totalPages,
+            has_prev_page: page > 1
           }
         }
       });
@@ -133,34 +135,10 @@ router.get('/:id',
   handleValidationErrors,
   async (req, res, next) => {
     try {
-      const { User, Post, Media, Reaction } = getModels();
       const userId = parseInt(req.params.id);
 
-      // Find user with their recent posts
-      const user = await User.findByPk(userId, {
-        include: [{
-          model: Post,
-          as: 'posts',
-          where: { is_published: true },
-          required: false,
-          limit: 10,
-          order: [['created_at', 'DESC']],
-          include: [
-            {
-              model: Media,
-              as: 'media',
-              required: false
-            },
-            {
-              model: Reaction,
-              as: 'reactions',
-              required: false,
-              attributes: ['emoji_name', 'emoji_unicode']
-            }
-          ]
-        }]
-      });
-
+      // Get user
+      const user = await User.findById(userId);
       if (!user) {
         return res.status(404).json({
           success: false,
@@ -171,60 +149,57 @@ router.get('/:id',
         });
       }
 
-      // Process user data
-      const userData = user.toJSON();
+      // Get recent posts with reaction counts (fixed to match new schema)
+      const postsResult = await Post.raw(
+        `SELECT p.*,
+                COALESCE(reaction_counts.reactions, '[]'::json) as reactions
+         FROM posts p
+         LEFT JOIN (
+           SELECT post_id,
+                  json_agg(
+                    json_build_object(
+                      'emoji_name', emoji_name,
+                      'emoji_unicode', emoji_unicode,
+                      'count', count
+                    )
+                  ) as reactions
+           FROM (
+             SELECT post_id, emoji_name, emoji_unicode, COUNT(*) as count
+             FROM reactions
+             WHERE post_id IS NOT NULL
+             GROUP BY post_id, emoji_name, emoji_unicode
+           ) grouped_reactions
+           GROUP BY post_id
+         ) reaction_counts ON p.id = reaction_counts.post_id
+         WHERE p.user_id = $1 AND p.is_published = true
+         ORDER BY p.created_at DESC
+         LIMIT 10`,
+        [userId]
+      );
 
-      // Process posts to include reaction counts
-      if (userData.posts) {
-        userData.posts = userData.posts.map(post => {
-          const reactionCounts = {};
-          if (post.reactions) {
-            post.reactions.forEach(reaction => {
-              const key = reaction.emoji_name;
-              if (!reactionCounts[key]) {
-                reactionCounts[key] = {
-                  emoji_name: reaction.emoji_name,
-                  emoji_unicode: reaction.emoji_unicode,
-                  count: 0
-                };
-              }
-              reactionCounts[key].count++;
-            });
-          }
-          post.reaction_counts = Object.values(reactionCounts);
-          delete post.reactions;
-          return post;
-        });
-      }
+      // Get user statistics
+      const statsResult = await User.raw(
+        `SELECT
+           (SELECT COUNT(*) FROM posts WHERE user_id = $1 AND is_published = true) as total_posts,
+           (SELECT COUNT(*) FROM comments WHERE user_id = $1 AND is_published = true) as total_comments`,
+        [userId]
+      );
 
-      // Add user statistics
-      const stats = await User.findByPk(userId, {
-        attributes: [
-          [db.fn('COUNT', db.col('posts.id')), 'total_posts'],
-          [db.fn('COUNT', db.col('comments.id')), 'total_comments']
-        ],
-        include: [
-          {
-            model: Post,
-            as: 'posts',
-            attributes: [],
-            required: false,
-            where: { is_published: true }
-          },
-          {
-            model: db.models.Comment,
-            as: 'comments',
-            attributes: [],
-            required: false,
-            where: { is_published: true }
-          }
-        ],
-        group: ['User.id']
-      });
-
+      const userData = User.getUserData(user);
+      userData.posts = postsResult.rows.map(post => ({
+        id: post.id,
+        content: post.content,
+        privacy_level: post.privacy_level,
+        is_published: post.is_published,
+        views_count: post.views_count || 0,
+        created_at: post.created_at,
+        updated_at: post.updated_at,
+        user_id: post.user_id,
+        reaction_counts: post.reactions || []
+      }));
       userData.stats = {
-        total_posts: parseInt(stats?.dataValues?.total_posts || 0),
-        total_comments: parseInt(stats?.dataValues?.total_comments || 0)
+        total_posts: parseInt(statsResult.rows[0]?.total_posts || 0),
+        total_comments: parseInt(statsResult.rows[0]?.total_comments || 0)
       };
 
       res.json({
@@ -240,64 +215,17 @@ router.get('/:id',
 
 /**
  * POST /api/users
- * Create a new user
+ * Create a new user (removed - use auth/register instead)
  */
 router.post('/',
-  [
-    body('username').trim().isLength({ min: 3, max: 50 }).isAlphanumeric().withMessage('Username must be 3-50 alphanumeric characters'),
-    body('email').isEmail().normalizeEmail().withMessage('Valid email is required'),
-    body('first_name').trim().isLength({ min: 1, max: 100 }).withMessage('First name is required (1-100 characters)'),
-    body('last_name').trim().isLength({ min: 1, max: 100 }).withMessage('Last name is required (1-100 characters)'),
-    body('bio').optional().trim().isLength({ max: 500 }).withMessage('Bio cannot exceed 500 characters'),
-    body('avatar_url').optional().isURL().withMessage('Avatar URL must be a valid URL')
-  ],
-  handleValidationErrors,
-  async (req, res, next) => {
-    try {
-      const { User } = getModels();
-      const { username, email, first_name, last_name, bio, avatar_url } = req.body;
-
-      // Check if username or email already exists
-      const existingUser = await User.findOne({
-        where: {
-          [Op.or]: [
-            { username: username },
-            { email: email }
-          ]
-        }
-      });
-
-      if (existingUser) {
-        const field = existingUser.username === username ? 'username' : 'email';
-        return res.status(400).json({
-          success: false,
-          error: {
-            message: `This ${field} is already taken`,
-            type: 'DUPLICATE_ERROR',
-            field
-          }
-        });
+  (req, res) => {
+    res.status(410).json({
+      success: false,
+      error: {
+        message: 'User registration has been moved to /api/auth/register',
+        type: 'ENDPOINT_MOVED'
       }
-
-      // Create the user
-      const user = await User.create({
-        username,
-        email,
-        first_name,
-        last_name,
-        bio,
-        avatar_url
-      });
-
-      res.status(201).json({
-        success: true,
-        data: user,
-        message: 'User created successfully'
-      });
-
-    } catch (error) {
-      next(error);
-    }
+    });
   }
 );
 
@@ -306,6 +234,8 @@ router.post('/',
  * Update a user profile
  */
 router.put('/:id',
+  authenticate, // Require authentication
+  requireModifyPermission('id'), // Check ownership or admin
   [
     param('id').isInt({ min: 1 }).withMessage('User ID must be a positive integer'),
     body('username').optional().trim().isLength({ min: 3, max: 50 }).isAlphanumeric().withMessage('Username must be 3-50 alphanumeric characters'),
@@ -319,12 +249,11 @@ router.put('/:id',
   handleValidationErrors,
   async (req, res, next) => {
     try {
-      const { User } = getModels();
       const userId = parseInt(req.params.id);
       const { username, email, first_name, last_name, bio, avatar_url, is_active } = req.body;
 
       // Find the user
-      const user = await User.findByPk(userId);
+      const user = await User.findById(userId);
       if (!user) {
         return res.status(404).json({
           success: false,
@@ -337,24 +266,29 @@ router.put('/:id',
 
       // Check for duplicate username/email if they're being updated
       if (username || email) {
-        const whereClause = {
-          id: { [Op.not]: userId }
-        };
-        const orConditions = [];
+        let duplicateCheckQuery = 'SELECT username, email FROM users WHERE id != $1 AND (';
+        const checkParams = [userId];
+        const conditions = [];
+        let paramIndex = 2;
 
         if (username && username !== user.username) {
-          orConditions.push({ username: username });
+          conditions.push(`username = $${paramIndex}`);
+          checkParams.push(username);
+          paramIndex++;
         }
         if (email && email !== user.email) {
-          orConditions.push({ email: email });
+          conditions.push(`email = $${paramIndex}`);
+          checkParams.push(email);
+          paramIndex++;
         }
 
-        if (orConditions.length > 0) {
-          whereClause[Op.or] = orConditions;
+        if (conditions.length > 0) {
+          duplicateCheckQuery += conditions.join(' OR ') + ')';
 
-          const existingUser = await User.findOne({ where: whereClause });
-          if (existingUser) {
-            const field = existingUser.username === username ? 'username' : 'email';
+          const existingUser = await User.raw(duplicateCheckQuery, checkParams);
+          if (existingUser.rows.length > 0) {
+            const existing = existingUser.rows[0];
+            const field = existing.username === username ? 'username' : 'email';
             return res.status(400).json({
               success: false,
               error: {
@@ -377,11 +311,11 @@ router.put('/:id',
       if (avatar_url !== undefined) updateData.avatar_url = avatar_url;
       if (is_active !== undefined) updateData.is_active = is_active;
 
-      await user.update(updateData);
+      const updatedUser = await User.update(userId, updateData);
 
       res.json({
         success: true,
-        data: user,
+        data: User.getUserData(updatedUser),
         message: 'User updated successfully'
       });
 
@@ -396,17 +330,18 @@ router.put('/:id',
  * Delete a user (soft delete by setting is_active to false)
  */
 router.delete('/:id',
+  authenticate, // Require authentication
+  requireModifyPermission('id'), // Check ownership or admin
   [
     param('id').isInt({ min: 1 }).withMessage('User ID must be a positive integer')
   ],
   handleValidationErrors,
   async (req, res, next) => {
     try {
-      const { User } = getModels();
       const userId = parseInt(req.params.id);
 
       // Find the user
-      const user = await User.findByPk(userId);
+      const user = await User.findById(userId);
       if (!user) {
         return res.status(404).json({
           success: false,
@@ -418,7 +353,7 @@ router.delete('/:id',
       }
 
       // Soft delete by setting is_active to false
-      await user.update({ is_active: false });
+      await User.update(userId, { is_active: false });
 
       res.json({
         success: true,
@@ -444,14 +379,13 @@ router.get('/:id/posts',
   handleValidationErrors,
   async (req, res, next) => {
     try {
-      const { User, Post, Media, Reaction } = getModels();
       const userId = parseInt(req.params.id);
       const page = parseInt(req.query.page) || 1;
       const limit = parseInt(req.query.limit) || 20;
       const offset = (page - 1) * limit;
 
       // Verify user exists
-      const user = await User.findByPk(userId);
+      const user = await User.findById(userId);
       if (!user) {
         return res.status(404).json({
           success: false,
@@ -462,71 +396,74 @@ router.get('/:id/posts',
         });
       }
 
-      // Fetch user's posts
-      const { count, rows: posts } = await Post.findAndCountAll({
-        where: {
-          user_id: userId,
-          is_published: true
+      // Get total count of user's posts
+      const countResult = await Post.raw(
+        'SELECT COUNT(*) as count FROM posts WHERE user_id = $1 AND is_published = true',
+        [userId]
+      );
+      const totalCount = parseInt(countResult.rows[0].count);
+
+      // Fetch user's posts with reaction counts (fixed to match new schema)
+      const postsResult = await Post.raw(
+        `SELECT p.*,
+                u.username, u.first_name, u.last_name, u.avatar_url,
+                COALESCE(reaction_counts.reactions, '[]'::json) as reactions
+         FROM posts p
+         LEFT JOIN users u ON p.user_id = u.id
+         LEFT JOIN (
+           SELECT post_id,
+                  json_agg(
+                    json_build_object(
+                      'emoji_name', emoji_name,
+                      'emoji_unicode', emoji_unicode,
+                      'count', count
+                    )
+                  ) as reactions
+           FROM (
+             SELECT post_id, emoji_name, emoji_unicode, COUNT(*) as count
+             FROM reactions
+             WHERE post_id IS NOT NULL
+             GROUP BY post_id, emoji_name, emoji_unicode
+           ) grouped_reactions
+           GROUP BY post_id
+         ) reaction_counts ON p.id = reaction_counts.post_id
+         WHERE p.user_id = $1 AND p.is_published = true
+         ORDER BY p.created_at DESC
+         LIMIT $2 OFFSET $3`,
+        [userId, limit, offset]
+      );
+
+      const processedPosts = postsResult.rows.map(post => ({
+        id: post.id,
+        content: post.content,
+        privacy_level: post.privacy_level,
+        is_published: post.is_published,
+        views_count: post.views_count || 0,
+        created_at: post.created_at,
+        updated_at: post.updated_at,
+        user_id: post.user_id,
+        author: {
+          id: post.user_id,
+          username: post.username,
+          first_name: post.first_name,
+          last_name: post.last_name,
+          avatar_url: post.avatar_url
         },
-        limit,
-        offset,
-        order: [['created_at', 'DESC']],
-        include: [
-          {
-            model: User,
-            as: 'author',
-            attributes: ['id', 'username', 'first_name', 'last_name', 'avatar_url']
-          },
-          {
-            model: Media,
-            as: 'media',
-            required: false
-          },
-          {
-            model: Reaction,
-            as: 'reactions',
-            required: false,
-            attributes: ['emoji_name', 'emoji_unicode']
-          }
-        ]
-      });
-
-      // Process posts to include reaction counts
-      const processedPosts = posts.map(post => {
-        const postJson = post.toJSON();
-        const reactionCounts = {};
-
-        if (postJson.reactions) {
-          postJson.reactions.forEach(reaction => {
-            const key = reaction.emoji_name;
-            if (!reactionCounts[key]) {
-              reactionCounts[key] = {
-                emoji_name: reaction.emoji_name,
-                emoji_unicode: reaction.emoji_unicode,
-                count: 0
-              };
-            }
-            reactionCounts[key].count++;
-          });
-        }
-
-        postJson.reaction_counts = Object.values(reactionCounts);
-        delete postJson.reactions;
-        return postJson;
-      });
+        reaction_counts: post.reactions || []
+      }));
 
       // Calculate pagination info
-      const totalPages = Math.ceil(count / limit);
+      const totalPages = Math.ceil(totalCount / limit);
 
       res.json({
         success: true,
         data: {
-          user: user.getPublicData(),
+          user: User.getUserData(user),
           posts: processedPosts,
           pagination: {
             current_page: page,
             total_pages: totalPages,
-            total_count: count,
+            total_count: totalCount,
             limit,
             has_next_page: page < totalPages,
             has_prev_page: page > 1

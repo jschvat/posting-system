@@ -1,0 +1,23 @@
+# Coverage configuration for testing
+[run]
+source = src
+omit =
+    src/__tests__/*
+    src/migrations/*
+    src/seeders/*
+    src/server.js
+    */node_modules/*
+
+[report]
+exclude_lines =
+    pragma: no cover
+    def __repr__
+    raise AssertionError
+    raise NotImplementedError
+    if __name__ == .__main__.:
+
+[html]
+directory = coverage/html-report
+
+[xml]
+output = coverage/coverage.xml

@@ -8,13 +8,18 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
+const cookieParser = require('cookie-parser');
 const path = require('path');
 require('dotenv').config();
 
-// Import database connection and models
-const db = require('./config/database');
+// Import centralized configuration
+const { config } = require('../../config/app.config');
+
+// Import database connection
+const { initializeDatabase, testConnection, closeConnection } = require('./config/database');
 
 // Import routes
+const authRoutes = require('./routes/auth');
 const postsRoutes = require('./routes/posts');
 const usersRoutes = require('./routes/users');
 const commentsRoutes = require('./routes/comments');
@@ -27,17 +32,17 @@ const notFound = require('./middleware/notFound');
 
 // Initialize Express app
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = config.server.api.port;
 
 // Security middleware
 app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
 
-// Rate limiting - limit each IP to 100 requests per 15 minutes
+// Rate limiting - limit each IP based on config
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
+  windowMs: config.rateLimiting.windowMs,
+  max: config.rateLimiting.maxRequests,
   message: 'Too many requests from this IP, please try again later.',
   standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers
@@ -46,21 +51,28 @@ app.use('/api/', limiter);
 
 // CORS configuration
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  origin: config.cors.origin,
+  credentials: config.cors.credentials,
+  methods: config.cors.methods,
+  allowedHeaders: config.cors.allowedHeaders
 }));
 
 // Body parsing middleware
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+const maxFileSize = `${Math.round(config.upload.maxFileSize / 1048576)}mb`;
+app.use(express.json({ limit: maxFileSize }));
+app.use(express.urlencoded({ extended: true, limit: maxFileSize }));
+
+// Cookie parsing middleware
+app.use(cookieParser());
 
 // Logging middleware
-app.use(morgan('combined'));
+if (config.database.logging) {
+  const format = config.isDevelopment ? 'dev' : 'combined';
+  app.use(morgan(format));
+}
 
 // Static file serving for uploaded media
-app.use('/uploads', express.static(path.join(__dirname, '../../uploads')));
+app.use('/uploads', express.static(path.join(__dirname, config.upload.uploadDir)));
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -69,11 +81,12 @@ app.get('/health', (req, res) => {
     message: 'Social Media API is running',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
-    environment: process.env.NODE_ENV || 'development'
+    environment: config.env
   });
 });
 
 // API routes
+app.use('/api/auth', authRoutes);
 app.use('/api/posts', postsRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/comments', commentsRoutes);
@@ -91,23 +104,17 @@ app.use(errorHandler);
  */
 async function startServer() {
   try {
+    // Initialize database connection pool
+    initializeDatabase();
+
     // Test database connection
-    await db.authenticate();
+    await testConnection();
     console.log('✅ Database connection established successfully.');
-
-    // Initialize database models and associations
-    await db.initializeDatabase();
-
-    // Sync database models (in development)
-    if (process.env.NODE_ENV !== 'production') {
-      await db.sync({ force: false });
-      console.log('✅ Database models synchronized.');
-    }
 
     // Start HTTP server
     app.listen(PORT, () => {
       console.log(`🚀 Server is running on port ${PORT}`);
-      console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+      console.log(`🌍 Environment: ${config.env}`);
       console.log(`📊 Health check available at: http://localhost:${PORT}/health`);
       console.log(`📡 API endpoints available at: http://localhost:${PORT}/api`);
     });
@@ -123,13 +130,13 @@ async function startServer() {
  */
 process.on('SIGTERM', async () => {
   console.log('🛑 SIGTERM received, shutting down gracefully...');
-  await db.close();
+  await closeConnection();
   process.exit(0);
 });
 
 process.on('SIGINT', async () => {
   console.log('🛑 SIGINT received, shutting down gracefully...');
-  await db.close();
+  await closeConnection();
   process.exit(0);
 });
 

@@ -4,12 +4,19 @@
  */
 
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import styled, { ThemeProvider, createGlobalStyle } from 'styled-components';
 
+// Import centralized configuration
+import { config } from './config/app.config';
+
+// Import contexts
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+
 // Import pages
+import LoginPage from './pages/LoginPage';
 import HomePage from './pages/HomePage';
 import PostPage from './pages/PostPage';
 import UserProfilePage from './pages/UserProfilePage';
@@ -179,6 +186,65 @@ const SidebarContainer = styled.aside`
   }
 `;
 
+// Protected Route wrapper component
+const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { state } = useAuth();
+
+  if (state.isLoading) {
+    return (
+      <AppContainer>
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+          <div>Loading...</div>
+        </div>
+      </AppContainer>
+    );
+  }
+
+  if (!state.isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return <>{children}</>;
+};
+
+// Main app layout for authenticated users
+const AuthenticatedApp: React.FC = () => {
+  return (
+    <AppContainer>
+      {/* Header Navigation */}
+      <Header />
+
+      <MainContainer>
+        {/* Sidebar Navigation */}
+        <SidebarContainer>
+          <Sidebar />
+        </SidebarContainer>
+
+        {/* Main Content Area */}
+        <ContentArea>
+          <Routes>
+            {/* Home page - main feed */}
+            <Route path="/" element={<HomePage />} />
+
+            {/* Create new post */}
+            <Route path="/create" element={<CreatePostPage />} />
+
+            {/* Single post view */}
+            <Route path="/post/:postId" element={<PostPage />} />
+
+            {/* User profile */}
+            <Route path="/user/:userId" element={<UserProfilePage />} />
+            <Route path="/profile/:userId" element={<UserProfilePage />} />
+
+            {/* Redirect to home for any other routes */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </ContentArea>
+      </MainContainer>
+    </AppContainer>
+  );
+};
+
 /**
  * Main App Component
  */
@@ -188,42 +254,23 @@ const App: React.FC = () => {
       <ThemeProvider theme={theme}>
         <GlobalStyle />
         <Router>
-          <AppContainer>
-            {/* Header Navigation */}
-            <Header />
+          <AuthProvider>
+            <Routes>
+              {/* Login page for unauthenticated users */}
+              <Route path="/login" element={<LoginPage />} />
 
-            <MainContainer>
-              {/* Sidebar Navigation */}
-              <SidebarContainer>
-                <Sidebar />
-              </SidebarContainer>
-
-              {/* Main Content Area */}
-              <ContentArea>
-                <Routes>
-                  {/* Home page - main feed */}
-                  <Route path="/" element={<HomePage />} />
-
-                  {/* Create new post */}
-                  <Route path="/create" element={<CreatePostPage />} />
-
-                  {/* Single post view */}
-                  <Route path="/post/:postId" element={<PostPage />} />
-
-                  {/* User profile */}
-                  <Route path="/user/:userId" element={<UserProfilePage />} />
-                  <Route path="/profile/:userId" element={<UserProfilePage />} />
-
-                  {/* 404 Not Found */}
-                  <Route path="*" element={<NotFoundPage />} />
-                </Routes>
-              </ContentArea>
-            </MainContainer>
-          </AppContainer>
+              {/* All other routes require authentication */}
+              <Route path="/*" element={
+                <ProtectedRoute>
+                  <AuthenticatedApp />
+                </ProtectedRoute>
+              } />
+            </Routes>
+          </AuthProvider>
         </Router>
 
         {/* React Query DevTools (only in development) */}
-        {process.env.NODE_ENV === 'development' && (
+        {config.isDevelopment && (
           <ReactQueryDevtools initialIsOpen={false} />
         )}
       </ThemeProvider>

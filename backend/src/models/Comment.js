@@ -1,213 +1,46 @@
 /**
  * Comment model for the social media platform
- * Handles comments and nested replies on posts with hierarchical structure
+ * Raw SQL implementation
  */
 
-const { DataTypes, Model } = require('sequelize');
+const BaseModel = require('./BaseModel');
 
-class Comment extends Model {
+class Comment extends BaseModel {
+  constructor() {
+    super('comments');
+  }
+
   /**
-   * Initialize the Comment model with sequelize instance
-   * @param {Sequelize} sequelize - Sequelize instance
+   * Create a new comment
+   * @param {Object} commentData - Comment data
+   * @returns {Object} Created comment
    */
-  static initModel(sequelize) {
-    Comment.init({
-      // Primary key
-      id: {
-        type: DataTypes.INTEGER,
-        primaryKey: true,
-        autoIncrement: true,
-        comment: 'Unique identifier for the comment'
-      },
+  async create(commentData) {
+    // Trim whitespace from content
+    if (commentData.content) {
+      commentData.content = commentData.content.trim();
+    }
 
-      // Foreign key to Post
-      post_id: {
-        type: DataTypes.INTEGER,
-        allowNull: false,
-        references: {
-          model: 'posts',
-          key: 'id'
-        },
-        onDelete: 'CASCADE',
-        comment: 'ID of the post this comment belongs to'
-      },
+    // Set default values
+    commentData.is_published = commentData.is_published !== false;
 
-      // Foreign key to User
-      user_id: {
-        type: DataTypes.INTEGER,
-        allowNull: false,
-        references: {
-          model: 'users',
-          key: 'id'
-        },
-        onDelete: 'CASCADE',
-        comment: 'ID of the user who created the comment'
-      },
-
-      // Foreign key to parent Comment (for nested replies)
-      parent_id: {
-        type: DataTypes.INTEGER,
-        allowNull: true,
-        references: {
-          model: 'comments',
-          key: 'id'
-        },
-        onDelete: 'CASCADE',
-        comment: 'ID of the parent comment (null for top-level comments)'
-      },
-
-      // Comment content
-      content: {
-        type: DataTypes.TEXT,
-        allowNull: false,
-        validate: {
-          len: {
-            args: [1, 2000],
-            msg: 'Comment content must be between 1 and 2000 characters'
-          },
-          notEmpty: {
-            msg: 'Comment content cannot be empty'
-          }
-        },
-        comment: 'Text content of the comment'
-      },
-
-      // Publishing status
-      is_published: {
-        type: DataTypes.BOOLEAN,
-        defaultValue: true,
-        allowNull: false,
-        comment: 'Whether the comment is published and visible'
-      },
-
-      // Timestamps
-      created_at: {
-        type: DataTypes.DATE,
-        allowNull: false,
-        defaultValue: DataTypes.NOW,
-        comment: 'When the comment was created'
-      },
-
-      updated_at: {
-        type: DataTypes.DATE,
-        allowNull: false,
-        defaultValue: DataTypes.NOW,
-        comment: 'When the comment was last updated'
+    // Validate parent comment belongs to same post
+    if (commentData.parent_id) {
+      const parentComment = await this.findById(commentData.parent_id);
+      if (!parentComment || parentComment.post_id !== commentData.post_id) {
+        throw new Error('Parent comment must belong to the same post');
       }
-    }, {
-      sequelize,
-      modelName: 'Comment',
-      tableName: 'comments',
-      timestamps: true,
-      underscored: true,
 
-      // Model indexes for performance
-      indexes: [
-        {
-          fields: ['post_id']
-        },
-        {
-          fields: ['user_id']
-        },
-        {
-          fields: ['parent_id']
-        },
-        {
-          fields: ['post_id', 'created_at']
-        },
-        {
-          fields: ['post_id', 'parent_id']
-        },
-        {
-          fields: ['is_published']
-        },
-        {
-          fields: ['created_at']
-        }
-      ],
-
-      // Model scopes for common queries
-      scopes: {
-        // Only published comments
-        published: {
-          where: {
-            is_published: true
-          }
-        },
-
-        // Top-level comments only (not replies)
-        topLevel: {
-          where: {
-            parent_id: null
-          }
-        },
-
-        // Replies only (not top-level comments)
-        replies: {
-          where: {
-            parent_id: {
-              [sequelize.Sequelize.Op.not]: null
-            }
-          }
-        },
-
-        // Comments with author information
-        withAuthor: {
-          include: [{
-            model: sequelize.models?.User || 'User',
-            as: 'author',
-            attributes: ['id', 'username', 'first_name', 'last_name', 'avatar_url']
-          }]
-        },
-
-        // Comments with replies included
-        withReplies: {
-          include: [{
-            model: 'Comment',
-            as: 'replies',
-            separate: true,
-            order: [['created_at', 'ASC']]
-          }]
-        },
-
-        // Recent comments (last 7 days)
-        recent: {
-          where: {
-            created_at: {
-              [sequelize.Sequelize.Op.gte]: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-            }
-          }
-        }
-      },
-
-      // Model hooks
-      hooks: {
-        beforeValidate: (comment) => {
-          // Trim whitespace from content
-          if (comment.content) {
-            comment.content = comment.content.trim();
-          }
-        },
-
-        beforeCreate: async (comment) => {
-          // Validate parent comment belongs to same post
-          if (comment.parent_id) {
-            const parentComment = await Comment.findByPk(comment.parent_id);
-            if (!parentComment || parentComment.post_id !== comment.post_id) {
-              throw new Error('Parent comment must belong to the same post');
-            }
-
-            // Prevent excessive nesting (max 5 levels deep)
-            const depth = await Comment.getCommentDepth(comment.parent_id);
-            if (depth >= 5) {
-              throw new Error('Maximum comment nesting depth exceeded');
-            }
-          }
-        }
+      // Prevent excessive nesting (max 5 levels deep)
+      const parentDepth = await this.getCommentDepth(commentData.parent_id);
+      const newCommentDepth = parentDepth + 1;
+      if (newCommentDepth >= 5) {
+        throw new Error('Maximum comment nesting depth exceeded');
       }
-    });
+    }
 
-    return Comment;
+    const comment = await super.create(commentData);
+    return this.getCommentData(comment);
   }
 
   /**
@@ -215,18 +48,40 @@ class Comment extends Model {
    * @param {number} commentId - ID of the comment to check depth for
    * @returns {Promise<number>} Depth level (0 for top-level, 1 for first reply, etc.)
    */
-  static async getCommentDepth(commentId) {
+  async getCommentDepth(commentId) {
     if (!commentId) return 0;
 
-    const comment = await Comment.findByPk(commentId, {
-      attributes: ['parent_id']
-    });
-
+    const comment = await this.findById(commentId);
     if (!comment || !comment.parent_id) {
       return 0;
     }
 
-    return 1 + await Comment.getCommentDepth(comment.parent_id);
+    return 1 + await this.getCommentDepth(comment.parent_id);
+  }
+
+  /**
+   * Get comments for a post with pagination
+   * @param {number} postId - Post ID
+   * @param {number} limit - Limit
+   * @param {number} offset - Offset
+   * @returns {Array} Array of comments with author info
+   */
+  async getByPostId(postId, limit = 20, offset = 0) {
+    const result = await this.raw(
+      `SELECT c.*,
+              u.username, u.first_name, u.last_name, u.avatar_url,
+              COUNT(r.id) as reaction_count
+       FROM comments c
+       JOIN users u ON c.user_id = u.id
+       LEFT JOIN reactions r ON c.id = r.comment_id
+       WHERE c.post_id = $1 AND c.is_published = true AND c.parent_id IS NULL
+       GROUP BY c.id, u.id
+       ORDER BY c.created_at DESC
+       LIMIT $2 OFFSET $3`,
+      [postId, limit, offset]
+    );
+
+    return result.rows.map(comment => this.getCommentData(comment));
   }
 
   /**
@@ -234,19 +89,25 @@ class Comment extends Model {
    * @param {number} postId - ID of the post
    * @returns {Promise<Array>} Hierarchical array of comments
    */
-  static async getCommentTree(postId) {
+  async getCommentTree(postId) {
     // Get all comments for the post
-    const comments = await Comment.findAll({
-      where: {
-        post_id: postId,
-        is_published: true
-      },
-      include: [{
-        model: this.sequelize.models.User,
-        as: 'author',
-        attributes: ['id', 'username', 'first_name', 'last_name', 'avatar_url']
-      }],
-      order: [['created_at', 'ASC']]
+    const result = await this.raw(
+      `SELECT c.*,
+              u.username, u.first_name, u.last_name, u.avatar_url,
+              COUNT(r.id) as reaction_count
+       FROM comments c
+       JOIN users u ON c.user_id = u.id
+       LEFT JOIN reactions r ON c.id = r.comment_id
+       WHERE c.post_id = $1 AND c.is_published = true
+       GROUP BY c.id, u.id
+       ORDER BY c.created_at ASC`,
+      [postId]
+    );
+
+    const comments = result.rows.map(comment => {
+      const commentData = this.getCommentData(comment);
+      commentData.replies = [];
+      return commentData;
     });
 
     // Build hierarchical structure
@@ -255,7 +116,6 @@ class Comment extends Model {
 
     // Create map of all comments
     comments.forEach(comment => {
-      comment.replies = [];
       commentMap.set(comment.id, comment);
     });
 
@@ -275,91 +135,128 @@ class Comment extends Model {
   }
 
   /**
+   * Get replies for a specific comment
+   * @param {number} parentId - Parent comment ID
+   * @param {number} limit - Limit
+   * @param {number} offset - Offset
+   * @returns {Array} Array of reply comments
+   */
+  async getReplies(parentId, limit = 10, offset = 0) {
+    const result = await this.raw(
+      `SELECT c.*,
+              u.username, u.first_name, u.last_name, u.avatar_url,
+              COUNT(r.id) as reaction_count
+       FROM comments c
+       JOIN users u ON c.user_id = u.id
+       LEFT JOIN reactions r ON c.id = r.comment_id
+       WHERE c.parent_id = $1 AND c.is_published = true
+       GROUP BY c.id, u.id
+       ORDER BY c.created_at ASC
+       LIMIT $2 OFFSET $3`,
+      [parentId, limit, offset]
+    );
+
+    return result.rows.map(comment => this.getCommentData(comment));
+  }
+
+  /**
    * Get comment preview (truncated content)
+   * @param {string} content - Comment content
    * @param {number} maxLength - Maximum length of preview
    * @returns {string} Abbreviated content
    */
-  getPreview(maxLength = 100) {
-    if (!this.content) return '';
+  getPreview(content, maxLength = 100) {
+    if (!content) return '';
 
-    if (this.content.length <= maxLength) {
-      return this.content;
+    if (content.length <= maxLength) {
+      return content;
     }
 
-    return this.content.substring(0, maxLength).trim() + '...';
+    return content.substring(0, maxLength).trim() + '...';
   }
 
   /**
    * Check if user can edit this comment
+   * @param {Object} comment - Comment object
    * @param {Object} user - User object to check permissions for
    * @returns {boolean} Whether user can edit the comment
    */
-  canUserEdit(user) {
-    return user && user.id === this.user_id;
+  canUserEdit(comment, user) {
+    return user && user.id === comment.user_id;
   }
 
   /**
    * Check if user can delete this comment
+   * @param {Object} comment - Comment object
    * @param {Object} user - User object to check permissions for
    * @returns {boolean} Whether user can delete the comment
    */
-  canUserDelete(user) {
-    return user && user.id === this.user_id;
-  }
-
-  /**
-   * Get comment depth level
-   * @returns {Promise<number>} Depth level of this comment
-   */
-  async getDepth() {
-    return Comment.getCommentDepth(this.parent_id);
+  canUserDelete(comment, user) {
+    return user && user.id === comment.user_id;
   }
 
   /**
    * Check if this is a reply (has parent comment)
+   * @param {Object} comment - Comment object
    * @returns {boolean} Whether this comment is a reply
    */
-  isReply() {
-    return this.parent_id !== null;
+  isReply(comment) {
+    return comment.parent_id !== null;
   }
 
   /**
    * Get comment data with computed fields
+   * @param {Object} comment - Raw comment data from database
    * @returns {Object} Comment data with additional computed fields
    */
-  getCommentData() {
+  getCommentData(comment) {
+    if (!comment) return null;
+
+    // Ensure boolean fields are properly typed
+    const normalizedComment = {
+      ...comment,
+      is_published: Boolean(comment.is_published),
+      is_edited: Boolean(comment.is_edited || false) // Default to false if not present
+    };
+
     return {
-      id: this.id,
-      post_id: this.post_id,
-      user_id: this.user_id,
-      parent_id: this.parent_id,
-      content: this.content,
-      preview: this.getPreview(),
-      is_published: this.is_published,
-      is_reply: this.isReply(),
-      created_at: this.created_at,
-      updated_at: this.updated_at,
+      id: normalizedComment.id,
+      post_id: normalizedComment.post_id,
+      user_id: normalizedComment.user_id,
+      parent_id: normalizedComment.parent_id,
+      content: normalizedComment.content,
+      preview: this.getPreview(normalizedComment.content),
+      is_published: normalizedComment.is_published,
+      is_edited: normalizedComment.is_edited,
+      is_reply: this.isReply(normalizedComment),
+      created_at: normalizedComment.created_at,
+      updated_at: normalizedComment.updated_at,
+      edited_at: normalizedComment.edited_at,
+
+      // Author information (if joined)
+      author: normalizedComment.username ? {
+        id: normalizedComment.user_id,
+        username: normalizedComment.username,
+        first_name: normalizedComment.first_name,
+        last_name: normalizedComment.last_name,
+        full_name: `${normalizedComment.first_name} ${normalizedComment.last_name}`,
+        avatar_url: normalizedComment.avatar_url
+      } : undefined,
 
       // Additional computed fields
-      is_edited: this.updated_at > this.created_at,
-      word_count: this.content ? this.content.split(/\s+/).length : 0
+      word_count: normalizedComment.content ? normalizedComment.content.split(/\s+/).length : 0,
+      reaction_count: parseInt(normalizedComment.reaction_count) || 0,
+      replies: normalizedComment.replies || undefined,
+
+      // Media attachments (if present)
+      media: normalizedComment.media_id ? {
+        id: normalizedComment.media_id,
+        filename: normalizedComment.filename,
+        mime_type: normalizedComment.mime_type,
+        file_size: normalizedComment.file_size
+      } : null
     };
-  }
-
-  /**
-   * Convert to JSON (automatically called by JSON.stringify)
-   * @returns {Object} JSON representation
-   */
-  toJSON() {
-    const data = this.getCommentData();
-
-    // Include replies if they exist
-    if (this.replies) {
-      data.replies = this.replies;
-    }
-
-    return data;
   }
 }
 
-module.exports = Comment;
+module.exports = new Comment();
