@@ -2,7 +2,7 @@
  * PostCard Component - displays individual posts in the feed
  */
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { Link } from 'react-router-dom';
 import styled from 'styled-components';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -134,11 +134,26 @@ const ActionButton = styled.button<{ $active?: boolean }>`
   }
 `;
 
-const CommentsSection = styled.div<{ $isOpen: boolean }>`
+const CommentsSection = styled.div<{ $isOpen: boolean; $isLoading?: boolean }>`
   border-top: 1px solid ${({ theme }) => theme.colors.border};
   display: ${({ $isOpen }) => $isOpen ? 'block' : 'none'};
   max-height: 300px;
   overflow-y: auto;
+  position: relative;
+
+  ${({ $isLoading }) => $isLoading && `
+    &::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(255, 255, 255, 0.8);
+      z-index: 1;
+      pointer-events: none;
+    }
+  `}
 `;
 
 const CommentsList = styled.div`
@@ -337,7 +352,11 @@ const PostCard: React.FC<PostCardProps> = ({ post, onUpdate }) => {
 
   // Scroll position tracking
   const commentsListRef = useRef<HTMLDivElement>(null);
-  const [scrollAnchorElement, setScrollAnchorElement] = useState<HTMLElement | null>(null);
+  const scrollLockRef = useRef<{
+    isLocked: boolean;
+    savedScrollTop: number;
+    savedScrollHeight: number;
+  }>({ isLocked: false, savedScrollTop: 0, savedScrollHeight: 0 });
 
   // Get author avatar
   const authorAvatarUrl = post.author ? getUserAvatarUrl(post.author) : '';
@@ -369,29 +388,87 @@ const PostCard: React.FC<PostCardProps> = ({ post, onUpdate }) => {
     }
   }, [commentsData, currentPage]);
 
-  // Restore scroll position after loading more comments
-  useEffect(() => {
-    if (currentPage > 1 && !isLoadingMore && scrollAnchorElement && showComments) {
-      // Use setTimeout to ensure DOM is fully updated after new comments are rendered
-      setTimeout(() => {
-        scrollAnchorElement.scrollIntoView({
-          behavior: 'auto',
-          block: 'center'
-        });
-        setScrollAnchorElement(null); // Reset after restoration
-      }, 100);
+  // Synchronous scroll position restoration (runs before browser paint)
+  useLayoutEffect(() => {
+    if (scrollLockRef.current.isLocked && commentsListRef.current && !isLoadingMore) {
+      const container = commentsListRef.current;
+      const currentScrollHeight = container.scrollHeight;
+      const heightDifference = currentScrollHeight - scrollLockRef.current.savedScrollHeight;
+
+      // Immediately adjust scroll position before browser can paint
+      container.scrollTop = scrollLockRef.current.savedScrollTop + heightDifference;
+
+      // Clean up aggressive locks and restore interaction
+      if ((container as any)._scrollCleanup) {
+        (container as any)._scrollCleanup();
+        delete (container as any)._scrollCleanup;
+      }
+
+      // Reset lock state
+      scrollLockRef.current.isLocked = false;
     }
-  }, [isLoadingMore, currentPage, scrollAnchorElement, showComments]);
+  });
+
+  // Fallback: Handle any scroll events during loading to maintain position
+  useEffect(() => {
+    const container = commentsListRef.current;
+    if (!container || !scrollLockRef.current.isLocked) return;
+
+    const handleScroll = (e: Event) => {
+      // Prevent scroll events during loading to eliminate jumps
+      e.preventDefault();
+      container.scrollTop = scrollLockRef.current.savedScrollTop;
+    };
+
+    container.addEventListener('scroll', handleScroll, { passive: false });
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, [isLoadingMore]);
 
   // Load more comments function
   const loadMoreComments = () => {
     if (!hasMoreComments || isLoadingMore) return;
 
-    // Use the last comment as scroll anchor
-    if (commentsListRef.current && commentsListRef.current.children.length > 0) {
-      const lastComment = commentsListRef.current.children[commentsListRef.current.children.length - 1] as HTMLElement;
-      setScrollAnchorElement(lastComment);
-    }
+    const container = commentsListRef.current;
+    if (!container) return;
+
+    // Immediately lock all interaction to prevent any movement
+    container.style.overflow = 'hidden';
+    container.style.pointerEvents = 'none';
+    container.style.scrollBehavior = 'auto';
+
+    // Capture exact scroll state
+    scrollLockRef.current = {
+      isLocked: true,
+      savedScrollTop: container.scrollTop,
+      savedScrollHeight: container.scrollHeight
+    };
+
+    // Create aggressive scroll lock handler
+    const aggressiveLock = (e: Event) => {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      if (container && scrollLockRef.current.isLocked) {
+        container.scrollTop = scrollLockRef.current.savedScrollTop;
+      }
+    };
+
+    // Block all possible scroll events
+    const events = ['scroll', 'wheel', 'touchmove', 'DOMMouseScroll', 'mousewheel'];
+    events.forEach(event => {
+      container.addEventListener(event, aggressiveLock, { passive: false, capture: true });
+    });
+
+    // Store cleanup function
+    const cleanup = () => {
+      events.forEach(event => {
+        container.removeEventListener(event, aggressiveLock, { capture: true });
+      });
+      container.style.overflow = 'auto';
+      container.style.pointerEvents = '';
+    };
+
+    // Store cleanup for later use
+    (container as any)._scrollCleanup = cleanup;
 
     setIsLoadingMore(true);
     setCurrentPage(prev => prev + 1);
@@ -402,6 +479,9 @@ const PostCard: React.FC<PostCardProps> = ({ post, onUpdate }) => {
     if (!showComments) {
       setCurrentPage(1);
       setHasMoreComments(false);
+      setAllComments([]); // Clear comments when opening
+    } else {
+      setAllComments([]); // Clear comments when closing
     }
     setShowComments(!showComments);
   };
@@ -598,18 +678,18 @@ const PostCard: React.FC<PostCardProps> = ({ post, onUpdate }) => {
       </PostActions>
 
       {/* Comments Section */}
-      <CommentsSection $isOpen={showComments}>
+      <CommentsSection $isOpen={showComments} $isLoading={isLoadingMore} ref={commentsListRef}>
         {commentsLoading ? (
           <div style={{ padding: '16px', textAlign: 'center', color: '#65676b' }}>
             Loading comments...
           </div>
         ) : (
-          <CommentsList ref={commentsListRef}>
+          <CommentsList>
             {comments.map((comment) => (
               <CommentRenderer key={comment.id} comment={comment} depth={0} />
             ))}
 
-            {comments.length === 0 && (
+            {comments.length === 0 && !commentsLoading && (
               <div style={{ textAlign: 'center', color: '#65676b', padding: '16px' }}>
                 No comments yet. Be the first to comment!
               </div>
