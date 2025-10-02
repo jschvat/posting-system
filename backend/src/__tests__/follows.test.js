@@ -27,6 +27,18 @@ const app = express();
 app.use(express.json());
 app.use('/api/follows', followsRoutes);
 
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error('Test app error:', err);
+  res.status(500).json({
+    success: false,
+    error: {
+      message: err.message || 'Internal server error',
+      type: 'server_error'
+    }
+  });
+});
+
 // Mock database models for routes
 jest.mock('../config/database', () => ({
   models: {}
@@ -64,7 +76,7 @@ describe('Follows Routes', () => {
         .post(`/api/follows/${testUser2.id}`)
         .set('Authorization', authHeader(token1));
 
-      expectSuccessResponse(response);
+      expectSuccessResponse(response, 201);
       expect(response.body.data.follow).toBeDefined();
       expect(response.body.data.follow.follower_id).toBe(testUser1.id);
       expect(response.body.data.follow.following_id).toBe(testUser2.id);
@@ -186,7 +198,7 @@ describe('Follows Routes', () => {
 
       expectSuccessResponse(response);
       expect(response.body.data.followers).toHaveLength(2);
-      expect(response.body.data.total_count).toBe(2);
+      expect(response.body.data.pagination.total_count).toBe(2);
     });
 
     it('should support pagination', async () => {
@@ -227,7 +239,7 @@ describe('Follows Routes', () => {
 
       expectSuccessResponse(response);
       expect(response.body.data.following).toHaveLength(2);
-      expect(response.body.data.total_count).toBe(2);
+      expect(response.body.data.pagination.total_count).toBe(2);
     });
 
     it('should support pagination', async () => {

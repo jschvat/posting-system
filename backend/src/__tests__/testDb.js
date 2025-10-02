@@ -76,6 +76,20 @@ async function initTestDb() {
       const schema = fs.readFileSync(schemaPath, 'utf8');
       await pool.query(schema);
 
+      // Run all migrations (skip 001_initial_schema.sql as schema.sql is already loaded)
+      const migrationsDir = path.join(__dirname, '../database/migrations');
+      if (fs.existsSync(migrationsDir)) {
+        const migrationFiles = fs.readdirSync(migrationsDir)
+          .filter(file => file.endsWith('.sql') && file !== '001_initial_schema.sql')
+          .sort(); // Execute in alphabetical order
+
+        for (const file of migrationFiles) {
+          const migrationPath = path.join(migrationsDir, file);
+          const migration = fs.readFileSync(migrationPath, 'utf8');
+          await pool.query(migration);
+        }
+      }
+
       // Store pool globally for tests
       global.testDb = pool;
       global.testDatabaseName = testDatabaseName;
@@ -130,7 +144,17 @@ async function cleanTestDb() {
 async function clearTables() {
   if (!global.testDb) return;
 
-  const tables = ['reactions', 'media', 'comments', 'posts', 'users'];
+  const tables = [
+    'timeline_cache',
+    'shares',
+    'follows',
+    'reactions',
+    'media',
+    'comments',
+    'posts',
+    'user_stats',
+    'users'
+  ];
 
   for (const table of tables) {
     await global.testDb.query(`TRUNCATE TABLE ${table} RESTART IDENTITY CASCADE`);

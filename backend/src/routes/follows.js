@@ -95,7 +95,7 @@ router.delete('/:userId', authenticate, async (req, res, next) => {
     res.json({
       success: true,
       data: { counts },
-      message: 'Successfully unfollowed user'
+      message: 'Unfollowed successfully'
     });
   } catch (error) {
     next(error);
@@ -132,6 +132,8 @@ router.get('/followers/:userId?', optionalAuthenticate, async (req, res, next) =
 
     // Get total count
     const counts = await Follow.getCounts(userId);
+    const totalCount = counts.follower_count || 0;
+    const totalPages = Math.ceil(totalCount / parseInt(limit));
 
     res.json({
       success: true,
@@ -140,7 +142,10 @@ router.get('/followers/:userId?', optionalAuthenticate, async (req, res, next) =
         pagination: {
           current_page: parseInt(page),
           limit: parseInt(limit),
-          total_count: counts.follower_count
+          total_count: totalCount,
+          total_pages: totalPages,
+          has_next_page: parseInt(page) < totalPages,
+          has_prev_page: parseInt(page) > 1
         }
       }
     });
@@ -179,6 +184,8 @@ router.get('/following/:userId?', optionalAuthenticate, async (req, res, next) =
 
     // Get total count
     const counts = await Follow.getCounts(userId);
+    const totalCount = counts.following_count || 0;
+    const totalPages = Math.ceil(totalCount / parseInt(limit));
 
     res.json({
       success: true,
@@ -187,7 +194,10 @@ router.get('/following/:userId?', optionalAuthenticate, async (req, res, next) =
         pagination: {
           current_page: parseInt(page),
           limit: parseInt(limit),
-          total_count: counts.following_count
+          total_count: totalCount,
+          total_pages: totalPages,
+          has_next_page: parseInt(page) < totalPages,
+          has_prev_page: parseInt(page) > 1
         }
       }
     });
@@ -230,12 +240,40 @@ router.get('/mutual', authenticate, async (req, res, next) => {
 /**
  * @route   GET /api/follows/suggestions
  * @desc    Get follow suggestions for current user
- * @access  Private
+ * @access  Public (optional auth)
  */
-router.get('/suggestions', authenticate, async (req, res, next) => {
+router.get('/suggestions', optionalAuthenticate, async (req, res, next) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user?.id;
     const { limit = 10 } = req.query;
+
+    if (!userId) {
+      // If no user, return popular users instead
+      const result = await Follow.raw(
+        `SELECT
+          u.id,
+          u.username,
+          u.first_name,
+          u.last_name,
+          u.avatar_url,
+          u.bio,
+          us.follower_count,
+          us.following_count,
+          us.post_count
+         FROM users u
+         LEFT JOIN user_stats us ON u.id = us.user_id
+         ORDER BY us.follower_count DESC NULLS LAST
+         LIMIT $1`,
+        [parseInt(limit)]
+      );
+
+      return res.json({
+        success: true,
+        data: {
+          suggestions: result.rows
+        }
+      });
+    }
 
     const suggestions = await Follow.getSuggestions(userId, {
       limit: parseInt(limit)

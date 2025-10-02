@@ -151,7 +151,7 @@ const HomePage: React.FC = () => {
     );
   }
 
-  const posts = Array.isArray(postsResponse?.data?.posts) ? postsResponse?.data?.posts as Post[] : [];
+  const posts: Post[] = Array.isArray(postsResponse?.data?.posts) ? postsResponse!.data.posts as Post[] : [];
 
   return (
     <Container>

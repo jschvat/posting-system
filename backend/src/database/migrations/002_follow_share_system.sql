@@ -97,6 +97,7 @@ CREATE INDEX IF NOT EXISTS idx_timeline_reason ON timeline_cache(reason);
 -- ============================================================================
 
 -- Trigger for follows table updates
+DROP TRIGGER IF EXISTS update_follows_updated_at ON follows;
 CREATE TRIGGER update_follows_updated_at BEFORE UPDATE ON follows
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
@@ -142,6 +143,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Trigger to update follow counts
+DROP TRIGGER IF EXISTS trigger_update_follow_counts ON follows;
 CREATE TRIGGER trigger_update_follow_counts
 AFTER INSERT OR DELETE ON follows
 FOR EACH ROW EXECUTE FUNCTION update_follow_counts();
@@ -175,6 +177,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Trigger to update share counts
+DROP TRIGGER IF EXISTS trigger_update_share_counts ON shares;
 CREATE TRIGGER trigger_update_share_counts
 AFTER INSERT OR DELETE ON shares
 FOR EACH ROW EXECUTE FUNCTION update_share_counts();

@@ -89,13 +89,25 @@ const FollowButton: React.FC<FollowButtonProps> = ({
   // Follow mutation
   const followMutation = useMutation({
     mutationFn: () => followsApi.followUser(userId),
+    onMutate: async () => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ['followStatus', userId] });
+
+      // Optimistically update to the new value
+      queryClient.setQueryData(['followStatus', userId], (old: any) => ({
+        ...old,
+        data: { is_following: true }
+      }));
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['followStatus', userId] });
+      // Only refetch stats, not the follow status (already optimistically updated)
       queryClient.invalidateQueries({ queryKey: ['followStats', userId] });
       queryClient.invalidateQueries({ queryKey: ['followStats'] });
       onFollowChange?.(true);
     },
     onError: (error: any) => {
+      // Revert optimistic update on error
+      queryClient.invalidateQueries({ queryKey: ['followStatus', userId] });
       console.error('Follow error:', error);
       alert(error.response?.data?.error?.message || 'Failed to follow user. Please try again.');
     },
@@ -104,13 +116,25 @@ const FollowButton: React.FC<FollowButtonProps> = ({
   // Unfollow mutation
   const unfollowMutation = useMutation({
     mutationFn: () => followsApi.unfollowUser(userId),
+    onMutate: async () => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ['followStatus', userId] });
+
+      // Optimistically update to the new value
+      queryClient.setQueryData(['followStatus', userId], (old: any) => ({
+        ...old,
+        data: { is_following: false }
+      }));
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['followStatus', userId] });
+      // Only refetch stats, not the follow status (already optimistically updated)
       queryClient.invalidateQueries({ queryKey: ['followStats', userId] });
       queryClient.invalidateQueries({ queryKey: ['followStats'] });
       onFollowChange?.(false);
     },
     onError: (error: any) => {
+      // Revert optimistic update on error
+      queryClient.invalidateQueries({ queryKey: ['followStatus', userId] });
       console.error('Unfollow error:', error);
       alert(error.response?.data?.error?.message || 'Failed to unfollow user. Please try again.');
     },

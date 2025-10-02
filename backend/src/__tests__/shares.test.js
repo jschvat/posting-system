@@ -27,6 +27,18 @@ const app = express();
 app.use(express.json());
 app.use('/api/shares', sharesRoutes);
 
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error('Test app error:', err);
+  res.status(500).json({
+    success: false,
+    error: {
+      message: err.message || 'Internal server error',
+      type: 'server_error'
+    }
+  });
+});
+
 // Mock database models for routes
 jest.mock('../config/database', () => ({
   models: {}
@@ -49,8 +61,8 @@ describe('Shares Routes', () => {
     testUser3 = await createTestUser({ username: 'user3', email: 'user3@test.com' });
 
     // Create test posts
-    post1 = await createTestPost(testUser1, { content: 'Test post 1' });
-    post2 = await createTestPost(testUser2, { content: 'Test post 2' });
+    post1 = await createTestPost(testUser1.id, { content: 'Test post 1' });
+    post2 = await createTestPost(testUser2.id, { content: 'Test post 2' });
 
     // Generate tokens
     token1 = generateTestToken(testUser1);

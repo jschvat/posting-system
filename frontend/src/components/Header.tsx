@@ -240,7 +240,7 @@ const Header: React.FC = () => {
   if (!user) return null;
 
   const avatarUrl = getUserAvatarUrl(user);
-  const hasAvatar = Boolean(user.avatar_url);
+  const hasAvatar: boolean = Boolean(user.avatar_url);
 
   return (
     <HeaderContainer>
