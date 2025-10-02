@@ -25,6 +25,9 @@ const usersRoutes = require('./routes/users');
 const commentsRoutes = require('./routes/comments');
 const mediaRoutes = require('./routes/media');
 const reactionsRoutes = require('./routes/reactions');
+const followsRoutes = require('./routes/follows');
+const sharesRoutes = require('./routes/shares');
+const timelineRoutes = require('./routes/timeline');
 
 // Import middleware
 const errorHandler = require('./middleware/errorHandler');
@@ -93,6 +96,9 @@ app.use('/api/users', usersRoutes);
 app.use('/api/comments', commentsRoutes);
 app.use('/api/media', mediaRoutes);
 app.use('/api/reactions', reactionsRoutes);
+app.use('/api/follows', followsRoutes);
+app.use('/api/shares', sharesRoutes);
+app.use('/api/timeline', timelineRoutes);
 
 // Catch-all route for undefined endpoints
 app.use(notFound);

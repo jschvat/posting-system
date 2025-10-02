@@ -308,13 +308,13 @@ class Share extends BaseModel {
        FROM shares s
        JOIN posts p ON s.post_id = p.id
        JOIN users u ON p.user_id = u.id
-       WHERE s.created_at > NOW() - INTERVAL $1
+       WHERE s.created_at > NOW() - INTERVAL '${timeframe}'
          AND p.is_published = true
        GROUP BY p.id, p.content, p.user_id, u.username, u.first_name, u.last_name, u.avatar_url
        HAVING COUNT(s.id) > 0
        ORDER BY share_count DESC, p.created_at DESC
-       LIMIT $2`,
-      [timeframe, limit]
+       LIMIT $1`,
+      [limit]
     );
 
     return result.rows;

@@ -8,11 +8,19 @@ const Post = require('./Post');
 const Comment = require('./Comment');
 const Media = require('./Media');
 const Reaction = require('./Reaction');
+const Follow = require('./Follow');
+const Share = require('./Share');
+const UserStats = require('./UserStats');
+const TimelineCache = require('./TimelineCache');
 
 module.exports = {
   User,
   Post,
   Comment,
   Media,
-  Reaction
+  Reaction,
+  Follow,
+  Share,
+  UserStats,
+  TimelineCache
 };
