@@ -95,6 +95,10 @@ const FollowButton: React.FC<FollowButtonProps> = ({
       queryClient.invalidateQueries({ queryKey: ['followStats'] });
       onFollowChange?.(true);
     },
+    onError: (error: any) => {
+      console.error('Follow error:', error);
+      alert(error.response?.data?.error?.message || 'Failed to follow user. Please try again.');
+    },
   });
 
   // Unfollow mutation
@@ -105,6 +109,10 @@ const FollowButton: React.FC<FollowButtonProps> = ({
       queryClient.invalidateQueries({ queryKey: ['followStats', userId] });
       queryClient.invalidateQueries({ queryKey: ['followStats'] });
       onFollowChange?.(false);
+    },
+    onError: (error: any) => {
+      console.error('Unfollow error:', error);
+      alert(error.response?.data?.error?.message || 'Failed to unfollow user. Please try again.');
     },
   });
 
