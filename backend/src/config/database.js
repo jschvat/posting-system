@@ -16,17 +16,32 @@ let pool;
  * Initialize database connection pool
  */
 function initializeDatabase() {
+  // Build SSL configuration
+  let sslConfig;
+  if (config.database.postgres.ssl === true) {
+    // SSL enabled - allow self-signed certificates
+    sslConfig = {
+      rejectUnauthorized: false
+    };
+  } else {
+    // SSL disabled - explicitly disable SSL negotiation
+    sslConfig = false;
+  }
+
   const dbConfig = {
     host: config.database.postgres.host,
     port: config.database.postgres.port,
     database: config.database.postgres.database,
     user: config.database.postgres.username,
     password: config.database.postgres.password,
-    ssl: config.database.postgres.ssl ? {
-      rejectUnauthorized: false
-    } : false,
+    ssl: sslConfig,
     ...config.database.postgres.pool
   };
+
+  // Log SSL configuration for debugging
+  if (config.database.logging) {
+    console.log(`Database SSL: ${sslConfig === false ? 'disabled' : 'enabled'}`);
+  }
 
   pool = new Pool(dbConfig);
 

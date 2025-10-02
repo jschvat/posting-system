@@ -12,6 +12,7 @@ import { useAuth } from '../contexts/AuthContext';
 import ReactionPicker from './ReactionPicker';
 import ReactionsPopup from './ReactionsPopup';
 import CommentForm from './CommentForm';
+import { getApiBaseUrl } from '../config/app.config';
 
 // Utility function for formatting time ago
 const formatTimeAgo = (dateString: string) => {
@@ -103,6 +104,69 @@ const PostText = styled.p`
   word-break: break-word;
 `;
 
+const MediaGrid = styled.div<{ $count: number }>`
+  display: grid;
+  gap: ${({ theme }) => theme.spacing.sm};
+  margin-top: ${({ theme }) => theme.spacing.md};
+  grid-template-columns: ${({ $count }) => {
+    if ($count === 1) return '1fr';
+    if ($count === 2) return 'repeat(2, 1fr)';
+    if ($count === 3) return 'repeat(3, 1fr)';
+    return 'repeat(2, 1fr)';
+  }};
+  max-height: 500px;
+`;
+
+const MediaItem = styled.div<{ $isVideo?: boolean }>`
+  position: relative;
+  width: 100%;
+  aspect-ratio: ${({ $isVideo }) => $isVideo ? '16/9' : '1'};
+  overflow: hidden;
+  border-radius: ${({ theme }) => theme.borderRadius.md};
+  background: ${({ theme }) => theme.colors.background};
+  cursor: pointer;
+
+  img, video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.2s ease;
+  }
+
+  &:hover img, &:hover video {
+    transform: scale(1.05);
+  }
+`;
+
+const VideoOverlay = styled.div`
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 48px;
+  height: 48px;
+  background: rgba(0, 0, 0, 0.7);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 24px;
+  pointer-events: none;
+`;
+
+const MediaCount = styled.div`
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  font-weight: 500;
+`;
+
 const PostActions = styled.div`
   padding: ${({ theme }) => theme.spacing.md};
   border-top: 1px solid ${({ theme }) => theme.colors.border};
@@ -155,6 +219,7 @@ const CommentsSection = styled.div<{ $isOpen: boolean; $isLoading?: boolean }>`
     }
   `}
 `;
+
 
 const CommentsList = styled.div`
   padding: ${({ theme }) => theme.spacing.md};
@@ -360,7 +425,7 @@ const PostCard: React.FC<PostCardProps> = ({ post, onUpdate }) => {
 
   // Get author avatar
   const authorAvatarUrl = post.author ? getUserAvatarUrl(post.author) : '';
-  const hasAuthorAvatar = Boolean(post.author?.avatar_url);
+  const hasAuthorAvatar: boolean = Boolean(post.author?.avatar_url);
 
   // Fetch post reactions with user details
   const { data: reactionsData } = useQuery({
@@ -374,6 +439,7 @@ const PostCard: React.FC<PostCardProps> = ({ post, onUpdate }) => {
     queryFn: () => commentsApi.getPostComments(post.id, { limit: 5, page: currentPage }),
     enabled: showComments,
   });
+
 
   // Update comments when data changes
   React.useEffect(() => {
@@ -648,6 +714,34 @@ const PostCard: React.FC<PostCardProps> = ({ post, onUpdate }) => {
       {/* Post Content */}
       <PostContent>
         <PostText>{post.content}</PostText>
+
+        {/* Media Gallery */}
+        {post.media && post.media.length > 0 && (
+          <MediaGrid $count={post.media.length}>
+            {post.media.slice(0, 4).map((media, index) => (
+              <MediaItem key={media.id} $isVideo={media.media_type === 'video'}>
+                {media.media_type === 'image' && (
+                  <img
+                    src={`${getApiBaseUrl()}${media.file_url || `/uploads/${media.file_path}`}`}
+                    alt={media.alt_text || 'Post image'}
+                  />
+                )}
+                {media.media_type === 'video' && (
+                  <>
+                    <video
+                      src={`${getApiBaseUrl()}${media.file_url || `/uploads/${media.file_path}`}`}
+                      poster={media.thumbnail_url ? `${getApiBaseUrl()}${media.thumbnail_url}` : undefined}
+                    />
+                    <VideoOverlay>▶</VideoOverlay>
+                  </>
+                )}
+                {index === 3 && post.media && post.media.length > 4 && (
+                  <MediaCount>+{post.media.length - 4} more</MediaCount>
+                )}
+              </MediaItem>
+            ))}
+          </MediaGrid>
+        )}
       </PostContent>
 
       {/* Post Actions */}
@@ -684,26 +778,28 @@ const PostCard: React.FC<PostCardProps> = ({ post, onUpdate }) => {
             Loading comments...
           </div>
         ) : (
-          <CommentsList>
-            {comments.map((comment) => (
-              <CommentRenderer key={comment.id} comment={comment} depth={0} />
-            ))}
+          <>
+            <CommentsList>
+              {comments.map((comment) => (
+                <CommentRenderer key={comment.id} comment={comment} depth={0} />
+              ))}
 
-            {comments.length === 0 && !commentsLoading && (
-              <div style={{ textAlign: 'center', color: '#65676b', padding: '16px' }}>
-                No comments yet. Be the first to comment!
-              </div>
-            )}
+              {comments.length === 0 && !commentsLoading && (
+                <div style={{ textAlign: 'center', color: '#65676b', padding: '16px' }}>
+                  No comments yet. Be the first to comment!
+                </div>
+              )}
 
-            {hasMoreComments && (
-              <LoadMoreComments
-                onClick={loadMoreComments}
-                disabled={isLoadingMore}
-              >
-                {isLoadingMore ? 'Loading...' : 'Load more comments'}
-              </LoadMoreComments>
-            )}
-          </CommentsList>
+              {hasMoreComments && (
+                <LoadMoreComments
+                  onClick={loadMoreComments}
+                  disabled={isLoadingMore}
+                >
+                  {isLoadingMore ? 'Loading...' : 'Load more comments'}
+                </LoadMoreComments>
+              )}
+            </CommentsList>
+          </>
         )}
 
         {/* Comment Form */}

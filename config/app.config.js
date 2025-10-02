@@ -264,12 +264,9 @@ const environmentConfigs = {
       level: 'info',
       console: false,
       includeStack: false
-    },
-    database: {
-      postgres: {
-        ssl: true
-      }
     }
+    // Note: Database SSL configuration is controlled by DB_SSL environment variable
+    // Don't override it here - let the environment variable take precedence
   }
 };
 

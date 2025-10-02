@@ -72,6 +72,7 @@ router.get('/',
                         u.username, u.first_name, u.last_name, u.avatar_url,
                         COUNT(*) OVER() as total_count,
                         COALESCE(reaction_counts.reactions, '[]'::json) as reactions,
+                        COALESCE(media_items.media, '[]'::json) as media,
                         (
                           SELECT COUNT(*)
                           FROM comments c
@@ -96,6 +97,29 @@ router.get('/',
                    ) grouped_reactions
                    GROUP BY post_id
                  ) reaction_counts ON p.id = reaction_counts.post_id
+                 LEFT JOIN (
+                   SELECT post_id,
+                          json_agg(
+                            json_build_object(
+                              'id', id,
+                              'filename', filename,
+                              'original_name', original_name,
+                              'file_path', file_path,
+                              'file_url', file_url,
+                              'file_size', file_size,
+                              'mime_type', mime_type,
+                              'media_type', media_type,
+                              'width', width,
+                              'height', height,
+                              'alt_text', alt_text,
+                              'thumbnail_url', thumbnail_url,
+                              'created_at', created_at
+                            ) ORDER BY created_at ASC
+                          ) as media
+                   FROM media
+                   WHERE post_id IS NOT NULL
+                   GROUP BY post_id
+                 ) media_items ON p.id = media_items.post_id
                  WHERE p.is_published = true`;
 
       const params = [];
@@ -152,7 +176,8 @@ router.get('/',
           avatar_url: post.avatar_url
         },
         reaction_counts: post.reactions || [],
-        comment_count: parseInt(post.comment_count) || 0
+        comment_count: parseInt(post.comment_count) || 0,
+        media: post.media || []
       }));
 
       // Calculate pagination info

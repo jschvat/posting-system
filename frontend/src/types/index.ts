@@ -75,8 +75,10 @@ export interface Media extends Omit<BaseEntity, 'updated_at'> {
   comment_id?: number;
   user_id: number;
   filename: string;
-  original_filename: string;
+  original_name?: string;
+  original_filename?: string;
   file_path: string;
+  file_url?: string;
   file_size: number;
   formatted_file_size?: string;
   mime_type: string;
@@ -87,6 +89,7 @@ export interface Media extends Omit<BaseEntity, 'updated_at'> {
   duration?: number;
   formatted_duration?: string;
   file_extension?: string;
+  thumbnail_url?: string;
   uploader?: User;
   is_image?: boolean;
   is_video?: boolean;

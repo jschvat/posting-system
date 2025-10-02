@@ -72,7 +72,8 @@ if (config.database.logging) {
 }
 
 // Static file serving for uploaded media
-app.use('/uploads', express.static(path.join(__dirname, config.upload.uploadDir)));
+// Note: Files are uploaded to src/uploads by the media routes
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Health check endpoint
 app.get('/health', (req, res) => {

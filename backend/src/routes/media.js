@@ -209,6 +209,7 @@ router.post('/upload',
 
           // Get relative path for database storage
           const relativePath = path.relative(path.join(__dirname, config.upload.uploadDir), processedPath);
+          const fileUrl = `/uploads/${relativePath.replace(/\\/g, '/')}`;
 
           // Create media record in database
           const media = await Media.create({
@@ -216,8 +217,9 @@ router.post('/upload',
             comment_id: comment_id || null,
             user_id: parseInt(user_id),
             filename: path.basename(processedPath),
-            original_filename: file.originalname,
+            original_name: file.originalname,
             file_path: relativePath,
+            file_url: fileUrl,
             file_size: file.size,
             mime_type: file.mimetype,
             alt_text: alt_text || null,

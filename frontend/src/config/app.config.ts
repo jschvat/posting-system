@@ -55,14 +55,16 @@ export interface AppConfig {
 
 // Get environment - works in both Node.js and browser
 const getEnv = (key: string, defaultValue?: string): string => {
+  // Try with REACT_APP_ prefix first (React's convention)
+  const reactKey = key.startsWith('REACT_APP_') ? key : `REACT_APP_${key}`;
+
   // Node.js environment
   if (typeof process !== 'undefined' && process.env) {
-    return process.env[key] || defaultValue || '';
+    return process.env[reactKey] || process.env[key] || defaultValue || '';
   }
 
   // Browser environment - React environment variables must start with REACT_APP_
   if (typeof window !== 'undefined') {
-    const reactKey = key.startsWith('REACT_APP_') ? key : `REACT_APP_${key}`;
     return (window as any).env?.[reactKey] || defaultValue || '';
   }
 
@@ -83,7 +85,7 @@ export const config: AppConfig = {
   // Server Configuration
   server: {
     api: {
-      port: parseInt(getEnv('API_PORT', '3002')),
+      port: parseInt(getEnv('API_PORT', '3001')),
       host: getEnv('API_HOST', 'localhost'),
       protocol: getEnv('API_PROTOCOL', 'http')
     },
