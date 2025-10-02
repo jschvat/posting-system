@@ -77,16 +77,11 @@ const FollowButton: React.FC<FollowButtonProps> = ({
   const user = state.user;
   const queryClient = useQueryClient();
 
-  // Don't show button if viewing own profile
-  if (user?.id === userId) {
-    return null;
-  }
-
   // Check if currently following
   const { data: followStatus, isLoading: isCheckingFollow } = useQuery({
     queryKey: ['followStatus', userId],
     queryFn: () => followsApi.checkFollowing(userId),
-    enabled: !!user,
+    enabled: !!user && user.id !== userId,
   });
 
   const isFollowing = followStatus?.data?.is_following || false;
@@ -112,6 +107,11 @@ const FollowButton: React.FC<FollowButtonProps> = ({
       onFollowChange?.(false);
     },
   });
+
+  // Don't show button if viewing own profile
+  if (user?.id === userId) {
+    return null;
+  }
 
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault();
