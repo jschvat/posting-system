@@ -12,6 +12,8 @@ import { useAuth } from '../contexts/AuthContext';
 import ReactionPicker from './ReactionPicker';
 import ReactionsPopup from './ReactionsPopup';
 import CommentForm from './CommentForm';
+import FollowButton from './FollowButton';
+import ShareButton from './ShareButton';
 import { getApiBaseUrl } from '../config/app.config';
 
 // Utility function for formatting time ago
@@ -709,6 +711,8 @@ const PostCard: React.FC<PostCardProps> = ({ post, onUpdate }) => {
             )}
           </PostMeta>
         </AuthorInfo>
+
+        <FollowButton userId={post.user_id} size="small" />
       </PostHeader>
 
       {/* Post Content */}
@@ -758,6 +762,8 @@ const PostCard: React.FC<PostCardProps> = ({ post, onUpdate }) => {
           <span>💬</span>
           <span>{post.comment_count || 0} Comment{(post.comment_count || 0) === 1 ? '' : 's'}</span>
         </ActionButton>
+
+        <ShareButton postId={post.id} initialShareCount={post.share_count || 0} />
 
         {totalReactions > 0 && (
           <ReactionsPopup

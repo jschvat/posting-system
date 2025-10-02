@@ -523,6 +523,146 @@ export const authApi = {
   },
 };
 
+/**
+ * Follows API
+ * Endpoints for following/unfollowing users
+ */
+export const followsApi = {
+  /**
+   * Follow a user
+   */
+  followUser: async (userId: number): Promise<ApiResponse<any>> => {
+    return apiRequest<ApiResponse<any>>('POST', `/follows/${userId}`);
+  },
+
+  /**
+   * Unfollow a user
+   */
+  unfollowUser: async (userId: number): Promise<ApiResponse<void>> => {
+    return apiRequest<ApiResponse<void>>('DELETE', `/follows/${userId}`);
+  },
+
+  /**
+   * Check if following a user
+   */
+  checkFollowing: async (userId: number): Promise<ApiResponse<{ is_following: boolean }>> => {
+    return apiRequest<ApiResponse<{ is_following: boolean }>>('GET', `/follows/check/${userId}`);
+  },
+
+  /**
+   * Get followers for a user
+   */
+  getFollowers: async (userId?: number, params?: { page?: number; limit?: number }): Promise<ApiResponse<any>> => {
+    const url = userId ? `/follows/followers/${userId}` : '/follows/followers';
+    return apiRequest<ApiResponse<any>>('GET', url, null, { params });
+  },
+
+  /**
+   * Get following for a user
+   */
+  getFollowing: async (userId?: number, params?: { page?: number; limit?: number }): Promise<ApiResponse<any>> => {
+    const url = userId ? `/follows/following/${userId}` : '/follows/following';
+    return apiRequest<ApiResponse<any>>('GET', url, null, { params });
+  },
+
+  /**
+   * Get follow stats
+   */
+  getFollowStats: async (userId?: number): Promise<ApiResponse<any>> => {
+    const url = userId ? `/follows/stats/${userId}` : '/follows/stats';
+    return apiRequest<ApiResponse<any>>('GET', url);
+  },
+
+  /**
+   * Get follow suggestions
+   */
+  getSuggestions: async (params?: { limit?: number }): Promise<ApiResponse<any>> => {
+    return apiRequest<ApiResponse<any>>('GET', '/follows/suggestions', null, { params });
+  },
+};
+
+/**
+ * Shares API
+ * Endpoints for sharing/unsharing posts
+ */
+export const sharesApi = {
+  /**
+   * Share a post
+   */
+  sharePost: async (postId: number, data?: { comment?: string; share_type?: string }): Promise<ApiResponse<any>> => {
+    return apiRequest<ApiResponse<any>>('POST', `/shares/${postId}`, data);
+  },
+
+  /**
+   * Unshare a post
+   */
+  unsharePost: async (postId: number): Promise<ApiResponse<void>> => {
+    return apiRequest<ApiResponse<void>>('DELETE', `/shares/${postId}`);
+  },
+
+  /**
+   * Check if shared a post
+   */
+  checkShared: async (postId: number): Promise<ApiResponse<{ has_shared: boolean }>> => {
+    return apiRequest<ApiResponse<{ has_shared: boolean }>>('GET', `/shares/check/${postId}`);
+  },
+
+  /**
+   * Get shares for a post
+   */
+  getPostShares: async (postId: number, params?: { page?: number; limit?: number }): Promise<ApiResponse<any>> => {
+    return apiRequest<ApiResponse<any>>('GET', `/shares/post/${postId}`, null, { params });
+  },
+
+  /**
+   * Get popular shares
+   */
+  getPopularShares: async (params?: { limit?: number; timeframe?: string }): Promise<ApiResponse<any>> => {
+    return apiRequest<ApiResponse<any>>('GET', '/shares/popular', null, { params });
+  },
+};
+
+/**
+ * Timeline API
+ * Endpoints for personalized timeline/feed
+ */
+export const timelineApi = {
+  /**
+   * Get personalized timeline
+   */
+  getTimeline: async (params?: { page?: number; limit?: number; min_score?: number }): Promise<ApiResponse<any>> => {
+    return apiRequest<ApiResponse<any>>('GET', '/timeline', null, { params });
+  },
+
+  /**
+   * Get following feed
+   */
+  getFollowingFeed: async (params?: { page?: number; limit?: number }): Promise<ApiResponse<any>> => {
+    return apiRequest<ApiResponse<any>>('GET', '/timeline/following', null, { params });
+  },
+
+  /**
+   * Get discover feed
+   */
+  getDiscoverFeed: async (params?: { limit?: number }): Promise<ApiResponse<any>> => {
+    return apiRequest<ApiResponse<any>>('GET', '/timeline/discover', null, { params });
+  },
+
+  /**
+   * Get trending posts
+   */
+  getTrendingPosts: async (params?: { limit?: number; timeframe?: string }): Promise<ApiResponse<any>> => {
+    return apiRequest<ApiResponse<any>>('GET', '/timeline/trending', null, { params });
+  },
+
+  /**
+   * Refresh timeline cache
+   */
+  refreshTimeline: async (): Promise<ApiResponse<any>> => {
+    return apiRequest<ApiResponse<any>>('POST', '/timeline/refresh');
+  },
+};
+
 // Export the configured axios client for custom requests
 export { apiClient };
 
