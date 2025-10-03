@@ -35,6 +35,8 @@ const Card = styled.article`
   border-radius: ${({ theme }) => theme.borderRadius.lg};
   overflow: hidden;
   transition: box-shadow 0.2s ease;
+  display: flex;
+  flex-direction: column;
 
   &:hover {
     box-shadow: ${({ theme }) => theme.shadows.md};
@@ -95,6 +97,9 @@ const PostMeta = styled.div`
 
 const PostContent = styled.div`
   padding: 0 ${({ theme }) => theme.spacing.md} ${({ theme }) => theme.spacing.md};
+  flex: 1;
+  display: flex;
+  flex-direction: column;
 `;
 
 const PostText = styled.p`
@@ -115,7 +120,9 @@ const MediaGrid = styled.div<{ $count: number }>`
     if ($count === 3) return 'repeat(3, 1fr)';
     return 'repeat(2, 1fr)';
   }};
-  max-height: 500px;
+  max-height: 600px;
+  overflow: hidden;
+  border-radius: ${({ theme }) => theme.borderRadius.md};
 `;
 
 const MediaItem = styled.div<{ $isVideo?: boolean }>`

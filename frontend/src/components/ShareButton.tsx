@@ -4,6 +4,7 @@
  */
 
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import styled from 'styled-components';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { sharesApi } from '../services/api';
@@ -54,17 +55,18 @@ const ShareCount = styled.span`
 `;
 
 const ShareModal = styled.div`
-  position: absolute;
-  top: 100%;
-  left: 0;
-  margin-top: 8px;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
   background: ${({ theme }) => theme.colors.surface};
   border: 1px solid ${({ theme }) => theme.colors.border};
   border-radius: ${({ theme }) => theme.borderRadius.lg};
   box-shadow: ${({ theme }) => theme.shadows.lg};
   padding: ${({ theme }) => theme.spacing.md};
-  min-width: 300px;
-  z-index: 1000;
+  min-width: 400px;
+  max-width: 90vw;
+  z-index: 10000;
 `;
 
 const ModalTitle = styled.h3`
@@ -87,6 +89,25 @@ const ShareTextarea = styled.textarea`
   &:focus {
     outline: none;
     border-color: ${({ theme }) => theme.colors.primary};
+  }
+`;
+
+const QuickShareToggle = styled.label`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: ${({ theme }) => theme.spacing.sm};
+  font-size: 0.9rem;
+  color: ${({ theme }) => theme.colors.text.secondary};
+  cursor: pointer;
+  user-select: none;
+
+  input[type="checkbox"] {
+    cursor: pointer;
+  }
+
+  &:hover {
+    color: ${({ theme }) => theme.colors.text.primary};
   }
 `;
 
@@ -128,7 +149,8 @@ const Overlay = styled.div`
   left: 0;
   right: 0;
   bottom: 0;
-  z-index: 999;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 9999;
 `;
 
 const ShareButton: React.FC<ShareButtonProps> = ({
@@ -142,6 +164,9 @@ const ShareButton: React.FC<ShareButtonProps> = ({
   const [showModal, setShowModal] = useState(false);
   const [shareComment, setShareComment] = useState('');
   const [shareCount, setShareCount] = useState(initialShareCount);
+  const [quickShareEnabled, setQuickShareEnabled] = useState(
+    localStorage.getItem('quickShareEnabled') === 'true'
+  );
 
   // Check if currently shared
   const { data: shareStatus, isLoading: isCheckingShare } = useQuery({
@@ -155,7 +180,8 @@ const ShareButton: React.FC<ShareButtonProps> = ({
   // Share mutation
   const shareMutation = useMutation({
     mutationFn: (data: { comment?: string }) => sharesApi.sharePost(postId, data),
-    onSuccess: () => {
+    onSuccess: (response) => {
+      console.log('[ShareButton] Share successful:', response);
       queryClient.invalidateQueries({ queryKey: ['shareStatus', postId] });
       queryClient.invalidateQueries({ queryKey: ['posts'] });
       const newCount = shareCount + 1;
@@ -164,17 +190,28 @@ const ShareButton: React.FC<ShareButtonProps> = ({
       setShowModal(false);
       setShareComment('');
     },
+    onError: (error: any) => {
+      console.error('[ShareButton] Share failed:', error);
+      const errorMessage = error?.response?.data?.error?.message || error?.message || 'Failed to share post';
+      alert(errorMessage);
+    },
   });
 
   // Unshare mutation
   const unshareMutation = useMutation({
     mutationFn: () => sharesApi.unsharePost(postId),
     onSuccess: () => {
+      console.log('[ShareButton] Unshare successful');
       queryClient.invalidateQueries({ queryKey: ['shareStatus', postId] });
       queryClient.invalidateQueries({ queryKey: ['posts'] });
       const newCount = Math.max(0, shareCount - 1);
       setShareCount(newCount);
       onShareChange?.(false, newCount);
+    },
+    onError: (error: any) => {
+      console.error('[ShareButton] Unshare failed:', error);
+      const errorMessage = error?.response?.data?.error?.message || error?.message || 'Failed to unshare post';
+      alert(errorMessage);
     },
   });
 
@@ -182,21 +219,36 @@ const ShareButton: React.FC<ShareButtonProps> = ({
     e.preventDefault();
     e.stopPropagation();
 
+    console.log('[ShareButton] Click event:', { postId, user: user?.id, isShared });
+
     if (!user) {
+      console.log('[ShareButton] No user logged in');
       alert('Please login to share posts');
       return;
     }
 
     if (isShared) {
       // Unshare immediately
+      console.log('[ShareButton] Unsharing post:', postId);
       unshareMutation.mutate();
     } else {
-      // Show modal to optionally add comment
-      setShowModal(true);
+      // Check if quick share is enabled (skip modal)
+      const quickShareEnabled = localStorage.getItem('quickShareEnabled') === 'true';
+
+      if (quickShareEnabled) {
+        // Share immediately without modal
+        console.log('[ShareButton] Quick sharing post:', postId);
+        shareMutation.mutate({ comment: undefined });
+      } else {
+        // Show modal to optionally add comment
+        console.log('[ShareButton] Opening share modal for post:', postId);
+        setShowModal(true);
+      }
     }
   };
 
   const handleShare = () => {
+    console.log('[ShareButton] Executing share API call for post:', postId, 'comment:', shareComment);
     shareMutation.mutate({
       comment: shareComment.trim() || undefined
     });
@@ -207,23 +259,31 @@ const ShareButton: React.FC<ShareButtonProps> = ({
     setShareComment('');
   };
 
+  const handleToggleQuickShare = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const enabled = e.target.checked;
+    setQuickShareEnabled(enabled);
+    localStorage.setItem('quickShareEnabled', enabled.toString());
+  };
+
   const isLoading = isCheckingShare || shareMutation.isPending || unshareMutation.isPending;
 
   return (
-    <ShareContainer>
-      <ShareBtn
-        onClick={handleClick}
-        disabled={isLoading}
-        $isShared={isShared}
-        title={isShared ? 'Unshare' : 'Share'}
-      >
-        <svg fill="currentColor" viewBox="0 0 24 24">
-          <path d="M23.77 15.67a.749.749 0 0 0-1.06 0l-2.22 2.22V7.65a3.755 3.755 0 0 0-3.75-3.75h-5.85a.75.75 0 0 0 0 1.5h5.85c1.24 0 2.25 1.01 2.25 2.25v10.24l-2.22-2.22a.749.749 0 1 0-1.06 1.06l3.5 3.5a.747.747 0 0 0 1.06 0l3.5-3.5a.749.749 0 0 0 0-1.06Zm-10.66 3.28H7.26a2.25 2.25 0 0 1-2.25-2.25V6.46l2.22 2.22a.75.75 0 0 0 1.06-1.06l-3.5-3.5a.747.747 0 0 0-1.06 0l-3.5 3.5a.749.749 0 1 0 1.06 1.06l2.22-2.22V16.7a3.755 3.755 0 0 0 3.75 3.75h5.85a.75.75 0 0 0 0-1.5Z"/>
-        </svg>
-        <ShareCount>{shareCount > 0 ? shareCount : ''}</ShareCount>
-      </ShareBtn>
+    <>
+      <ShareContainer>
+        <ShareBtn
+          onClick={handleClick}
+          disabled={isLoading}
+          $isShared={isShared}
+          title={isShared ? 'Unshare' : 'Share'}
+        >
+          <svg fill="currentColor" viewBox="0 0 24 24">
+            <path d="M23.77 15.67a.749.749 0 0 0-1.06 0l-2.22 2.22V7.65a3.755 3.755 0 0 0-3.75-3.75h-5.85a.75.75 0 0 0 0 1.5h5.85c1.24 0 2.25 1.01 2.25 2.25v10.24l-2.22-2.22a.749.749 0 1 0-1.06 1.06l3.5 3.5a.747.747 0 0 0 1.06 0l3.5-3.5a.749.749 0 0 0 0-1.06Zm-10.66 3.28H7.26a2.25 2.25 0 0 1-2.25-2.25V6.46l2.22 2.22a.75.75 0 0 0 1.06-1.06l-3.5-3.5a.747.747 0 0 0-1.06 0l-3.5 3.5a.749.749 0 1 0 1.06 1.06l2.22-2.22V16.7a3.755 3.755 0 0 0 3.75 3.75h5.85a.75.75 0 0 0 0-1.5Z"/>
+          </svg>
+          <ShareCount>{shareCount > 0 ? shareCount : ''}</ShareCount>
+        </ShareBtn>
+      </ShareContainer>
 
-      {showModal && (
+      {showModal && createPortal(
         <>
           <Overlay onClick={handleCancel} />
           <ShareModal>
@@ -234,6 +294,14 @@ const ShareButton: React.FC<ShareButtonProps> = ({
               onChange={(e) => setShareComment(e.target.value)}
               maxLength={500}
             />
+            <QuickShareToggle>
+              <input
+                type="checkbox"
+                checked={quickShareEnabled}
+                onChange={handleToggleQuickShare}
+              />
+              <span>Quick share (skip this dialog in the future)</span>
+            </QuickShareToggle>
             <ModalActions>
               <ModalButton onClick={handleCancel}>
                 Cancel
@@ -247,9 +315,10 @@ const ShareButton: React.FC<ShareButtonProps> = ({
               </ModalButton>
             </ModalActions>
           </ShareModal>
-        </>
+        </>,
+        document.body
       )}
-    </ShareContainer>
+    </>
   );
 };
 
