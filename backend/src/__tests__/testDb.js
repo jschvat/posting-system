@@ -392,8 +392,16 @@ function getModels() {
   const Comment = require('../models/Comment');
   const Media = require('../models/Media');
   const Reaction = require('../models/Reaction');
+  const Follow = require('../models/Follow');
+  const Share = require('../models/Share');
+  const UserStats = require('../models/UserStats');
+  const TimelineCache = require('../models/TimelineCache');
 
   return {
+    Follow,
+    Share,
+    UserStats,
+    TimelineCache,
     User: {
       findByPk: async (id) => {
         return await User.findById(id);

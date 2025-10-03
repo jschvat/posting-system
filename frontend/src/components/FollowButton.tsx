@@ -88,8 +88,12 @@ const FollowButton: React.FC<FollowButtonProps> = ({
 
   // Follow mutation
   const followMutation = useMutation({
-    mutationFn: () => followsApi.followUser(userId),
+    mutationFn: () => {
+      console.log('[FollowButton] Executing follow API call for user:', userId);
+      return followsApi.followUser(userId);
+    },
     onMutate: async () => {
+      console.log('[FollowButton] onMutate: Optimistically updating follow status');
       // Cancel outgoing refetches
       await queryClient.cancelQueries({ queryKey: ['followStatus', userId] });
 
@@ -99,24 +103,29 @@ const FollowButton: React.FC<FollowButtonProps> = ({
         data: { is_following: true }
       }));
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log('[FollowButton] Follow successful:', data);
       // Only refetch stats, not the follow status (already optimistically updated)
       queryClient.invalidateQueries({ queryKey: ['followStats', userId] });
       queryClient.invalidateQueries({ queryKey: ['followStats'] });
       onFollowChange?.(true);
     },
     onError: (error: any) => {
+      console.error('[FollowButton] Follow error:', error);
       // Revert optimistic update on error
       queryClient.invalidateQueries({ queryKey: ['followStatus', userId] });
-      console.error('Follow error:', error);
       alert(error.response?.data?.error?.message || 'Failed to follow user. Please try again.');
     },
   });
 
   // Unfollow mutation
   const unfollowMutation = useMutation({
-    mutationFn: () => followsApi.unfollowUser(userId),
+    mutationFn: () => {
+      console.log('[FollowButton] Executing unfollow API call for user:', userId);
+      return followsApi.unfollowUser(userId);
+    },
     onMutate: async () => {
+      console.log('[FollowButton] onMutate: Optimistically updating unfollow status');
       // Cancel outgoing refetches
       await queryClient.cancelQueries({ queryKey: ['followStatus', userId] });
 
@@ -126,16 +135,17 @@ const FollowButton: React.FC<FollowButtonProps> = ({
         data: { is_following: false }
       }));
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log('[FollowButton] Unfollow successful:', data);
       // Only refetch stats, not the follow status (already optimistically updated)
       queryClient.invalidateQueries({ queryKey: ['followStats', userId] });
       queryClient.invalidateQueries({ queryKey: ['followStats'] });
       onFollowChange?.(false);
     },
     onError: (error: any) => {
+      console.error('[FollowButton] Unfollow error:', error);
       // Revert optimistic update on error
       queryClient.invalidateQueries({ queryKey: ['followStatus', userId] });
-      console.error('Unfollow error:', error);
       alert(error.response?.data?.error?.message || 'Failed to unfollow user. Please try again.');
     },
   });
@@ -149,15 +159,20 @@ const FollowButton: React.FC<FollowButtonProps> = ({
     e.preventDefault();
     e.stopPropagation();
 
+    console.log('[FollowButton] Click event:', { userId, user: user?.id, isFollowing });
+
     if (!user) {
       // Redirect to login or show login modal
+      console.log('[FollowButton] No user logged in');
       alert('Please login to follow users');
       return;
     }
 
     if (isFollowing) {
+      console.log('[FollowButton] Attempting to unfollow user:', userId);
       unfollowMutation.mutate();
     } else {
+      console.log('[FollowButton] Attempting to follow user:', userId);
       followMutation.mutate();
     }
   };

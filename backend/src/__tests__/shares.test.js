@@ -80,7 +80,7 @@ describe('Shares Routes', () => {
         .post(`/api/shares/${post1.id}`)
         .set('Authorization', authHeader(token2));
 
-      expectSuccessResponse(response);
+      expectSuccessResponse(response, 201);
       expect(response.body.data.share).toBeDefined();
       expect(response.body.data.share.user_id).toBe(testUser2.id);
       expect(response.body.data.share.post_id).toBe(post1.id);
@@ -93,7 +93,7 @@ describe('Shares Routes', () => {
         .send({ comment: 'Great post!', share_type: 'quote' })
         .set('Authorization', authHeader(token2));
 
-      expectSuccessResponse(response);
+      expectSuccessResponse(response, 201);
       expect(response.body.data.share.share_type).toBe('quote');
       expect(response.body.data.share.comment).toBe('Great post!');
     });
@@ -156,7 +156,7 @@ describe('Shares Routes', () => {
         .delete(`/api/shares/${post1.id}`)
         .set('Authorization', authHeader(token2));
 
-      expectSuccessResponse(response);
+      expectSuccessResponse(response, 200);
       expect(response.body.message).toContain('Unshared successfully');
     });
 
@@ -221,7 +221,7 @@ describe('Shares Routes', () => {
 
     it('should support pagination', async () => {
       // Create more shares
-      const post3 = await createTestPost(testUser1, { content: 'Post 3' });
+      const post3 = await createTestPost(testUser1.id, { content: 'Post 3' });
       await request(app)
         .post(`/api/shares/${post3.id}`)
         .set('Authorization', authHeader(token2));

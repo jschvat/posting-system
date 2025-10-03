@@ -18,7 +18,9 @@ router.post('/:postId', authenticate, async (req, res, next) => {
   try {
     const userId = req.user.id;
     const postId = parseInt(req.params.postId);
-    const { share_type = 'repost', share_comment, visibility = 'public' } = req.body;
+    // Support both 'comment' and 'share_comment' for flexibility
+    const { share_type = 'repost', share_comment, comment, visibility = 'public' } = req.body;
+    const finalComment = share_comment || comment;
 
     // Validate post exists
     const post = await Post.findById(postId);
@@ -28,6 +30,17 @@ router.post('/:postId', authenticate, async (req, res, next) => {
         error: {
           message: 'Post not found',
           type: 'not_found'
+        }
+      });
+    }
+
+    // Check if sharing own post
+    if (post.user_id === userId) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          message: 'You cannot share your own post',
+          type: 'validation_error'
         }
       });
     }
@@ -49,17 +62,23 @@ router.post('/:postId', authenticate, async (req, res, next) => {
       user_id: userId,
       post_id: postId,
       share_type,
-      share_comment,
+      share_comment: finalComment,
       visibility
     });
 
     // Get share count
     const shareCount = await Share.getShareCount(postId);
 
+    // Alias share_comment to comment for consistency
+    const shareWithAlias = {
+      ...share,
+      comment: share.share_comment
+    };
+
     res.status(201).json({
       success: true,
       data: {
-        share,
+        share: shareWithAlias,
         share_count: shareCount
       },
       message: 'Post shared successfully'
@@ -99,7 +118,7 @@ router.delete('/:postId', authenticate, async (req, res, next) => {
       data: {
         share_count: shareCount
       },
-      message: 'Post unshared successfully'
+      message: 'Unshared successfully'
     });
   } catch (error) {
     next(error);
@@ -134,13 +153,26 @@ router.get('/user/:userId?', optionalAuthenticate, async (req, res, next) => {
       share_type: type
     });
 
+    // Get total count for the user
+    const totalResult = await Share.raw(
+      `SELECT COUNT(*) as count FROM shares WHERE user_id = $1`,
+      [userId]
+    );
+    const totalCount = parseInt(totalResult.rows[0]?.count || 0);
+    const totalPages = Math.ceil(totalCount / parseInt(limit));
+
     res.json({
       success: true,
       data: {
         shares,
+        total_count: totalCount,
         pagination: {
           current_page: parseInt(page),
-          limit: parseInt(limit)
+          limit: parseInt(limit),
+          total_count: totalCount,
+          total_pages: totalPages,
+          has_next_page: parseInt(page) < totalPages,
+          has_prev_page: parseInt(page) > 1
         }
       }
     });
@@ -166,15 +198,20 @@ router.get('/post/:postId', async (req, res, next) => {
     });
 
     const totalCount = await Share.getShareCount(postId);
+    const totalPages = Math.ceil(totalCount / parseInt(limit));
 
     res.json({
       success: true,
       data: {
         shares,
+        total_count: totalCount,
         pagination: {
           current_page: parseInt(page),
           limit: parseInt(limit),
-          total_count: totalCount
+          total_count: totalCount,
+          total_pages: totalPages,
+          has_next_page: parseInt(page) < totalPages,
+          has_prev_page: parseInt(page) > 1
         }
       }
     });
@@ -297,10 +334,16 @@ router.patch('/:postId/comment', authenticate, async (req, res, next) => {
       });
     }
 
+    // Alias share_comment to comment for consistency
+    const shareWithAlias = {
+      ...updated,
+      comment: updated.share_comment
+    };
+
     res.json({
       success: true,
       data: {
-        share: updated
+        share: shareWithAlias
       },
       message: 'Share comment updated successfully'
     });
