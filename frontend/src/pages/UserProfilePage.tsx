@@ -6,7 +6,7 @@ import React, { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import styled from 'styled-components';
-import { usersApi, getUserAvatarUrl } from '../services/api';
+import { usersApi, getUserAvatarUrl, followsApi } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import PostCard from '../components/PostCard';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -256,6 +256,16 @@ const UserProfilePage: React.FC = () => {
     enabled: !!userId,
   });
 
+  // Fetch follow stats
+  const {
+    data: followStatsData,
+    refetch: refetchFollowStats
+  } = useQuery({
+    queryKey: ['followStats', userId],
+    queryFn: () => followsApi.getFollowStats(parseInt(userId!)),
+    enabled: !!userId,
+  });
+
   if (!userId) {
     return (
       <Container>
@@ -319,11 +329,11 @@ const UserProfilePage: React.FC = () => {
                 <StatLabel>Posts</StatLabel>
               </StatItem>
               <StatItem>
-                <StatNumber>0</StatNumber>
+                <StatNumber>{followStatsData?.data?.counts?.following_count || 0}</StatNumber>
                 <StatLabel>Following</StatLabel>
               </StatItem>
               <StatItem>
-                <StatNumber>0</StatNumber>
+                <StatNumber>{followStatsData?.data?.counts?.follower_count || 0}</StatNumber>
                 <StatLabel>Followers</StatLabel>
               </StatItem>
             </StatsContainer>
