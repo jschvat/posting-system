@@ -168,6 +168,30 @@ const PostsSection = styled.div`
   margin-top: ${({ theme }) => theme.spacing.xl};
 `;
 
+const TabsContainer = styled.div`
+  display: flex;
+  gap: ${({ theme }) => theme.spacing.md};
+  border-bottom: 2px solid ${({ theme }) => theme.colors.border};
+  margin-bottom: ${({ theme }) => theme.spacing.lg};
+`;
+
+const Tab = styled.button<{ $active: boolean }>`
+  padding: ${({ theme }) => theme.spacing.md} ${({ theme }) => theme.spacing.lg};
+  background: none;
+  border: none;
+  border-bottom: 3px solid ${({ theme, $active }) => $active ? theme.colors.primary : 'transparent'};
+  color: ${({ theme, $active }) => $active ? theme.colors.primary : theme.colors.text.secondary};
+  font-weight: ${({ $active }) => $active ? '600' : '400'};
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-bottom: -2px;
+
+  &:hover {
+    color: ${({ theme }) => theme.colors.primary};
+  }
+`;
+
 const SectionHeader = styled.div`
   margin-bottom: ${({ theme }) => theme.spacing.lg};
 `;
@@ -344,9 +368,7 @@ const RetryButton = styled.button`
 const UserProfilePage: React.FC = () => {
   const { userId } = useParams<{ userId: string }>();
   const { state } = useAuth();
-  const [activeTab, setActiveTab] = useState<'posts' | 'media'>('posts');
-  const [showFollowingModal, setShowFollowingModal] = useState(false);
-  const [showFollowersModal, setShowFollowersModal] = useState(false);
+  const [activeTab, setActiveTab] = useState<'posts' | 'following' | 'followers'>('posts');
   const [showEditProfile, setShowEditProfile] = useState(false);
 
   const currentUser = state.user;
@@ -386,18 +408,18 @@ const UserProfilePage: React.FC = () => {
     enabled: !!userId,
   });
 
-  // Fetch following list (only when modal is open)
-  const { data: followingData } = useQuery({
+  // Fetch following list (only when tab is active)
+  const { data: followingData, isLoading: followingLoading } = useQuery({
     queryKey: ['following', userId],
     queryFn: () => followsApi.getFollowing(parseInt(userId!)),
-    enabled: !!userId && showFollowingModal,
+    enabled: !!userId && activeTab === 'following',
   });
 
-  // Fetch followers list (only when modal is open)
-  const { data: followersData } = useQuery({
+  // Fetch followers list (only when tab is active)
+  const { data: followersData, isLoading: followersLoading } = useQuery({
     queryKey: ['followers', userId],
     queryFn: () => followsApi.getFollowers(parseInt(userId!)),
-    enabled: !!userId && showFollowersModal,
+    enabled: !!userId && activeTab === 'followers',
   });
 
   if (!userId) {
@@ -458,13 +480,17 @@ const UserProfilePage: React.FC = () => {
             {user.bio && <Bio>{user.bio}</Bio>}
 
             <StatsContainer>
-              <StatItem>
+              <StatItem
+                $clickable
+                onClick={() => setActiveTab('posts')}
+                title="Click to see posts"
+              >
                 <StatNumber>{posts.length}</StatNumber>
                 <StatLabel>Posts</StatLabel>
               </StatItem>
               <StatItem
                 $clickable
-                onClick={() => setShowFollowingModal(true)}
+                onClick={() => setActiveTab('following')}
                 title="Click to see who they're following"
               >
                 <StatNumber>{followStatsData?.data?.counts?.following_count || 0}</StatNumber>
@@ -472,7 +498,7 @@ const UserProfilePage: React.FC = () => {
               </StatItem>
               <StatItem
                 $clickable
-                onClick={() => setShowFollowersModal(true)}
+                onClick={() => setActiveTab('followers')}
                 title="Click to see their followers"
               >
                 <StatNumber>{followStatsData?.data?.counts?.follower_count || 0}</StatNumber>
@@ -496,71 +522,70 @@ const UserProfilePage: React.FC = () => {
         </ProfileInfo>
       </ProfileHeader>
 
-      {/* Posts Section */}
+      {/* Tabs Section */}
       <PostsSection>
-        <SectionHeader>
-          <SectionTitle>
-            {isOwnProfile ? 'Your Posts' : `${user.first_name}'s Posts`}
-          </SectionTitle>
-          <SectionSubtitle>
-            {posts.length > 0
-              ? `${posts.length} post${posts.length === 1 ? '' : 's'}`
-              : 'No posts yet'
-            }
-          </SectionSubtitle>
-        </SectionHeader>
+        <TabsContainer>
+          <Tab $active={activeTab === 'posts'} onClick={() => setActiveTab('posts')}>
+            Posts
+          </Tab>
+          <Tab $active={activeTab === 'following'} onClick={() => setActiveTab('following')}>
+            Following
+          </Tab>
+          <Tab $active={activeTab === 'followers'} onClick={() => setActiveTab('followers')}>
+            Followers
+          </Tab>
+        </TabsContainer>
 
-        {postsLoading ? (
-          <LoadingSpinner size="medium" text="Loading posts..." />
-        ) : postsError ? (
-          <ErrorState>
-            <h3>Failed to load posts</h3>
-            <p>Something went wrong while loading the posts.</p>
-            <RetryButton onClick={() => refetchPosts()}>
-              Try Again
-            </RetryButton>
-          </ErrorState>
-        ) : posts.length > 0 ? (
-          <PostsContainer>
-            {posts.map((post) => (
-              <PostCard
-                key={post.id}
-                post={post}
-                onUpdate={() => {
-                  refetchPosts();
-                }}
-              />
-            ))}
-          </PostsContainer>
-        ) : (
-          <EmptyState>
-            <h3>No posts yet</h3>
-            <p>
-              {isOwnProfile
-                ? "You haven't shared anything yet. Create your first post to get started!"
-                : `${user.first_name} hasn't shared anything yet.`
-              }
-            </p>
-          </EmptyState>
+        {/* Posts Tab Content */}
+        {activeTab === 'posts' && (
+          <>
+            {postsLoading ? (
+              <LoadingSpinner size="medium" text="Loading posts..." />
+            ) : postsError ? (
+              <ErrorState>
+                <h3>Failed to load posts</h3>
+                <p>Something went wrong while loading the posts.</p>
+                <RetryButton onClick={() => refetchPosts()}>
+                  Try Again
+                </RetryButton>
+              </ErrorState>
+            ) : posts.length > 0 ? (
+              <PostsContainer>
+                {posts.map((post) => (
+                  <PostCard
+                    key={post.id}
+                    post={post}
+                    onUpdate={() => {
+                      refetchPosts();
+                    }}
+                  />
+                ))}
+              </PostsContainer>
+            ) : (
+              <EmptyState>
+                <h3>No posts yet</h3>
+                <p>
+                  {isOwnProfile
+                    ? "You haven't shared anything yet. Create your first post to get started!"
+                    : `${user.first_name} hasn't shared anything yet.`
+                  }
+                </p>
+              </EmptyState>
+            )}
+          </>
         )}
-      </PostsSection>
 
-      {/* Following Modal */}
-      {showFollowingModal && createPortal(
-        <>
-          <Overlay onClick={() => setShowFollowingModal(false)} />
-          <Modal>
-            <ModalHeader>
-              <ModalTitle>Following</ModalTitle>
-              <CloseButton onClick={() => setShowFollowingModal(false)}>×</CloseButton>
-            </ModalHeader>
-            {followingData?.data?.following && followingData.data.following.length > 0 ? (
+        {/* Following Tab Content */}
+        {activeTab === 'following' && (
+          <>
+            {followingLoading ? (
+              <LoadingSpinner size="medium" text="Loading following..." />
+            ) : followingData?.data?.following && followingData.data.following.length > 0 ? (
               <UserList>
                 {followingData.data.following.map((follow: any) => (
                   <UserItem
                     key={follow.id}
                     to={`/profile/${follow.id}`}
-                    onClick={() => setShowFollowingModal(false)}
                   >
                     <UserAvatar $hasImage={!!follow.avatar_url}>
                       {follow.avatar_url ? (
@@ -577,29 +602,30 @@ const UserProfilePage: React.FC = () => {
                 ))}
               </UserList>
             ) : (
-              <p style={{ textAlign: 'center', color: '#666' }}>Not following anyone yet</p>
+              <EmptyState>
+                <h3>Not following anyone yet</h3>
+                <p>
+                  {isOwnProfile
+                    ? "You're not following anyone yet. Find people to follow!"
+                    : `${user.first_name} isn't following anyone yet.`
+                  }
+                </p>
+              </EmptyState>
             )}
-          </Modal>
-        </>,
-        document.body
-      )}
+          </>
+        )}
 
-      {/* Followers Modal */}
-      {showFollowersModal && createPortal(
-        <>
-          <Overlay onClick={() => setShowFollowersModal(false)} />
-          <Modal>
-            <ModalHeader>
-              <ModalTitle>Followers</ModalTitle>
-              <CloseButton onClick={() => setShowFollowersModal(false)}>×</CloseButton>
-            </ModalHeader>
-            {followersData?.data?.followers && followersData.data.followers.length > 0 ? (
+        {/* Followers Tab Content */}
+        {activeTab === 'followers' && (
+          <>
+            {followersLoading ? (
+              <LoadingSpinner size="medium" text="Loading followers..." />
+            ) : followersData?.data?.followers && followersData.data.followers.length > 0 ? (
               <UserList>
                 {followersData.data.followers.map((follow: any) => (
                   <UserItem
                     key={follow.id}
                     to={`/profile/${follow.id}`}
-                    onClick={() => setShowFollowersModal(false)}
                   >
                     <UserAvatar $hasImage={!!follow.avatar_url}>
                       {follow.avatar_url ? (
@@ -616,12 +642,19 @@ const UserProfilePage: React.FC = () => {
                 ))}
               </UserList>
             ) : (
-              <p style={{ textAlign: 'center', color: '#666' }}>No followers yet</p>
+              <EmptyState>
+                <h3>No followers yet</h3>
+                <p>
+                  {isOwnProfile
+                    ? "You don't have any followers yet."
+                    : `${user.first_name} doesn't have any followers yet.`
+                  }
+                </p>
+              </EmptyState>
             )}
-          </Modal>
-        </>,
-        document.body
-      )}
+          </>
+        )}
+      </PostsSection>
 
       {/* Edit Profile Modal */}
       {showEditProfile && createPortal(
