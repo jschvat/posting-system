@@ -10,6 +10,7 @@ import { usersApi, getUserAvatarUrl } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import PostCard from '../components/PostCard';
 import LoadingSpinner from '../components/LoadingSpinner';
+import FollowButton from '../components/FollowButton';
 
 const Container = styled.div`
   max-width: 680px;
@@ -329,7 +330,7 @@ const UserProfilePage: React.FC = () => {
 
             {!isOwnProfile && (
               <ActionButtons>
-                <ActionButton variant="primary">Follow</ActionButton>
+                <FollowButton userId={user.id} size="large" />
                 <ActionButton variant="secondary">Message</ActionButton>
               </ActionButtons>
             )}

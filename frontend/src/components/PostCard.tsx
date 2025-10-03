@@ -12,7 +12,6 @@ import { useAuth } from '../contexts/AuthContext';
 import ReactionPicker from './ReactionPicker';
 import ReactionsPopup from './ReactionsPopup';
 import CommentForm from './CommentForm';
-import FollowButton from './FollowButton';
 import ShareButton from './ShareButton';
 import { getApiBaseUrl } from '../config/app.config';
 
@@ -712,7 +711,6 @@ const PostCard: React.FC<PostCardProps> = ({ post, onUpdate }) => {
           </PostMeta>
         </AuthorInfo>
 
-        <FollowButton userId={post.user_id} size="small" />
       </PostHeader>
 
       {/* Post Content */}
