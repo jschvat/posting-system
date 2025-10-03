@@ -564,7 +564,7 @@ const UserProfilePage: React.FC = () => {
                   >
                     <UserAvatar $hasImage={!!follow.avatar_url}>
                       {follow.avatar_url ? (
-                        <img src={getUserAvatarUrl(follow.avatar_url)} alt={follow.username} />
+                        <img src={getUserAvatarUrl(follow)} alt={follow.username} />
                       ) : (
                         follow.first_name?.charAt(0) || follow.username?.charAt(0) || '?'
                       )}
@@ -603,7 +603,7 @@ const UserProfilePage: React.FC = () => {
                   >
                     <UserAvatar $hasImage={!!follow.avatar_url}>
                       {follow.avatar_url ? (
-                        <img src={getUserAvatarUrl(follow.avatar_url)} alt={follow.username} />
+                        <img src={getUserAvatarUrl(follow)} alt={follow.username} />
                       ) : (
                         follow.first_name?.charAt(0) || follow.username?.charAt(0) || '?'
                       )}
