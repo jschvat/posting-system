@@ -107,6 +107,8 @@ const StatsContainer = styled.div`
 `;
 
 const StatItem = styled.div<{ $clickable?: boolean }>`
+  flex: 1;
+  min-width: 100px;
   text-align: center;
   cursor: ${({ $clickable }) => $clickable ? 'pointer' : 'default'};
   padding: ${({ theme, $clickable }) => $clickable ? theme.spacing.sm : '0'};
