@@ -77,6 +77,8 @@ const FollowButton: React.FC<FollowButtonProps> = ({
   const user = state.user;
   const queryClient = useQueryClient();
 
+  // ALL HOOKS MUST COME BEFORE ANY EARLY RETURNS
+
   // Check if currently following
   const { data: followStatus, isLoading: isCheckingFollow } = useQuery({
     queryKey: ['followStatus', userId],
@@ -150,11 +152,6 @@ const FollowButton: React.FC<FollowButtonProps> = ({
     },
   });
 
-  // Don't show button if viewing own profile
-  if (user?.id === userId) {
-    return null;
-  }
-
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -178,6 +175,11 @@ const FollowButton: React.FC<FollowButtonProps> = ({
   };
 
   const isLoading = isCheckingFollow || followMutation.isPending || unfollowMutation.isPending;
+
+  // Don't show button if viewing own profile (must be after all hooks!)
+  if (user?.id === userId) {
+    return null;
+  }
 
   return (
     <Button
