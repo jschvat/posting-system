@@ -47,7 +47,7 @@ interface RegisterData {
 const initialState: AuthState = {
   user: null,
   token: null,
-  isLoading: false,
+  isLoading: true, // Start as loading to check localStorage
   isAuthenticated: false,
   error: null,
 };
@@ -82,6 +82,7 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
     case 'AUTH_LOGOUT':
       return {
         ...state,
+        isLoading: false,
         isAuthenticated: false,
         user: null,
         token: null,
@@ -125,7 +126,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         // Invalid stored data, clear it
         localStorage.removeItem('authToken');
         localStorage.removeItem('userData');
+        dispatch({ type: 'AUTH_LOGOUT' });
       }
+    } else {
+      // No stored auth, finish loading
+      dispatch({ type: 'AUTH_LOGOUT' });
     }
   }, []);
 

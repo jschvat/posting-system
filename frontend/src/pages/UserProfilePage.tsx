@@ -3,9 +3,10 @@
  */
 
 import React, { useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import styled from 'styled-components';
+import { createPortal } from 'react-dom';
 import { usersApi, getUserAvatarUrl, followsApi } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import PostCard from '../components/PostCard';
@@ -105,8 +106,16 @@ const StatsContainer = styled.div`
   }
 `;
 
-const StatItem = styled.div`
+const StatItem = styled.div<{ $clickable?: boolean }>`
   text-align: center;
+  cursor: ${({ $clickable }) => $clickable ? 'pointer' : 'default'};
+  padding: ${({ theme, $clickable }) => $clickable ? theme.spacing.sm : '0'};
+  border-radius: ${({ theme }) => theme.borderRadius.md};
+  transition: background 0.2s ease;
+
+  &:hover {
+    background: ${({ theme, $clickable }) => $clickable ? theme.colors.background : 'transparent'};
+  }
 `;
 
 const StatNumber = styled.div`
@@ -207,6 +216,114 @@ const ErrorState = styled.div`
   }
 `;
 
+// Modal styles
+const Overlay = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 9999;
+`;
+
+const Modal = styled.div`
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: ${({ theme }) => theme.colors.surface};
+  border: 1px solid ${({ theme }) => theme.colors.border};
+  border-radius: ${({ theme }) => theme.borderRadius.lg};
+  box-shadow: ${({ theme }) => theme.shadows.lg};
+  padding: ${({ theme }) => theme.spacing.xl};
+  min-width: 400px;
+  max-width: 90vw;
+  max-height: 80vh;
+  overflow-y: auto;
+  z-index: 10000;
+`;
+
+const ModalHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: ${({ theme }) => theme.spacing.lg};
+`;
+
+const ModalTitle = styled.h2`
+  color: ${({ theme }) => theme.colors.text.primary};
+  font-size: 1.5rem;
+  margin: 0;
+`;
+
+const CloseButton = styled.button`
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: ${({ theme }) => theme.colors.text.secondary};
+  padding: 4px 8px;
+
+  &:hover {
+    color: ${({ theme }) => theme.colors.text.primary};
+  }
+`;
+
+const UserList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${({ theme }) => theme.spacing.md};
+`;
+
+const UserItem = styled(Link)`
+  display: flex;
+  align-items: center;
+  gap: ${({ theme }) => theme.spacing.md};
+  padding: ${({ theme }) => theme.spacing.md};
+  border-radius: ${({ theme }) => theme.borderRadius.md};
+  text-decoration: none;
+  transition: background 0.2s ease;
+
+  &:hover {
+    background: ${({ theme }) => theme.colors.background};
+  }
+`;
+
+const UserAvatar = styled.div<{ $hasImage?: boolean }>`
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: ${({ theme, $hasImage }) => $hasImage ? 'transparent' : theme.colors.primary};
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: bold;
+  overflow: hidden;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+`;
+
+const UserInfo = styled.div`
+  flex: 1;
+`;
+
+const UserDisplayName = styled.div`
+  color: ${({ theme }) => theme.colors.text.primary};
+  font-weight: 600;
+  font-size: 1rem;
+`;
+
+const UserUsername = styled.div`
+  color: ${({ theme }) => theme.colors.text.secondary};
+  font-size: 0.9rem;
+`;
+
 const RetryButton = styled.button`
   background: ${({ theme }) => theme.colors.primary};
   color: white;
@@ -228,6 +345,9 @@ const UserProfilePage: React.FC = () => {
   const { userId } = useParams<{ userId: string }>();
   const { state } = useAuth();
   const [activeTab, setActiveTab] = useState<'posts' | 'media'>('posts');
+  const [showFollowingModal, setShowFollowingModal] = useState(false);
+  const [showFollowersModal, setShowFollowersModal] = useState(false);
+  const [showEditProfile, setShowEditProfile] = useState(false);
 
   const currentUser = state.user;
   const isOwnProfile = currentUser && userId && parseInt(userId) === currentUser.id;
@@ -264,6 +384,20 @@ const UserProfilePage: React.FC = () => {
     queryKey: ['followStats', userId],
     queryFn: () => followsApi.getFollowStats(parseInt(userId!)),
     enabled: !!userId,
+  });
+
+  // Fetch following list (only when modal is open)
+  const { data: followingData } = useQuery({
+    queryKey: ['following', userId],
+    queryFn: () => followsApi.getFollowing(parseInt(userId!)),
+    enabled: !!userId && showFollowingModal,
+  });
+
+  // Fetch followers list (only when modal is open)
+  const { data: followersData } = useQuery({
+    queryKey: ['followers', userId],
+    queryFn: () => followsApi.getFollowers(parseInt(userId!)),
+    enabled: !!userId && showFollowersModal,
   });
 
   if (!userId) {
@@ -328,17 +462,31 @@ const UserProfilePage: React.FC = () => {
                 <StatNumber>{posts.length}</StatNumber>
                 <StatLabel>Posts</StatLabel>
               </StatItem>
-              <StatItem>
+              <StatItem
+                $clickable
+                onClick={() => setShowFollowingModal(true)}
+                title="Click to see who they're following"
+              >
                 <StatNumber>{followStatsData?.data?.counts?.following_count || 0}</StatNumber>
                 <StatLabel>Following</StatLabel>
               </StatItem>
-              <StatItem>
+              <StatItem
+                $clickable
+                onClick={() => setShowFollowersModal(true)}
+                title="Click to see their followers"
+              >
                 <StatNumber>{followStatsData?.data?.counts?.follower_count || 0}</StatNumber>
                 <StatLabel>Followers</StatLabel>
               </StatItem>
             </StatsContainer>
 
-            {!isOwnProfile && (
+            {isOwnProfile ? (
+              <ActionButtons>
+                <ActionButton onClick={() => setShowEditProfile(true)}>
+                  Edit Profile
+                </ActionButton>
+              </ActionButtons>
+            ) : (
               <ActionButtons>
                 <FollowButton userId={user.id} size="large" />
                 <ActionButton variant="secondary">Message</ActionButton>
@@ -396,6 +544,101 @@ const UserProfilePage: React.FC = () => {
           </EmptyState>
         )}
       </PostsSection>
+
+      {/* Following Modal */}
+      {showFollowingModal && createPortal(
+        <>
+          <Overlay onClick={() => setShowFollowingModal(false)} />
+          <Modal>
+            <ModalHeader>
+              <ModalTitle>Following</ModalTitle>
+              <CloseButton onClick={() => setShowFollowingModal(false)}>×</CloseButton>
+            </ModalHeader>
+            {followingData?.data?.following && followingData.data.following.length > 0 ? (
+              <UserList>
+                {followingData.data.following.map((follow: any) => (
+                  <UserItem
+                    key={follow.id}
+                    to={`/profile/${follow.id}`}
+                    onClick={() => setShowFollowingModal(false)}
+                  >
+                    <UserAvatar $hasImage={!!follow.avatar_url}>
+                      {follow.avatar_url ? (
+                        <img src={getUserAvatarUrl(follow.avatar_url)} alt={follow.username} />
+                      ) : (
+                        follow.first_name?.charAt(0) || follow.username?.charAt(0) || '?'
+                      )}
+                    </UserAvatar>
+                    <UserInfo>
+                      <UserDisplayName>{follow.first_name} {follow.last_name}</UserDisplayName>
+                      <UserUsername>@{follow.username}</UserUsername>
+                    </UserInfo>
+                  </UserItem>
+                ))}
+              </UserList>
+            ) : (
+              <p style={{ textAlign: 'center', color: '#666' }}>Not following anyone yet</p>
+            )}
+          </Modal>
+        </>,
+        document.body
+      )}
+
+      {/* Followers Modal */}
+      {showFollowersModal && createPortal(
+        <>
+          <Overlay onClick={() => setShowFollowersModal(false)} />
+          <Modal>
+            <ModalHeader>
+              <ModalTitle>Followers</ModalTitle>
+              <CloseButton onClick={() => setShowFollowersModal(false)}>×</CloseButton>
+            </ModalHeader>
+            {followersData?.data?.followers && followersData.data.followers.length > 0 ? (
+              <UserList>
+                {followersData.data.followers.map((follow: any) => (
+                  <UserItem
+                    key={follow.id}
+                    to={`/profile/${follow.id}`}
+                    onClick={() => setShowFollowersModal(false)}
+                  >
+                    <UserAvatar $hasImage={!!follow.avatar_url}>
+                      {follow.avatar_url ? (
+                        <img src={getUserAvatarUrl(follow.avatar_url)} alt={follow.username} />
+                      ) : (
+                        follow.first_name?.charAt(0) || follow.username?.charAt(0) || '?'
+                      )}
+                    </UserAvatar>
+                    <UserInfo>
+                      <UserDisplayName>{follow.first_name} {follow.last_name}</UserDisplayName>
+                      <UserUsername>@{follow.username}</UserUsername>
+                    </UserInfo>
+                  </UserItem>
+                ))}
+              </UserList>
+            ) : (
+              <p style={{ textAlign: 'center', color: '#666' }}>No followers yet</p>
+            )}
+          </Modal>
+        </>,
+        document.body
+      )}
+
+      {/* Edit Profile Modal */}
+      {showEditProfile && createPortal(
+        <>
+          <Overlay onClick={() => setShowEditProfile(false)} />
+          <Modal>
+            <ModalHeader>
+              <ModalTitle>Edit Profile</ModalTitle>
+              <CloseButton onClick={() => setShowEditProfile(false)}>×</CloseButton>
+            </ModalHeader>
+            <p style={{ textAlign: 'center', color: '#666', padding: '20px' }}>
+              Profile editing coming soon...
+            </p>
+          </Modal>
+        </>,
+        document.body
+      )}
     </Container>
   );
 };
