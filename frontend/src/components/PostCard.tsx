@@ -712,8 +712,6 @@ const PostCard: React.FC<PostCardProps> = ({ post, onUpdate }) => {
           </PostMeta>
         </AuthorInfo>
 
-        </button>
-
         <FollowButton userId={post.user_id} size="small" />
       </PostHeader>
 
