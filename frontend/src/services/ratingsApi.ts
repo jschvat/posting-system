@@ -3,7 +3,7 @@
  * Handles all rating-related API calls
  */
 
-import api from './api';
+import { apiClient } from './api';
 import { ApiResponse } from '../types';
 
 export interface Rating {
@@ -55,7 +55,7 @@ const ratingsApi = {
    * Rate a user
    */
   rateUser: async (userId: number, data: CreateRatingRequest): Promise<ApiResponse<{ rating: Rating }>> => {
-    const response = await api.post(`/api/ratings/${userId}`, data);
+    const response = await apiClient.post(`/api/ratings/${userId}`, data);
     return response.data;
   },
 
@@ -63,7 +63,7 @@ const ratingsApi = {
    * Update a rating
    */
   updateRating: async (ratingId: number, data: UpdateRatingRequest): Promise<ApiResponse<{ rating: Rating }>> => {
-    const response = await api.put(`/api/ratings/${ratingId}`, data);
+    const response = await apiClient.put(`/api/ratings/${ratingId}`, data);
     return response.data;
   },
 
@@ -71,7 +71,7 @@ const ratingsApi = {
    * Delete a rating
    */
   deleteRating: async (ratingId: number): Promise<ApiResponse<void>> => {
-    const response = await api.delete(`/api/ratings/${ratingId}`);
+    const response = await apiClient.delete(`/api/ratings/${ratingId}`);
     return response.data;
   },
 
@@ -82,7 +82,7 @@ const ratingsApi = {
     userId: number,
     params?: { page?: number; limit?: number; rating_type?: string }
   ): Promise<ApiResponse<{ ratings: Rating[]; stats: RatingStats; pagination: any }>> => {
-    const response = await api.get(`/api/ratings/user/${userId}`, { params });
+    const response = await apiClient.get(`/api/ratings/user/${userId}`, { params });
     return response.data;
   },
 
@@ -90,7 +90,7 @@ const ratingsApi = {
    * Get ratings given by current user
    */
   getGivenRatings: async (params?: { page?: number; limit?: number }): Promise<ApiResponse<{ ratings: Rating[]; pagination: any }>> => {
-    const response = await api.get('/api/ratings/given', { params });
+    const response = await apiClient.get('/api/ratings/given', { params });
     return response.data;
   },
 
@@ -100,7 +100,7 @@ const ratingsApi = {
   getReceivedRatings: async (
     params?: { page?: number; limit?: number; rating_type?: string }
   ): Promise<ApiResponse<{ ratings: Rating[]; stats: RatingStats; pagination: any }>> => {
-    const response = await api.get('/api/ratings/received', { params });
+    const response = await apiClient.get('/api/ratings/received', { params });
     return response.data;
   },
 
@@ -108,7 +108,7 @@ const ratingsApi = {
    * Check if current user can rate a user
    */
   canRate: async (userId: number): Promise<ApiResponse<{ can_rate: boolean }>> => {
-    const response = await api.get(`/api/ratings/check/${userId}`);
+    const response = await apiClient.get(`/api/ratings/check/${userId}`);
     return response.data;
   },
 
@@ -119,7 +119,7 @@ const ratingsApi = {
     ratingId: number,
     data: { report_reason: string; report_details?: string }
   ): Promise<ApiResponse<{ report: any }>> => {
-    const response = await api.post(`/api/ratings/${ratingId}/report`, data);
+    const response = await apiClient.post(`/api/ratings/${ratingId}/report`, data);
     return response.data;
   },
 
@@ -127,7 +127,7 @@ const ratingsApi = {
    * Get reports for a rating
    */
   getRatingReports: async (ratingId: number): Promise<ApiResponse<{ reports: any[] }>> => {
-    const response = await api.get(`/api/ratings/${ratingId}/reports`);
+    const response = await apiClient.get(`/api/ratings/${ratingId}/reports`);
     return response.data;
   },
 };

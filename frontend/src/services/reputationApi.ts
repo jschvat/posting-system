@@ -3,7 +3,7 @@
  * Handles all reputation-related API calls
  */
 
-import api from './api';
+import { apiClient } from './api';
 import { ApiResponse } from '../types';
 
 export interface Reputation {
@@ -62,7 +62,7 @@ const reputationApi = {
    * Get reputation for a user
    */
   getUserReputation: async (userId: number): Promise<ApiResponse<{ reputation: Reputation; rank: string | null }>> => {
-    const response = await api.get(`/api/reputation/${userId}`);
+    const response = await apiClient.get(`/api/reputation/${userId}`);
     return response.data;
   },
 
@@ -70,7 +70,7 @@ const reputationApi = {
    * Get reputation leaderboard
    */
   getLeaderboard: async (params?: { limit?: number; offset?: number }): Promise<ApiResponse<{ leaderboard: LeaderboardUser[]; pagination: any }>> => {
-    const response = await api.get('/api/reputation/leaderboard/top', { params });
+    const response = await apiClient.get('/api/reputation/leaderboard/top', { params });
     return response.data;
   },
 
@@ -78,7 +78,7 @@ const reputationApi = {
    * Get top users by reputation
    */
   getTopUsers: async (params?: { limit?: number; level?: string }): Promise<ApiResponse<{ users: LeaderboardUser[] }>> => {
-    const response = await api.get('/api/reputation/top-users', { params });
+    const response = await apiClient.get('/api/reputation/top-users', { params });
     return response.data;
   },
 
@@ -86,7 +86,7 @@ const reputationApi = {
    * Mark content as helpful
    */
   markHelpful: async (targetType: 'post' | 'comment' | 'user', targetId: number): Promise<ApiResponse<{ helpful_mark: HelpfulMark; helpful_count: number }>> => {
-    const response = await api.post(`/api/reputation/helpful/${targetType}/${targetId}`);
+    const response = await apiClient.post(`/api/reputation/helpful/${targetType}/${targetId}`);
     return response.data;
   },
 
@@ -94,7 +94,7 @@ const reputationApi = {
    * Remove helpful mark
    */
   unmarkHelpful: async (targetType: 'post' | 'comment' | 'user', targetId: number): Promise<ApiResponse<{ helpful_count: number }>> => {
-    const response = await api.delete(`/api/reputation/helpful/${targetType}/${targetId}`);
+    const response = await apiClient.delete(`/api/reputation/helpful/${targetType}/${targetId}`);
     return response.data;
   },
 
@@ -102,7 +102,7 @@ const reputationApi = {
    * Check if content is marked as helpful by current user
    */
   checkHelpful: async (targetType: 'post' | 'comment' | 'user', targetId: number): Promise<ApiResponse<{ has_marked: boolean; helpful_count: number }>> => {
-    const response = await api.get(`/api/reputation/helpful/${targetType}/${targetId}/check`);
+    const response = await apiClient.get(`/api/reputation/helpful/${targetType}/${targetId}/check`);
     return response.data;
   },
 
@@ -110,7 +110,7 @@ const reputationApi = {
    * Get helpful count for content
    */
   getHelpfulCount: async (targetType: 'post' | 'comment' | 'user', targetId: number): Promise<ApiResponse<{ helpful_count: number }>> => {
-    const response = await api.get(`/api/reputation/helpful/${targetType}/${targetId}/count`);
+    const response = await apiClient.get(`/api/reputation/helpful/${targetType}/${targetId}/count`);
     return response.data;
   },
 
@@ -118,7 +118,7 @@ const reputationApi = {
    * Get badges for a user
    */
   getUserBadges: async (userId: number): Promise<ApiResponse<{ badges: any[] }>> => {
-    const response = await api.get(`/api/reputation/badges/${userId}`);
+    const response = await apiClient.get(`/api/reputation/badges/${userId}`);
     return response.data;
   },
 
@@ -126,7 +126,7 @@ const reputationApi = {
    * Recalculate reputation score for current user
    */
   recalculateScore: async (): Promise<ApiResponse<{ reputation_score: number }>> => {
-    const response = await api.post('/api/reputation/recalculate');
+    const response = await apiClient.post('/api/reputation/recalculate');
     return response.data;
   },
 
@@ -134,7 +134,7 @@ const reputationApi = {
    * Recalculate all reputation scores (admin only)
    */
   recalculateAll: async (): Promise<ApiResponse<{ users_updated: number }>> => {
-    const response = await api.post('/api/reputation/recalculate-all');
+    const response = await apiClient.post('/api/reputation/recalculate-all');
     return response.data;
   },
 };

@@ -22,7 +22,9 @@ const HelpfulButton: React.FC<HelpfulButtonProps> = ({
   size = 'medium',
 }) => {
   const queryClient = useQueryClient();
-  const { user, isAuthenticated } = useAuth();
+  const { state } = useAuth();
+  const user = state.user;
+  const isAuthenticated = state.isAuthenticated;
 
   // Check if marked as helpful
   const { data: helpfulData } = useQuery({
