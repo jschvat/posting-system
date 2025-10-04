@@ -97,11 +97,11 @@ const Bio = styled.p`
 
 const StatsContainer = styled.div`
   display: flex;
+  justify-content: center;
   gap: ${({ theme }) => theme.spacing.xl};
   margin-bottom: ${({ theme }) => theme.spacing.lg};
 
   @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
-    justify-content: center;
     gap: ${({ theme }) => theme.spacing.lg};
   }
 `;
