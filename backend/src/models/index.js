@@ -12,6 +12,8 @@ const Follow = require('./Follow');
 const Share = require('./Share');
 const UserStats = require('./UserStats');
 const TimelineCache = require('./TimelineCache');
+const Rating = require('./Rating');
+const Reputation = require('./Reputation');
 
 module.exports = {
   User,
@@ -22,5 +24,7 @@ module.exports = {
   Follow,
   Share,
   UserStats,
-  TimelineCache
+  TimelineCache,
+  Rating,
+  Reputation
 };

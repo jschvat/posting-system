@@ -8,10 +8,15 @@ import { useQuery } from '@tanstack/react-query';
 import styled from 'styled-components';
 import { createPortal } from 'react-dom';
 import { usersApi, getUserAvatarUrl, followsApi } from '../services/api';
+import reputationApi from '../services/reputationApi';
+import ratingsApi from '../services/ratingsApi';
 import { useAuth } from '../contexts/AuthContext';
 import PostCard from '../components/PostCard';
 import LoadingSpinner from '../components/LoadingSpinner';
 import FollowButton from '../components/FollowButton';
+import RatingButton from '../components/RatingButton';
+import RatingDisplay from '../components/RatingDisplay';
+import ReputationBadge from '../components/ReputationBadge';
 
 const Container = styled.div`
   max-width: 680px;
@@ -410,6 +415,20 @@ const UserProfilePage: React.FC = () => {
     enabled: !!userId,
   });
 
+  // Fetch reputation data
+  const { data: reputationData, refetch: refetchReputation } = useQuery({
+    queryKey: ['reputation', userId],
+    queryFn: () => reputationApi.getUserReputation(parseInt(userId!)),
+    enabled: !!userId,
+  });
+
+  // Fetch ratings data
+  const { data: ratingsData, refetch: refetchRatings } = useQuery({
+    queryKey: ['ratings', userId],
+    queryFn: () => ratingsApi.getUserRatings(parseInt(userId!)),
+    enabled: !!userId,
+  });
+
   // Fetch following list (only when tab is active)
   const { data: followingData, isLoading: followingLoading } = useQuery({
     queryKey: ['following', userId],
@@ -462,6 +481,12 @@ const UserProfilePage: React.FC = () => {
   const avatarUrl = getUserAvatarUrl(user);
   const hasAvatar = Boolean(user.avatar_url) && user.avatar_url !== avatarUrl;
 
+  // Extract reputation and ratings data
+  const reputation = reputationData?.data?.reputation;
+  const ratingStats = ratingsData?.data?.stats;
+  const averageRating = ratingStats ? parseFloat(ratingStats.average_rating) : 0;
+  const totalRatings = ratingStats ? parseInt(ratingStats.total_ratings) : 0;
+
   return (
     <Container>
       {/* Profile Header */}
@@ -480,6 +505,24 @@ const UserProfilePage: React.FC = () => {
             <Username>@{user.username}</Username>
 
             {user.bio && <Bio>{user.bio}</Bio>}
+
+            {/* Reputation and Rating Section */}
+            {reputation && (
+              <div style={{ display: 'flex', gap: '16px', margin: '16px 0', flexWrap: 'wrap' }}>
+                <ReputationBadge
+                  level={reputation.reputation_level}
+                  score={reputation.reputation_score}
+                  size="medium"
+                />
+                {totalRatings > 0 && (
+                  <RatingDisplay
+                    rating={averageRating}
+                    totalRatings={totalRatings}
+                    size="medium"
+                  />
+                )}
+              </div>
+            )}
 
             <StatsContainer>
               <StatItem
@@ -517,6 +560,16 @@ const UserProfilePage: React.FC = () => {
             ) : (
               <ActionButtons>
                 <FollowButton userId={user.id} size="large" />
+                <RatingButton
+                  userId={user.id}
+                  username={user.username}
+                  onRatingSubmitted={() => {
+                    refetchReputation();
+                    refetchRatings();
+                  }}
+                  variant="outline"
+                  size="medium"
+                />
                 <ActionButton variant="secondary">Message</ActionButton>
               </ActionButtons>
             )}
