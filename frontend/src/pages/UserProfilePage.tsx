@@ -492,23 +492,18 @@ const UserProfilePage: React.FC = () => {
       {/* Profile Header */}
       <ProfileHeader>
         <ProfileInfo>
-          <Avatar $hasImage={hasAvatar}>
-            {hasAvatar ? (
-              <img src={avatarUrl} alt={`${user.first_name} ${user.last_name}`} />
-            ) : (
-              `${user.first_name[0]}${user.last_name[0]}`
-            )}
-          </Avatar>
+          <div>
+            <Avatar $hasImage={hasAvatar}>
+              {hasAvatar ? (
+                <img src={avatarUrl} alt={`${user.first_name} ${user.last_name}`} />
+              ) : (
+                `${user.first_name[0]}${user.last_name[0]}`
+              )}
+            </Avatar>
 
-          <UserDetails>
-            <UserName>{user.first_name} {user.last_name}</UserName>
-            <Username>@{user.username}</Username>
-
-            {user.bio && <Bio>{user.bio}</Bio>}
-
-            {/* Reputation and Rating Section */}
+            {/* Reputation and Rating Section - under avatar */}
             {reputation && (
-              <div style={{ display: 'flex', gap: '16px', margin: '16px 0', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px', alignItems: 'center' }}>
                 <ReputationBadge
                   level={reputation.reputation_level}
                   score={reputation.reputation_score}
@@ -518,11 +513,18 @@ const UserProfilePage: React.FC = () => {
                   <RatingDisplay
                     rating={averageRating}
                     totalRatings={totalRatings}
-                    size="medium"
+                    size="small"
                   />
                 )}
               </div>
             )}
+          </div>
+
+          <UserDetails>
+            <UserName>{user.first_name} {user.last_name}</UserName>
+            <Username>@{user.username}</Username>
+
+            {user.bio && <Bio>{user.bio}</Bio>}
 
             <StatsContainer>
               <StatItem
