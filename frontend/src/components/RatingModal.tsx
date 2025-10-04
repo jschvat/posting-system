@@ -31,7 +31,8 @@ const RatingModal: React.FC<RatingModalProps> = ({
   const [error, setError] = useState('');
 
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { state } = useAuth();
+  const user = state.user;
 
   // Check if user can rate
   const { data: canRateData } = useQuery({

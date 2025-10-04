@@ -25,7 +25,8 @@ const RatingButton: React.FC<RatingButtonProps> = ({
   size = 'medium',
 }) => {
   const [showModal, setShowModal] = useState(false);
-  const { user } = useAuth();
+  const { state } = useAuth();
+  const user = state.user;
 
   // Don't show button for own profile
   if (user?.id === userId) {
