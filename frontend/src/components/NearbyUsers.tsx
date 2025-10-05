@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import { FaMapMarkerAlt, FaUser, FaSearch } from 'react-icons/fa';
+import { FaMapPin, FaUser, FaMagnifyingGlass } from 'react-icons/fa6';
 import locationApi, { NearbyUser } from '../services/locationApi';
 import { getTheme } from '../utils/themeHelpers';
 import LocationPermission from './LocationPermission';
@@ -227,7 +227,7 @@ export const NearbyUsers: React.FC<NearbyUsersProps> = ({ initialRadius = 25 }) 
     <Container>
       <Header>
         <Title>
-          <FaMapMarkerAlt />
+          <FaMapPin />
           Nearby Users
           {cached && <CachedBadge>Cached</CachedBadge>}
         </Title>
@@ -244,7 +244,7 @@ export const NearbyUsers: React.FC<NearbyUsersProps> = ({ initialRadius = 25 }) 
           <option value={250}>250 miles</option>
         </RadiusSelect>
         <SearchButton onClick={handleSearch} disabled={loading}>
-          <FaSearch />
+          <FaMagnifyingGlass />
           {loading ? 'Searching...' : 'Search'}
         </SearchButton>
       </SearchControls>

@@ -3,9 +3,9 @@
  * Requests and handles browser geolocation permissions
  */
 
-import React, { useState, useEffect } from 'styled-components';
+import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import { FaMapMarkerAlt, FaTimes } from 'react-icons/fa';
+import { FaMapPin, FaTimes } from 'react-icons/fa6';
 import locationApi from '../services/locationApi';
 import { getTheme } from '../utils/themeHelpers';
 

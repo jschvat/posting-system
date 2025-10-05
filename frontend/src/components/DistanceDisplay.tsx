@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import { FaMapMarkerAlt } from 'react-icons/fa';
+import { FaMapPin } from 'react-icons/fa6';
 import locationApi from '../services/locationApi';
 import { getTheme } from '../utils/themeHelpers';
 
@@ -133,7 +133,7 @@ export const DistanceDisplay: React.FC<DistanceDisplayProps> = ({
     <Container $size={size}>
       {showIcon && (
         <Icon>
-          <FaMapMarkerAlt />
+          <FaMapPin />
         </Icon>
       )}
       <Distance>{formatDistance(distance)}</Distance>

@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import { FaLock, FaMapMarkerAlt, FaEye, FaEyeSlash } from 'react-icons/fa';
+import { FaLock, FaMapPin, FaEye, FaEyeSlash } from 'react-icons/fa6';
 import locationApi, { Location } from '../services/locationApi';
 import { getTheme } from '../utils/themeHelpers';
 
@@ -222,7 +222,7 @@ export const LocationSettings: React.FC = () => {
             />
             <RadioContent>
               <RadioTitle>
-                <FaMapMarkerAlt /> Exact Location
+                <FaMapPin /> Exact Location
               </RadioTitle>
               <RadioDescription>
                 Show your precise location. Users can see your exact distance and find you in nearby searches.

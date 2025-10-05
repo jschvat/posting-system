@@ -3,7 +3,8 @@
  * Handles all geolocation-related API calls
  */
 
-import { apiRequest, ApiResponse } from './api';
+import { apiRequest } from './api';
+import { ApiResponse } from '../types';
 
 export interface Location {
   latitude: number | null;

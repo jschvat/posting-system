@@ -67,7 +67,7 @@ apiClient.interceptors.response.use(
 );
 
 // Generic API request helper
-async function apiRequest<T>(
+export async function apiRequest<T>(
   method: 'GET' | 'POST' | 'PUT' | 'DELETE',
   url: string,
   data?: any,

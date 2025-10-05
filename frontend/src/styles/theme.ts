@@ -17,10 +17,12 @@ export const theme = {
       muted: '#8a8d91'
     },
     textLight: '#8a8d91',
+    textSecondary: '#65676b',
     border: '#e4e6ea',
     error: '#e74c3c',
     errorLight: 'rgba(231, 76, 60, 0.1)',
     success: '#00d084',
+    successLight: 'rgba(0, 208, 132, 0.1)',
     warning: '#f39c12',
     hover: '#f7f8fa'
   },
@@ -37,6 +39,13 @@ export const theme = {
     md: '8px',
     lg: '12px',
     full: '9999px'
+  },
+  fontSize: {
+    xs: '12px',
+    sm: '14px',
+    md: '16px',
+    lg: '18px',
+    xl: '24px'
   },
   fontWeight: {
     normal: 400,
