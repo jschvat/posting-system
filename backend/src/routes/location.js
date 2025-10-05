@@ -26,7 +26,10 @@ router.post('/update', authenticate, async (req, res) => {
     if (!isValidCoordinates(latitude, longitude)) {
       return res.status(400).json({
         success: false,
-        message: 'Invalid coordinates'
+        error: {
+          message: 'Invalid coordinates',
+          type: 'VALIDATION_ERROR'
+        }
       });
     }
 
@@ -55,7 +58,10 @@ router.post('/update', authenticate, async (req, res) => {
     console.error('Update location error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to update location'
+      error: {
+        message: 'Failed to update location',
+        type: 'SERVER_ERROR'
+      }
     });
   }
 });
@@ -77,7 +83,10 @@ router.get('/me', authenticate, async (req, res) => {
     console.error('Get location error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to get location'
+      error: {
+        message: 'Failed to get location',
+        type: 'SERVER_ERROR'
+      }
     });
   }
 });
@@ -95,7 +104,10 @@ router.get('/user/:userId', authenticate, async (req, res) => {
     if (!location) {
       return res.status(404).json({
         success: false,
-        message: 'Location not found'
+        error: {
+          message: 'Location not found',
+          type: 'NOT_FOUND'
+        }
       });
     }
 
@@ -110,7 +122,10 @@ router.get('/user/:userId', authenticate, async (req, res) => {
     console.error('Get user location error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to get user location'
+      error: {
+        message: 'Failed to get user location',
+        type: 'SERVER_ERROR'
+      }
     });
   }
 });
@@ -134,7 +149,10 @@ router.post('/nearby', authenticate, async (req, res) => {
     if (!isValidCoordinates(latitude, longitude)) {
       return res.status(400).json({
         success: false,
-        message: 'Invalid coordinates'
+        error: {
+          message: 'Invalid coordinates',
+          type: 'VALIDATION_ERROR'
+        }
       });
     }
 
@@ -142,7 +160,10 @@ router.post('/nearby', authenticate, async (req, res) => {
     if (radiusMiles < 1 || radiusMiles > 500) {
       return res.status(400).json({
         success: false,
-        message: 'Radius must be between 1 and 500 miles'
+        error: {
+          message: 'Radius must be between 1 and 500 miles',
+          type: 'VALIDATION_ERROR'
+        }
       });
     }
 
@@ -199,7 +220,10 @@ router.post('/nearby', authenticate, async (req, res) => {
     console.error('Find nearby error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to find nearby users'
+      error: {
+        message: 'Failed to find nearby users',
+        type: 'SERVER_ERROR'
+      }
     });
   }
 });
@@ -217,7 +241,10 @@ router.put('/preferences', authenticate, async (req, res) => {
     if (sharing && !isValidSharingLevel(sharing)) {
       return res.status(400).json({
         success: false,
-        message: 'Invalid sharing level. Must be: exact, city, or off'
+        error: {
+          message: 'Invalid sharing level. Must be: exact, city, or off',
+          type: 'VALIDATION_ERROR'
+        }
       });
     }
 
@@ -235,7 +262,10 @@ router.put('/preferences', authenticate, async (req, res) => {
     console.error('Update preferences error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to update preferences'
+      error: {
+        message: 'Failed to update preferences',
+        type: 'SERVER_ERROR'
+      }
     });
   }
 });
@@ -258,7 +288,10 @@ router.get('/history', authenticate, async (req, res) => {
     console.error('Get history error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to get location history'
+      error: {
+        message: 'Failed to get location history',
+        type: 'SERVER_ERROR'
+      }
     });
   }
 });
@@ -276,7 +309,10 @@ router.post('/distance', authenticate, async (req, res) => {
     if (!isValidCoordinates(lat1, lon1) || !isValidCoordinates(lat2, lon2)) {
       return res.status(400).json({
         success: false,
-        message: 'Invalid coordinates'
+        error: {
+          message: 'Invalid coordinates',
+          type: 'VALIDATION_ERROR'
+        }
       });
     }
 
@@ -290,7 +326,10 @@ router.post('/distance', authenticate, async (req, res) => {
     console.error('Calculate distance error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to calculate distance'
+      error: {
+        message: 'Failed to calculate distance',
+        type: 'SERVER_ERROR'
+      }
     });
   }
 });
@@ -313,7 +352,10 @@ router.get('/stats', authenticate, async (req, res) => {
     console.error('Get stats error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to get statistics'
+      error: {
+        message: 'Failed to get statistics',
+        type: 'SERVER_ERROR'
+      }
     });
   }
 });
@@ -335,7 +377,10 @@ router.delete('/cache/cleanup', authenticate, async (req, res) => {
     console.error('Cleanup cache error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to cleanup cache'
+      error: {
+        message: 'Failed to cleanup cache',
+        type: 'SERVER_ERROR'
+      }
     });
   }
 });

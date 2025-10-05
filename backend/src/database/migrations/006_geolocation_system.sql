@@ -246,8 +246,8 @@ BEGIN
         u.location_accuracy,
         u.location_updated_at,
         u.location_sharing
-    FROM users
-    WHERE id = p_user_id;
+    FROM users u
+    WHERE u.id = p_user_id;
 END;
 $$ LANGUAGE plpgsql;
 
