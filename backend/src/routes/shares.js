@@ -126,101 +126,6 @@ router.delete('/:postId', authenticate, async (req, res, next) => {
 });
 
 /**
- * @route   GET /api/shares/user/:userId?
- * @desc    Get shares by a user (defaults to current user)
- * @access  Public
- */
-router.get('/user/:userId?', optionalAuthenticate, async (req, res, next) => {
-  try {
-    const userId = req.params.userId ? parseInt(req.params.userId) : req.user?.id;
-
-    if (!userId) {
-      return res.status(400).json({
-        success: false,
-        error: {
-          message: 'User ID is required',
-          type: 'validation_error'
-        }
-      });
-    }
-
-    const { page = 1, limit = 20, type } = req.query;
-    const offset = (page - 1) * limit;
-
-    const shares = await Share.getByUser(userId, {
-      limit: parseInt(limit),
-      offset,
-      share_type: type
-    });
-
-    // Get total count for the user
-    const totalResult = await Share.raw(
-      `SELECT COUNT(*) as count FROM shares WHERE user_id = $1`,
-      [userId]
-    );
-    const totalCount = parseInt(totalResult.rows[0]?.count || 0);
-    const totalPages = Math.ceil(totalCount / parseInt(limit));
-
-    res.json({
-      success: true,
-      data: {
-        shares,
-        total_count: totalCount,
-        pagination: {
-          current_page: parseInt(page),
-          limit: parseInt(limit),
-          total_count: totalCount,
-          total_pages: totalPages,
-          has_next_page: parseInt(page) < totalPages,
-          has_prev_page: parseInt(page) > 1
-        }
-      }
-    });
-  } catch (error) {
-    next(error);
-  }
-});
-
-/**
- * @route   GET /api/shares/post/:postId
- * @desc    Get all shares of a specific post
- * @access  Public
- */
-router.get('/post/:postId', async (req, res, next) => {
-  try {
-    const postId = parseInt(req.params.postId);
-    const { page = 1, limit = 20 } = req.query;
-    const offset = (page - 1) * limit;
-
-    const shares = await Share.getByPost(postId, {
-      limit: parseInt(limit),
-      offset
-    });
-
-    const totalCount = await Share.getShareCount(postId);
-    const totalPages = Math.ceil(totalCount / parseInt(limit));
-
-    res.json({
-      success: true,
-      data: {
-        shares,
-        total_count: totalCount,
-        pagination: {
-          current_page: parseInt(page),
-          limit: parseInt(limit),
-          total_count: totalCount,
-          total_pages: totalPages,
-          has_next_page: parseInt(page) < totalPages,
-          has_prev_page: parseInt(page) > 1
-        }
-      }
-    });
-  } catch (error) {
-    next(error);
-  }
-});
-
-/**
  * @route   GET /api/shares/check/:postId
  * @desc    Check if current user has shared a post
  * @access  Private
@@ -302,6 +207,146 @@ router.get('/following', authenticate, async (req, res, next) => {
 });
 
 /**
+ * @route   GET /api/shares/counts
+ * @desc    Get share counts for multiple posts
+ * @access  Public
+ */
+router.get('/counts', async (req, res, next) => {
+  try {
+    const { post_ids } = req.query;
+
+    if (!post_ids) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          message: 'post_ids query parameter is required',
+          type: 'validation_error'
+        }
+      });
+    }
+
+    // Parse comma-separated IDs
+    const postIds = post_ids.split(',').map(id => parseInt(id)).filter(id => !isNaN(id));
+
+    if (postIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          message: 'Invalid post_ids format',
+          type: 'validation_error'
+        }
+      });
+    }
+
+    const counts = await Share.getShareCounts(postIds);
+
+    res.json({
+      success: true,
+      data: {
+        counts
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * @route   GET /api/shares/post/:postId
+ * @desc    Get all shares of a specific post
+ * @access  Public
+ */
+router.get('/post/:postId', async (req, res, next) => {
+  try {
+    const postId = parseInt(req.params.postId);
+    const { page = 1, limit = 20 } = req.query;
+    const offset = (page - 1) * limit;
+
+    const shares = await Share.getByPost(postId, {
+      limit: parseInt(limit),
+      offset
+    });
+
+    const totalCount = await Share.getShareCount(postId);
+    const totalPages = Math.ceil(totalCount / parseInt(limit));
+
+    res.json({
+      success: true,
+      data: {
+        shares,
+        total_count: totalCount,
+        pagination: {
+          current_page: parseInt(page),
+          limit: parseInt(limit),
+          total_count: totalCount,
+          total_pages: totalPages,
+          has_next_page: parseInt(page) < totalPages,
+          has_prev_page: parseInt(page) > 1
+        }
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * @route   GET /api/shares/user/:userId?
+ * @desc    Get shares by a user (defaults to current user)
+ * @access  Public
+ */
+router.get('/user/:userId?', optionalAuthenticate, async (req, res, next) => {
+  try {
+    const userId = req.params.userId ? parseInt(req.params.userId) : req.user?.id;
+
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          message: 'User ID is required',
+          type: 'validation_error'
+        }
+      });
+    }
+
+    const { page = 1, limit = 20, type } = req.query;
+    const offset = (page - 1) * limit;
+
+    const shares = await Share.getByUser(userId, {
+      limit: parseInt(limit),
+      offset,
+      share_type: type
+    });
+
+    // Get total count for the user
+    const totalResult = await Share.raw(
+      `SELECT COUNT(*) as count FROM shares WHERE user_id = $1`,
+      [userId]
+    );
+    const totalCount = parseInt(totalResult.rows[0]?.count || 0);
+    const totalPages = Math.ceil(totalCount / parseInt(limit));
+
+    res.json({
+      success: true,
+      data: {
+        shares,
+        total_count: totalCount,
+        pagination: {
+          current_page: parseInt(page),
+          limit: parseInt(limit),
+          total_count: totalCount,
+          total_pages: totalPages,
+          has_next_page: parseInt(page) < totalPages,
+          has_prev_page: parseInt(page) > 1
+        }
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
  * @route   PATCH /api/shares/:postId/comment
  * @desc    Update share comment
  * @access  Private
@@ -346,51 +391,6 @@ router.patch('/:postId/comment', authenticate, async (req, res, next) => {
         share: shareWithAlias
       },
       message: 'Share comment updated successfully'
-    });
-  } catch (error) {
-    next(error);
-  }
-});
-
-/**
- * @route   GET /api/shares/counts
- * @desc    Get share counts for multiple posts
- * @access  Public
- */
-router.get('/counts', async (req, res, next) => {
-  try {
-    const { post_ids } = req.query;
-
-    if (!post_ids) {
-      return res.status(400).json({
-        success: false,
-        error: {
-          message: 'post_ids query parameter is required',
-          type: 'validation_error'
-        }
-      });
-    }
-
-    // Parse comma-separated IDs
-    const postIds = post_ids.split(',').map(id => parseInt(id)).filter(id => !isNaN(id));
-
-    if (postIds.length === 0) {
-      return res.status(400).json({
-        success: false,
-        error: {
-          message: 'Invalid post_ids format',
-          type: 'validation_error'
-        }
-      });
-    }
-
-    const counts = await Share.getShareCounts(postIds);
-
-    res.json({
-      success: true,
-      data: {
-        counts
-      }
     });
   } catch (error) {
     next(error);

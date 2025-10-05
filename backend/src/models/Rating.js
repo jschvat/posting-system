@@ -84,7 +84,7 @@ class Rating {
    * @returns {Promise<Array>} Array of ratings
    */
   static async getRatingsForUser(userId, { limit = 20, offset = 0, rating_type = null } = {}) {
-    let query = `
+    let sqlQuery = `
       SELECT
         ur.*,
         u.username as rater_username,
@@ -99,14 +99,14 @@ class Rating {
     const params = [userId];
 
     if (rating_type) {
-      query += ` AND ur.rating_type = $${params.length + 1}`;
+      sqlQuery += ` AND ur.rating_type = $${params.length + 1}`;
       params.push(rating_type);
     }
 
-    query += ` ORDER BY ur.created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+    sqlQuery += ` ORDER BY ur.created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
     params.push(limit, offset);
 
-    const result = await query(query, params);
+    const result = await query(sqlQuery, params);
     return result.rows;
   }
 

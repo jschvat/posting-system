@@ -5,6 +5,7 @@
 
 import React from 'react';
 import styled from 'styled-components';
+import { getTheme } from '../utils/themeHelpers';
 import {
   FaSeedling,
   FaUser,
@@ -112,7 +113,7 @@ const ReputationBadge: React.FC<ReputationBadgeProps> = ({
 const Container = styled.div`
   display: flex;
   align-items: center;
-  gap: ${({ theme }) => theme.spacing.sm};
+  gap: ${(props) => getTheme(props).spacing.sm};
 `;
 
 const BadgeWrapper = styled.div<{ $size: 'small' | 'medium' | 'large' }>`
@@ -161,7 +162,7 @@ const Badge = styled.div<{ $color: string; $size: 'small' | 'medium' | 'large' }
 const ProgressBar = styled.div`
   width: 40px;
   height: 4px;
-  background: ${({ theme }) => theme.colors.border};
+  background: ${(props) => getTheme(props).colors.border};
   border-radius: 2px;
   overflow: hidden;
 `;
@@ -180,7 +181,7 @@ const LabelContainer = styled.div`
 `;
 
 const LevelLabel = styled.span<{ $size: 'small' | 'medium' | 'large'; $color: string }>`
-  font-weight: ${({ theme }) => theme.fontWeight.semibold};
+  font-weight: ${(props) => getTheme(props).fontWeight.semibold};
   color: ${({ $color }) => $color};
   font-size: ${({ $size }) => {
     switch ($size) {
@@ -192,7 +193,7 @@ const LevelLabel = styled.span<{ $size: 'small' | 'medium' | 'large'; $color: st
 `;
 
 const ScoreLabel = styled.span<{ $size: 'small' | 'medium' | 'large' }>`
-  color: ${({ theme }) => theme.colors.textLight};
+  color: ${(props) => getTheme(props).colors.textLight};
   font-size: ${({ $size }) => {
     switch ($size) {
       case 'small': return '10px';

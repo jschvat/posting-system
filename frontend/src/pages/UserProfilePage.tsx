@@ -147,16 +147,16 @@ const ActionButtons = styled.div`
   }
 `;
 
-const ActionButton = styled.button<{ variant?: 'primary' | 'secondary' }>`
+const ActionButton = styled.button<{ $variant?: 'primary' | 'secondary' }>`
   padding: ${({ theme }) => theme.spacing.md} ${({ theme }) => theme.spacing.lg};
-  border: 1px solid ${({ theme, variant }) =>
-    variant === 'primary' ? theme.colors.primary : theme.colors.border
+  border: 1px solid ${({ theme, $variant }) =>
+    $variant === 'primary' ? theme.colors.primary : theme.colors.border
   };
-  background: ${({ theme, variant }) =>
-    variant === 'primary' ? theme.colors.primary : theme.colors.surface
+  background: ${({ theme, $variant }) =>
+    $variant === 'primary' ? theme.colors.primary : theme.colors.surface
   };
-  color: ${({ theme, variant }) =>
-    variant === 'primary' ? 'white' : theme.colors.text.primary
+  color: ${({ theme, $variant }) =>
+    $variant === 'primary' ? 'white' : theme.colors.text.primary
   };
   border-radius: ${({ theme }) => theme.borderRadius.md};
   font-size: 0.95rem;
@@ -165,8 +165,8 @@ const ActionButton = styled.button<{ variant?: 'primary' | 'secondary' }>`
   transition: all 0.2s ease;
 
   &:hover {
-    background: ${({ theme, variant }) =>
-      variant === 'primary' ? theme.colors.primary + 'dd' : theme.colors.background
+    background: ${({ theme, $variant }) =>
+      $variant === 'primary' ? theme.colors.primary + 'dd' : theme.colors.background
     };
   }
 `;
@@ -572,7 +572,7 @@ const UserProfilePage: React.FC = () => {
                   variant="outline"
                   size="medium"
                 />
-                <ActionButton variant="secondary">Message</ActionButton>
+                <ActionButton $variant="secondary">Message</ActionButton>
               </ActionButtons>
             )}
           </UserDetails>

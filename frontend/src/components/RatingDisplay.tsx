@@ -5,6 +5,7 @@
 
 import React from 'react';
 import styled from 'styled-components';
+import { getTheme } from '../utils/themeHelpers';
 import { FaStar, FaStarHalfAlt, FaRegStar } from 'react-icons/fa';
 
 interface RatingDisplayProps {
@@ -77,7 +78,7 @@ const StarsContainer = styled.div`
 `;
 
 const Star = styled.span<{ $size: 'small' | 'medium' | 'large' }>`
-  color: ${({ theme }) => theme.colors.warning || '#ffc107'};
+  color: ${(props) => getTheme(props).colors.warning};
   font-size: ${({ $size }) => {
     switch ($size) {
       case 'small': return '12px';
@@ -90,12 +91,12 @@ const Star = styled.span<{ $size: 'small' | 'medium' | 'large' }>`
 `;
 
 const EmptyStar = styled(Star)`
-  color: ${({ theme }) => theme.colors.textLight};
+  color: ${(props) => getTheme(props).colors.textLight};
 `;
 
 const RatingNumber = styled.span<{ $size: 'small' | 'medium' | 'large' }>`
-  font-weight: ${({ theme }) => theme.fontWeight.semibold};
-  color: ${({ theme }) => theme.colors.text};
+  font-weight: ${(props) => getTheme(props).fontWeight.semibold};
+  color: ${(props) => getTheme(props).colors.text.primary};
   font-size: ${({ $size }) => {
     switch ($size) {
       case 'small': return '12px';
@@ -106,7 +107,7 @@ const RatingNumber = styled.span<{ $size: 'small' | 'medium' | 'large' }>`
 `;
 
 const RatingCount = styled.span<{ $size: 'small' | 'medium' | 'large' }>`
-  color: ${({ theme }) => theme.colors.textLight};
+  color: ${(props) => getTheme(props).colors.textLight};
   font-size: ${({ $size }) => {
     switch ($size) {
       case 'small': return '11px';

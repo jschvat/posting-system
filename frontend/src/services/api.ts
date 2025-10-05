@@ -663,6 +663,168 @@ export const timelineApi = {
   },
 };
 
+/**
+ * Ratings API
+ * Endpoints for user ratings
+ */
+export const ratingsApi = {
+  /**
+   * Rate a user
+   */
+  rateUser: async (userId: number, data: {
+    rating_type: string;
+    rating_value: number;
+    context_type?: string;
+    context_id?: number;
+    review_text?: string;
+    is_anonymous?: boolean;
+  }): Promise<ApiResponse<any>> => {
+    return apiRequest<ApiResponse<any>>('POST', `/ratings/${userId}`, data);
+  },
+
+  /**
+   * Update a rating
+   */
+  updateRating: async (ratingId: number, data: {
+    rating_value?: number;
+    review_text?: string;
+  }): Promise<ApiResponse<any>> => {
+    return apiRequest<ApiResponse<any>>('PUT', `/ratings/${ratingId}`, data);
+  },
+
+  /**
+   * Delete a rating
+   */
+  deleteRating: async (ratingId: number): Promise<ApiResponse<void>> => {
+    return apiRequest<ApiResponse<void>>('DELETE', `/ratings/${ratingId}`);
+  },
+
+  /**
+   * Get ratings for a user
+   */
+  getUserRatings: async (userId: number, params?: {
+    page?: number;
+    limit?: number;
+    rating_type?: string;
+  }): Promise<ApiResponse<any>> => {
+    return apiRequest<ApiResponse<any>>('GET', `/ratings/user/${userId}`, null, { params });
+  },
+
+  /**
+   * Get ratings given by current user
+   */
+  getGivenRatings: async (params?: { page?: number; limit?: number }): Promise<ApiResponse<any>> => {
+    return apiRequest<ApiResponse<any>>('GET', '/ratings/given', null, { params });
+  },
+
+  /**
+   * Get ratings received by current user
+   */
+  getReceivedRatings: async (params?: { page?: number; limit?: number; rating_type?: string }): Promise<ApiResponse<any>> => {
+    return apiRequest<ApiResponse<any>>('GET', '/ratings/received', null, { params });
+  },
+
+  /**
+   * Check if can rate a user
+   */
+  checkCanRate: async (userId: number): Promise<ApiResponse<{ can_rate: boolean }>> => {
+    return apiRequest<ApiResponse<{ can_rate: boolean }>>('GET', `/ratings/check/${userId}`);
+  },
+
+  /**
+   * Report a rating
+   */
+  reportRating: async (ratingId: number, data: {
+    report_reason: string;
+    report_details?: string;
+  }): Promise<ApiResponse<any>> => {
+    return apiRequest<ApiResponse<any>>('POST', `/ratings/${ratingId}/report`, data);
+  },
+
+  /**
+   * Get reports for a rating
+   */
+  getRatingReports: async (ratingId: number): Promise<ApiResponse<any>> => {
+    return apiRequest<ApiResponse<any>>('GET', `/ratings/${ratingId}/reports`);
+  },
+};
+
+/**
+ * Reputation API
+ * Endpoints for user reputation and helpful marks
+ */
+export const reputationApi = {
+  /**
+   * Get reputation for a user
+   */
+  getUserReputation: async (userId: number): Promise<ApiResponse<any>> => {
+    return apiRequest<ApiResponse<any>>('GET', `/reputation/${userId}`);
+  },
+
+  /**
+   * Get reputation leaderboard
+   */
+  getLeaderboard: async (params?: { limit?: number; offset?: number }): Promise<ApiResponse<any>> => {
+    return apiRequest<ApiResponse<any>>('GET', '/reputation/leaderboard/top', null, { params });
+  },
+
+  /**
+   * Get top users by reputation
+   */
+  getTopUsers: async (params?: { limit?: number; level?: string }): Promise<ApiResponse<any>> => {
+    return apiRequest<ApiResponse<any>>('GET', '/reputation/top-users', null, { params });
+  },
+
+  /**
+   * Mark content as helpful
+   */
+  markHelpful: async (type: 'post' | 'comment' | 'user', id: number): Promise<ApiResponse<any>> => {
+    return apiRequest<ApiResponse<any>>('POST', `/reputation/helpful/${type}/${id}`);
+  },
+
+  /**
+   * Remove helpful mark
+   */
+  unmarkHelpful: async (type: 'post' | 'comment' | 'user', id: number): Promise<ApiResponse<any>> => {
+    return apiRequest<ApiResponse<any>>('DELETE', `/reputation/helpful/${type}/${id}`);
+  },
+
+  /**
+   * Check if marked as helpful
+   */
+  checkHelpful: async (type: 'post' | 'comment' | 'user', id: number): Promise<ApiResponse<{ has_marked: boolean; helpful_count: number }>> => {
+    return apiRequest<ApiResponse<{ has_marked: boolean; helpful_count: number }>>('GET', `/reputation/helpful/${type}/${id}/check`);
+  },
+
+  /**
+   * Get helpful count
+   */
+  getHelpfulCount: async (type: 'post' | 'comment' | 'user', id: number): Promise<ApiResponse<{ helpful_count: number }>> => {
+    return apiRequest<ApiResponse<{ helpful_count: number }>>('GET', `/reputation/helpful/${type}/${id}/count`);
+  },
+
+  /**
+   * Get badges for a user
+   */
+  getUserBadges: async (userId: number): Promise<ApiResponse<any>> => {
+    return apiRequest<ApiResponse<any>>('GET', `/reputation/badges/${userId}`);
+  },
+
+  /**
+   * Recalculate reputation score
+   */
+  recalculateReputation: async (): Promise<ApiResponse<{ reputation_score: number }>> => {
+    return apiRequest<ApiResponse<{ reputation_score: number }>>('POST', '/reputation/recalculate');
+  },
+
+  /**
+   * Recalculate all reputation scores (admin only)
+   */
+  recalculateAllReputation: async (): Promise<ApiResponse<{ users_updated: number }>> => {
+    return apiRequest<ApiResponse<{ users_updated: number }>>('POST', '/reputation/recalculate-all');
+  },
+};
+
 // Export the configured axios client for custom requests
 export { apiClient };
 

@@ -160,6 +160,7 @@ const ShareButton: React.FC<ShareButtonProps> = ({
 }) => {
   const { state } = useAuth();
   const user = state.user;
+  const isAuthenticated = state.isAuthenticated;
   const queryClient = useQueryClient();
   const [showModal, setShowModal] = useState(false);
   const [shareComment, setShareComment] = useState('');
@@ -172,7 +173,8 @@ const ShareButton: React.FC<ShareButtonProps> = ({
   const { data: shareStatus, isLoading: isCheckingShare } = useQuery({
     queryKey: ['shareStatus', postId],
     queryFn: () => sharesApi.checkShared(postId),
-    enabled: !!user,
+    enabled: isAuthenticated && !!user,
+    retry: false, // Don't retry on 404/auth errors
   });
 
   const isShared = shareStatus?.data?.has_shared || false;

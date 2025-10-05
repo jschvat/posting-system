@@ -9,6 +9,7 @@ import { FaThumbsUp } from 'react-icons/fa';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import reputationApi from '../services/reputationApi';
 import { useAuth } from '../contexts/AuthContext';
+import { getTheme } from '../utils/themeHelpers';
 
 interface HelpfulButtonProps {
   targetType: 'post' | 'comment' | 'user';
@@ -99,25 +100,25 @@ const HelpfulButton: React.FC<HelpfulButtonProps> = ({
 const Button = styled.button<{ $marked: boolean; $size: 'small' | 'medium' }>`
   display: flex;
   align-items: center;
-  gap: ${({ theme }) => theme.spacing.xs};
-  padding: ${({ $size, theme }) =>
-    $size === 'small' ? theme.spacing.xs : `${theme.spacing.xs} ${theme.spacing.sm}`};
-  background: ${({ $marked, theme }) =>
-    $marked ? theme.colors.primary : 'transparent'};
-  border: 1px solid ${({ $marked, theme }) =>
-    $marked ? theme.colors.primary : theme.colors.border};
-  border-radius: ${({ theme }) => theme.borderRadius.full};
+  gap: ${(props) => getTheme(props).spacing.xs};
+  padding: ${({ $size, ...props }) =>
+    $size === 'small' ? getTheme(props).spacing.xs : `${getTheme(props).spacing.xs} ${getTheme(props).spacing.sm}`};
+  background: ${({ $marked, ...props }) =>
+    $marked ? getTheme(props).colors.primary : 'transparent'};
+  border: 1px solid ${({ $marked, ...props }) =>
+    $marked ? getTheme(props).colors.primary : getTheme(props).colors.border};
+  border-radius: ${(props) => getTheme(props).borderRadius.full};
   cursor: pointer;
   transition: all 0.2s ease;
   font-size: ${({ $size }) => ($size === 'small' ? '12px' : '14px')};
 
   &:hover:not(:disabled) {
-    background: ${({ $marked, theme }) =>
+    background: ${({ $marked, ...props }) =>
       $marked
-        ? theme.colors.primaryDark || theme.colors.primary
-        : theme.colors.hover};
-    border-color: ${({ $marked, theme }) =>
-      $marked ? theme.colors.primaryDark || theme.colors.primary : theme.colors.primary};
+        ? getTheme(props).colors.primaryDark
+        : getTheme(props).colors.hover};
+    border-color: ${({ $marked, ...props }) =>
+      $marked ? getTheme(props).colors.primaryDark : getTheme(props).colors.primary};
   }
 
   &:disabled {
@@ -133,21 +134,21 @@ const Button = styled.button<{ $marked: boolean; $size: 'small' | 'medium' }>`
 const Icon = styled.span<{ $marked: boolean }>`
   display: flex;
   align-items: center;
-  color: ${({ $marked, theme }) => ($marked ? 'white' : theme.colors.textLight)};
+  color: ${({ $marked, ...props }) => ($marked ? 'white' : getTheme(props).colors.textLight)};
   transition: color 0.2s ease;
 
   ${Button}:hover:not(:disabled) & {
-    color: ${({ $marked, theme }) => ($marked ? 'white' : theme.colors.primary)};
+    color: ${({ $marked, ...props }) => ($marked ? 'white' : getTheme(props).colors.primary)};
   }
 `;
 
 const Count = styled.span<{ $size: 'small' | 'medium' }>`
-  color: ${({ theme }) => theme.colors.textLight};
-  font-weight: ${({ theme }) => theme.fontWeight.medium};
+  color: ${(props) => getTheme(props).colors.textLight};
+  font-weight: ${(props) => getTheme(props).fontWeight.medium};
   font-size: ${({ $size }) => ($size === 'small' ? '11px' : '12px')};
 
   ${Button}:hover:not(:disabled) & {
-    color: ${({ theme }) => theme.colors.text};
+    color: ${(props) => getTheme(props).colors.text.primary};
   }
 `;
 

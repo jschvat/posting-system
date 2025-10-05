@@ -5,6 +5,7 @@
 
 import React, { useState } from 'react';
 import styled from 'styled-components';
+import { getTheme } from '../utils/themeHelpers';
 import { FaStar } from 'react-icons/fa';
 import RatingModal from './RatingModal';
 import { useAuth } from '../contexts/AuthContext';
@@ -70,17 +71,18 @@ const RatingButton: React.FC<RatingButtonProps> = ({
 const Button = styled.button<{ $variant: 'primary' | 'secondary' | 'outline'; $size: 'small' | 'medium' }>`
   display: flex;
   align-items: center;
-  gap: ${({ theme }) => theme.spacing.sm};
-  padding: ${({ $size, theme }) =>
-    $size === 'small' ? `${theme.spacing.xs} ${theme.spacing.sm}` : `${theme.spacing.sm} ${theme.spacing.md}`};
+  gap: ${(props) => getTheme(props).spacing.sm};
+  padding: ${({ $size, ...props }) =>
+    $size === 'small' ? `${getTheme(props).spacing.xs} ${getTheme(props).spacing.sm}` : `${getTheme(props).spacing.sm} ${getTheme(props).spacing.md}`};
   font-size: ${({ $size }) => $size === 'small' ? '13px' : '14px'};
-  font-weight: ${({ theme }) => theme.fontWeight.medium};
-  border-radius: ${({ theme }) => theme.borderRadius.md};
+  font-weight: ${(props) => getTheme(props).fontWeight.medium};
+  border-radius: ${(props) => getTheme(props).borderRadius.md};
   cursor: pointer;
   transition: all 0.2s ease;
   border: 1px solid;
 
-  ${({ $variant, theme }) => {
+  ${({ $variant, ...props }) => {
+    const theme = getTheme(props);
     switch ($variant) {
       case 'primary':
         return `
@@ -89,13 +91,13 @@ const Button = styled.button<{ $variant: 'primary' | 'secondary' | 'outline'; $s
           border-color: ${theme.colors.primary};
 
           &:hover {
-            background: ${theme.colors.primaryDark || theme.colors.primary};
+            background: ${theme.colors.primaryDark};
           }
         `;
       case 'secondary':
         return `
           background: ${theme.colors.surface};
-          color: ${theme.colors.text};
+          color: ${theme.colors.text.primary};
           border-color: ${theme.colors.border};
 
           &:hover {
@@ -110,7 +112,7 @@ const Button = styled.button<{ $variant: 'primary' | 'secondary' | 'outline'; $s
           border-color: ${theme.colors.primary};
 
           &:hover {
-            background: ${theme.colors.primaryLight || 'rgba(24, 119, 242, 0.1)'};
+            background: ${theme.colors.primaryLight};
           }
         `;
     }

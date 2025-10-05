@@ -47,16 +47,16 @@ const ButtonContainer = styled.div`
   gap: ${({ theme }) => theme.spacing.sm};
 `;
 
-const Button = styled.button<{ variant?: 'primary' | 'secondary' }>`
+const Button = styled.button<{ $variant?: 'primary' | 'secondary' }>`
   padding: ${({ theme }) => theme.spacing.sm} ${({ theme }) => theme.spacing.md};
-  border: 1px solid ${({ theme, variant }) =>
-    variant === 'primary' ? theme.colors.primary : theme.colors.border
+  border: 1px solid ${({ theme, $variant }) =>
+    $variant === 'primary' ? theme.colors.primary : theme.colors.border
   };
-  background: ${({ theme, variant }) =>
-    variant === 'primary' ? theme.colors.primary : theme.colors.surface
+  background: ${({ theme, $variant }) =>
+    $variant === 'primary' ? theme.colors.primary : theme.colors.surface
   };
-  color: ${({ theme, variant }) =>
-    variant === 'primary' ? 'white' : theme.colors.text.primary
+  color: ${({ theme, $variant }) =>
+    $variant === 'primary' ? 'white' : theme.colors.text.primary
   };
   border-radius: ${({ theme }) => theme.borderRadius.md};
   font-size: 0.85rem;
@@ -65,8 +65,8 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' }>`
   transition: all 0.2s ease;
 
   &:hover {
-    background: ${({ theme, variant }) =>
-      variant === 'primary' ? theme.colors.primary + 'dd' : theme.colors.background
+    background: ${({ theme, $variant }) =>
+      $variant === 'primary' ? theme.colors.primary + 'dd' : theme.colors.background
     };
   }
 
@@ -178,13 +178,13 @@ const CommentForm: React.FC<CommentFormProps> = ({
 
         <ButtonContainer>
           {onCancel && (
-            <Button type="button" variant="secondary" onClick={handleCancel}>
+            <Button type="button" $variant="secondary" onClick={handleCancel}>
               Cancel
             </Button>
           )}
           <Button
             type="submit"
-            variant="primary"
+            $variant="primary"
             disabled={createCommentMutation.isPending || !content.trim()}
           >
             {createCommentMutation.isPending ? 'Posting...' : 'Comment'}

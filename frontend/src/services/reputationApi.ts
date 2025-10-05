@@ -62,7 +62,7 @@ const reputationApi = {
    * Get reputation for a user
    */
   getUserReputation: async (userId: number): Promise<ApiResponse<{ reputation: Reputation; rank: string | null }>> => {
-    const response = await apiClient.get(`/api/reputation/${userId}`);
+    const response = await apiClient.get(`/reputation/${userId}`);
     return response.data;
   },
 
@@ -86,7 +86,7 @@ const reputationApi = {
    * Mark content as helpful
    */
   markHelpful: async (targetType: 'post' | 'comment' | 'user', targetId: number): Promise<ApiResponse<{ helpful_mark: HelpfulMark; helpful_count: number }>> => {
-    const response = await apiClient.post(`/api/reputation/helpful/${targetType}/${targetId}`);
+    const response = await apiClient.post(`/reputation/helpful/${targetType}/${targetId}`);
     return response.data;
   },
 
@@ -94,7 +94,7 @@ const reputationApi = {
    * Remove helpful mark
    */
   unmarkHelpful: async (targetType: 'post' | 'comment' | 'user', targetId: number): Promise<ApiResponse<{ helpful_count: number }>> => {
-    const response = await apiClient.delete(`/api/reputation/helpful/${targetType}/${targetId}`);
+    const response = await apiClient.delete(`/reputation/helpful/${targetType}/${targetId}`);
     return response.data;
   },
 
@@ -102,7 +102,7 @@ const reputationApi = {
    * Check if content is marked as helpful by current user
    */
   checkHelpful: async (targetType: 'post' | 'comment' | 'user', targetId: number): Promise<ApiResponse<{ has_marked: boolean; helpful_count: number }>> => {
-    const response = await apiClient.get(`/api/reputation/helpful/${targetType}/${targetId}/check`);
+    const response = await apiClient.get(`/reputation/helpful/${targetType}/${targetId}/check`);
     return response.data;
   },
 
@@ -110,7 +110,7 @@ const reputationApi = {
    * Get helpful count for content
    */
   getHelpfulCount: async (targetType: 'post' | 'comment' | 'user', targetId: number): Promise<ApiResponse<{ helpful_count: number }>> => {
-    const response = await apiClient.get(`/api/reputation/helpful/${targetType}/${targetId}/count`);
+    const response = await apiClient.get(`/reputation/helpful/${targetType}/${targetId}/count`);
     return response.data;
   },
 
@@ -118,7 +118,7 @@ const reputationApi = {
    * Get badges for a user
    */
   getUserBadges: async (userId: number): Promise<ApiResponse<{ badges: any[] }>> => {
-    const response = await apiClient.get(`/api/reputation/badges/${userId}`);
+    const response = await apiClient.get(`/reputation/badges/${userId}`);
     return response.data;
   },
 

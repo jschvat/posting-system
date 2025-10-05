@@ -5,6 +5,7 @@
 
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
+import { getTheme } from '../utils/themeHelpers';
 import { createPortal } from 'react-dom';
 import { FaStar, FaTimes } from 'react-icons/fa';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -179,8 +180,8 @@ const Modal = styled.div`
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  background: ${({ theme }) => theme.colors.surface};
-  border-radius: ${({ theme }) => theme.borderRadius.lg};
+  background: ${(props) => getTheme(props).colors.surface};
+  border-radius: ${(props) => getTheme(props).borderRadius.lg};
   width: 90%;
   max-width: 500px;
   max-height: 90vh;
@@ -193,23 +194,23 @@ const Header = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: ${({ theme }) => theme.spacing.lg};
-  border-bottom: 1px solid ${({ theme }) => theme.colors.border};
+  padding: ${(props) => getTheme(props).spacing.lg};
+  border-bottom: 1px solid ${(props) => getTheme(props).colors.border};
 `;
 
 const Title = styled.h2`
   font-size: 20px;
-  font-weight: ${({ theme }) => theme.fontWeight.bold};
-  color: ${({ theme }) => theme.colors.text};
+  font-weight: ${(props) => getTheme(props).fontWeight.bold};
+  color: ${(props) => getTheme(props).colors.text.primary};
   margin: 0;
 `;
 
 const CloseButton = styled.button`
   background: none;
   border: none;
-  color: ${({ theme }) => theme.colors.textLight};
+  color: ${(props) => getTheme(props).colors.textLight};
   cursor: pointer;
-  padding: ${({ theme }) => theme.spacing.sm};
+  padding: ${(props) => getTheme(props).spacing.sm};
   display: flex;
   align-items: center;
   justify-content: center;
@@ -217,35 +218,35 @@ const CloseButton = styled.button`
   transition: color 0.2s ease;
 
   &:hover {
-    color: ${({ theme }) => theme.colors.text};
+    color: ${(props) => getTheme(props).colors.text.primary};
   }
 `;
 
 const Content = styled.div`
-  padding: ${({ theme }) => theme.spacing.lg};
+  padding: ${(props) => getTheme(props).spacing.lg};
 `;
 
 const Form = styled.form`
   display: flex;
   flex-direction: column;
-  gap: ${({ theme }) => theme.spacing.lg};
+  gap: ${(props) => getTheme(props).spacing.lg};
 `;
 
 const Section = styled.div`
   display: flex;
   flex-direction: column;
-  gap: ${({ theme }) => theme.spacing.sm};
+  gap: ${(props) => getTheme(props).spacing.sm};
 `;
 
 const Label = styled.label`
-  font-weight: ${({ theme }) => theme.fontWeight.semibold};
-  color: ${({ theme }) => theme.colors.text};
+  font-weight: ${(props) => getTheme(props).fontWeight.semibold};
+  color: ${(props) => getTheme(props).colors.text.primary};
   font-size: 14px;
 `;
 
 const StarsContainer = styled.div`
   display: flex;
-  gap: ${({ theme }) => theme.spacing.sm};
+  gap: ${(props) => getTheme(props).spacing.sm};
 `;
 
 const StarButton = styled.button<{ $filled: boolean }>`
@@ -253,7 +254,7 @@ const StarButton = styled.button<{ $filled: boolean }>`
   border: none;
   cursor: pointer;
   font-size: 32px;
-  color: ${({ $filled, theme }) => ($filled ? '#ffc107' : theme.colors.border)};
+  color: ${({ $filled, ...props }) => ($filled ? '#ffc107' : getTheme(props).colors.border)};
   transition: all 0.2s ease;
   padding: 0;
 
@@ -263,38 +264,38 @@ const StarButton = styled.button<{ $filled: boolean }>`
 `;
 
 const RatingLabel = styled.span`
-  color: ${({ theme }) => theme.colors.textLight};
+  color: ${(props) => getTheme(props).colors.textLight};
   font-size: 14px;
 `;
 
 const Textarea = styled.textarea`
   width: 100%;
-  padding: ${({ theme }) => theme.spacing.sm};
-  border: 1px solid ${({ theme }) => theme.colors.border};
-  border-radius: ${({ theme }) => theme.borderRadius.md};
-  background: ${({ theme }) => theme.colors.background};
-  color: ${({ theme }) => theme.colors.text};
+  padding: ${(props) => getTheme(props).spacing.sm};
+  border: 1px solid ${(props) => getTheme(props).colors.border};
+  border-radius: ${(props) => getTheme(props).borderRadius.md};
+  background: ${(props) => getTheme(props).colors.background};
+  color: ${(props) => getTheme(props).colors.text.primary};
   font-family: inherit;
   font-size: 14px;
   resize: vertical;
 
   &:focus {
     outline: none;
-    border-color: ${({ theme }) => theme.colors.primary};
+    border-color: ${(props) => getTheme(props).colors.primary};
   }
 `;
 
 const CharCount = styled.span`
   font-size: 12px;
-  color: ${({ theme }) => theme.colors.textLight};
+  color: ${(props) => getTheme(props).colors.textLight};
   align-self: flex-end;
 `;
 
 const CheckboxLabel = styled.label`
   display: flex;
   align-items: center;
-  gap: ${({ theme }) => theme.spacing.sm};
-  color: ${({ theme }) => theme.colors.text};
+  gap: ${(props) => getTheme(props).spacing.sm};
+  color: ${(props) => getTheme(props).colors.text.primary};
   cursor: pointer;
   font-size: 14px;
 `;
@@ -306,23 +307,23 @@ const Checkbox = styled.input`
 `;
 
 const ErrorMessage = styled.div`
-  color: ${({ theme }) => theme.colors.error};
+  color: ${(props) => getTheme(props).colors.error};
   font-size: 14px;
-  padding: ${({ theme }) => theme.spacing.sm};
-  background: ${({ theme }) => theme.colors.errorLight || 'rgba(244, 67, 54, 0.1)'};
-  border-radius: ${({ theme }) => theme.borderRadius.md};
+  padding: ${(props) => getTheme(props).spacing.sm};
+  background: ${(props) => getTheme(props).colors.errorLight || 'rgba(244, 67, 54, 0.1)'};
+  border-radius: ${(props) => getTheme(props).borderRadius.md};
 `;
 
 const Actions = styled.div`
   display: flex;
-  gap: ${({ theme }) => theme.spacing.md};
+  gap: ${(props) => getTheme(props).spacing.md};
   justify-content: flex-end;
 `;
 
 const Button = styled.button`
-  padding: ${({ theme }) => `${theme.spacing.sm} ${theme.spacing.lg}`};
-  border-radius: ${({ theme }) => theme.borderRadius.md};
-  font-weight: ${({ theme }) => theme.fontWeight.medium};
+  padding: ${(props) => `${getTheme(props).spacing.sm} ${getTheme(props).spacing.lg}`};
+  border-radius: ${(props) => getTheme(props).borderRadius.md};
+  font-weight: ${(props) => getTheme(props).fontWeight.medium};
   cursor: pointer;
   transition: all 0.2s ease;
   font-size: 14px;
@@ -335,21 +336,21 @@ const Button = styled.button`
 
 const CancelButton = styled(Button)`
   background: transparent;
-  border: 1px solid ${({ theme }) => theme.colors.border};
-  color: ${({ theme }) => theme.colors.text};
+  border: 1px solid ${(props) => getTheme(props).colors.border};
+  color: ${(props) => getTheme(props).colors.text.primary};
 
   &:hover:not(:disabled) {
-    background: ${({ theme }) => theme.colors.hover};
+    background: ${(props) => getTheme(props).colors.hover};
   }
 `;
 
 const SubmitButton = styled(Button)`
-  background: ${({ theme }) => theme.colors.primary};
+  background: ${(props) => getTheme(props).colors.primary};
   border: none;
   color: white;
 
   &:hover:not(:disabled) {
-    background: ${({ theme }) => theme.colors.primaryDark || theme.colors.primary};
+    background: ${(props) => getTheme(props).colors.primaryDark || getTheme(props).colors.primary};
   }
 `;
 
