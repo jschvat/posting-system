@@ -34,3 +34,15 @@ declare module 'react-icons/io5' {
 
   export const IoShieldCheckmark: FC<SVGProps<SVGSVGElement>>;
 }
+
+declare module 'react-icons/fa6' {
+  import { FC, SVGProps } from 'react';
+
+  export const FaMapPin: FC<SVGProps<SVGSVGElement>>;
+  export const FaXmark: FC<SVGProps<SVGSVGElement>>;
+  export const FaMagnifyingGlass: FC<SVGProps<SVGSVGElement>>;
+  export const FaLock: FC<SVGProps<SVGSVGElement>>;
+  export const FaEye: FC<SVGProps<SVGSVGElement>>;
+  export const FaEyeSlash: FC<SVGProps<SVGSVGElement>>;
+  export const FaUser: FC<SVGProps<SVGSVGElement>>;
+}

@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import { FaMapPin, FaTimes } from 'react-icons/fa6';
+import { FaMapPin, FaXmark } from 'react-icons/fa6';
 import locationApi from '../services/locationApi';
 import { getTheme } from '../utils/themeHelpers';
 
@@ -198,7 +198,7 @@ export const LocationPermission: React.FC<LocationPermissionProps> = ({
     <Container>
       <Header>
         <Icon $status={status}>
-          {status === 'denied' ? <FaTimes /> : <FaMapMarkerAlt />}
+          {status === 'denied' ? <FaXmark /> : <FaMapPin />}
         </Icon>
         <Title>
           {status === 'pending' && 'Enable Location'}
