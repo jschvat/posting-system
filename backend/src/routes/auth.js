@@ -94,12 +94,43 @@ router.post('/register',
     body('avatar_url')
       .optional()
       .isURL()
-      .withMessage('Avatar URL must be a valid URL')
+      .withMessage('Avatar URL must be a valid URL'),
+    body('location.latitude')
+      .optional()
+      .isFloat({ min: -90, max: 90 })
+      .withMessage('Latitude must be between -90 and 90'),
+    body('location.longitude')
+      .optional()
+      .isFloat({ min: -180, max: 180 })
+      .withMessage('Longitude must be between -180 and 180'),
+    body('location.city')
+      .optional()
+      .trim()
+      .isLength({ max: 100 })
+      .withMessage('City name cannot exceed 100 characters'),
+    body('location.state')
+      .optional()
+      .trim()
+      .isLength({ max: 100 })
+      .withMessage('State name cannot exceed 100 characters'),
+    body('location.country')
+      .optional()
+      .trim()
+      .isLength({ max: 100 })
+      .withMessage('Country name cannot exceed 100 characters'),
+    body('location.accuracy')
+      .optional()
+      .isInt({ min: 0 })
+      .withMessage('Accuracy must be a positive integer'),
+    body('location_sharing')
+      .optional()
+      .isIn(['exact', 'city', 'off'])
+      .withMessage('Location sharing must be: exact, city, or off')
   ],
   handleValidationErrors,
   async (req, res, next) => {
     try {
-      const { username, email, password, first_name, last_name, bio, avatar_url } = req.body;
+      const { username, email, password, first_name, last_name, bio, avatar_url, location, location_sharing } = req.body;
 
       // Check if username already exists
       const usernameExists = await User.usernameExists(username);
@@ -137,6 +168,32 @@ router.post('/register',
         bio,
         avatar_url
       });
+
+      // Update location if provided
+      if (location && location.latitude && location.longitude) {
+        const Location = require('../models/Location');
+
+        // Get IP and user agent for audit
+        const ipAddress = req.ip || req.connection.remoteAddress;
+        const userAgent = req.headers['user-agent'];
+
+        await Location.updateLocation({
+          userId: user.id,
+          latitude: location.latitude,
+          longitude: location.longitude,
+          city: location.city,
+          state: location.state,
+          country: location.country,
+          accuracy: location.accuracy,
+          ipAddress,
+          userAgent
+        });
+
+        // Update location sharing preference if provided
+        if (location_sharing) {
+          await Location.updateLocationPreferences(user.id, location_sharing, false);
+        }
+      }
 
       // Generate email verification token if feature is enabled
       let verificationToken = null;
