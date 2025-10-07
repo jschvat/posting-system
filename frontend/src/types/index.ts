@@ -21,6 +21,16 @@ export interface User extends BaseEntity {
   bio?: string;
   avatar_url?: string;
   is_active: boolean;
+  address?: string;
+  location_city?: string;
+  location_state?: string;
+  location_zip?: string;
+  location_country?: string;
+  location_latitude?: number;
+  location_longitude?: number;
+  location_sharing?: 'exact' | 'city' | 'off';
+  location_updated_at?: string;
+  location_accuracy?: number;
 }
 
 export interface UserStats {

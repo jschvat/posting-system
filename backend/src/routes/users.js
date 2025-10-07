@@ -243,14 +243,25 @@ router.put('/:id',
     body('first_name').optional().trim().isLength({ min: 1, max: 100 }).withMessage('First name must be 1-100 characters'),
     body('last_name').optional().trim().isLength({ min: 1, max: 100 }).withMessage('Last name must be 1-100 characters'),
     body('bio').optional().trim().isLength({ max: 500 }).withMessage('Bio cannot exceed 500 characters'),
-    body('avatar_url').optional().isURL().withMessage('Avatar URL must be a valid URL'),
+    body('avatar_url').optional().trim().custom(value => {
+      // Allow both full URLs and relative paths
+      if (value.startsWith('http://') || value.startsWith('https://') || value.startsWith('/')) {
+        return true;
+      }
+      throw new Error('Avatar URL must be a valid URL or path starting with /');
+    }).withMessage('Avatar URL must be a valid URL or path'),
+    body('address').optional().trim().isLength({ max: 255 }).withMessage('Address cannot exceed 255 characters'),
+    body('location_city').optional().trim().isLength({ max: 100 }).withMessage('City cannot exceed 100 characters'),
+    body('location_state').optional().trim().isLength({ max: 100 }).withMessage('State cannot exceed 100 characters'),
+    body('location_zip').optional().trim().isLength({ max: 20 }).withMessage('ZIP code cannot exceed 20 characters'),
+    body('location_country').optional().trim().isLength({ max: 100 }).withMessage('Country cannot exceed 100 characters'),
     body('is_active').optional().isBoolean().withMessage('Active status must be a boolean')
   ],
   handleValidationErrors,
   async (req, res, next) => {
     try {
       const userId = parseInt(req.params.id);
-      const { username, email, first_name, last_name, bio, avatar_url, is_active } = req.body;
+      const { username, email, first_name, last_name, bio, avatar_url, address, location_city, location_state, location_zip, location_country, is_active } = req.body;
 
       // Find the user
       const user = await User.findById(userId);
@@ -309,6 +320,11 @@ router.put('/:id',
       if (last_name !== undefined) updateData.last_name = last_name;
       if (bio !== undefined) updateData.bio = bio;
       if (avatar_url !== undefined) updateData.avatar_url = avatar_url;
+      if (address !== undefined) updateData.address = address;
+      if (location_city !== undefined) updateData.location_city = location_city;
+      if (location_state !== undefined) updateData.location_state = location_state;
+      if (location_zip !== undefined) updateData.location_zip = location_zip;
+      if (location_country !== undefined) updateData.location_country = location_country;
       if (is_active !== undefined) updateData.is_active = is_active;
 
       const updatedUser = await User.update(userId, updateData);

@@ -294,9 +294,9 @@ const CreatePostPage: React.FC = () => {
     event.preventDefault();
     if (isSubmitting) return;
 
-    // Validate form
-    if (!formData.content.trim()) {
-      setError('Please enter some content for your post');
+    // Validate form - require content OR media
+    if (!formData.content.trim() && selectedFiles.length === 0) {
+      setError('Please enter some content or add media to your post');
       return;
     }
 
@@ -334,7 +334,7 @@ const CreatePostPage: React.FC = () => {
   };
 
   const isContentOverLimit = formData.content.length > MAX_CONTENT_LENGTH;
-  const canSubmit = formData.content.trim() && !isContentOverLimit && !isSubmitting;
+  const canSubmit = (formData.content.trim() || selectedFiles.length > 0) && !isContentOverLimit && !isSubmitting;
 
   return (
     <Container>
@@ -347,7 +347,7 @@ const CreatePostPage: React.FC = () => {
         <Form onSubmit={handleSubmit}>
           {/* Content Input */}
           <FormGroup>
-            <Label htmlFor="content">What's on your mind?</Label>
+            <Label htmlFor="content">What's on your mind? (Optional if adding media)</Label>
             <TextArea
               id="content"
               placeholder="Share your thoughts..."

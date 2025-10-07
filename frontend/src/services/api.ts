@@ -502,7 +502,7 @@ export const authApi = {
     current_password: string;
     new_password: string;
   }): Promise<ApiResponse<void>> => {
-    return apiRequest<ApiResponse<void>>('PUT', '/auth/password', data);
+    return apiRequest<ApiResponse<void>>('POST', '/auth/change-password', data);
   },
 
   /**

@@ -21,6 +21,7 @@ import HomePage from './pages/HomePage';
 import PostPage from './pages/PostPage';
 import UserProfilePage from './pages/UserProfilePage';
 import CreatePostPage from './pages/CreatePostPage';
+import EditProfilePage from './pages/EditProfilePage';
 import NotFoundPage from './pages/NotFoundPage';
 
 // Import components
@@ -194,6 +195,10 @@ const AuthenticatedApp: React.FC = () => {
             {/* User profile */}
             <Route path="/user/:userId" element={<UserProfilePage />} />
             <Route path="/profile/:userId" element={<UserProfilePage />} />
+
+            {/* Edit profile / Settings */}
+            <Route path="/settings" element={<EditProfilePage />} />
+            <Route path="/profile/edit" element={<EditProfilePage />} />
 
             {/* Redirect to home for any other routes */}
             <Route path="*" element={<Navigate to="/" replace />} />

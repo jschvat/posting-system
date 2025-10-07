@@ -93,6 +93,19 @@ const Username = styled.p`
   margin-bottom: ${({ theme }) => theme.spacing.md};
 `;
 
+const LocationInfo = styled.p`
+  color: ${({ theme }) => theme.colors.text.secondary};
+  font-size: 0.95rem;
+  margin-bottom: ${({ theme }) => theme.spacing.md};
+  display: flex;
+  align-items: center;
+  gap: ${({ theme }) => theme.spacing.xs};
+
+  &::before {
+    content: '📍';
+  }
+`;
+
 const Bio = styled.p`
   color: ${({ theme }) => theme.colors.text.primary};
   line-height: 1.6;
@@ -429,6 +442,9 @@ const UserProfilePage: React.FC = () => {
     enabled: !!userId,
   });
 
+  // Note: Location data is now included in the user object from the users API
+  // No need for a separate location API call
+
   // Fetch following list (only when tab is active)
   const { data: followingData, isLoading: followingLoading } = useQuery({
     queryKey: ['following', userId],
@@ -487,6 +503,33 @@ const UserProfilePage: React.FC = () => {
   const averageRating = ratingStats ? parseFloat(ratingStats.average_rating) : 0;
   const totalRatings = ratingStats ? parseInt(ratingStats.total_ratings) : 0;
 
+  // Extract and format location data from user object
+  const formatLocation = () => {
+    if (!user.location_sharing || user.location_sharing === 'off') return null;
+
+    if (user.location_sharing === 'city' && user.location_city) {
+      // Show city, state format
+      const parts = [user.location_city, user.location_state].filter(Boolean);
+      return parts.join(', ');
+    }
+
+    if (user.location_sharing === 'exact') {
+      // Show full address if available
+      if (user.location_city && user.location_state) {
+        const parts = [user.location_city, user.location_state, user.location_country].filter(Boolean);
+        return parts.join(', ');
+      }
+      // Otherwise show coordinates
+      if (user.location_latitude != null && user.location_longitude != null) {
+        return `${user.location_latitude.toFixed(4)}, ${user.location_longitude.toFixed(4)}`;
+      }
+    }
+
+    return null;
+  };
+
+  const formattedLocation = formatLocation();
+
   return (
     <Container>
       {/* Profile Header */}
@@ -523,6 +566,8 @@ const UserProfilePage: React.FC = () => {
           <UserDetails>
             <UserName>{user.first_name} {user.last_name}</UserName>
             <Username>@{user.username}</Username>
+
+            {formattedLocation && <LocationInfo>{formattedLocation}</LocationInfo>}
 
             {user.bio && <Bio>{user.bio}</Bio>}
 

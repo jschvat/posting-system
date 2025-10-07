@@ -5,6 +5,7 @@
 import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { Link } from 'react-router-dom';
 import styled from 'styled-components';
+import { createPortal } from 'react-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Post, Comment } from '../types';
 import { reactionsApi, commentsApi, getUserAvatarUrl } from '../services/api';
@@ -359,6 +360,87 @@ const LoadMoreComments = styled.button<{ disabled?: boolean }>`
   }
 `;
 
+// Image modal styles
+const ModalOverlay = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.9);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: ${({ theme }) => theme.spacing.lg};
+`;
+
+const ModalContent = styled.div`
+  position: relative;
+  max-width: 90vw;
+  max-height: 90vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+`;
+
+const ModalImage = styled.img`
+  max-width: 100%;
+  max-height: 90vh;
+  object-fit: contain;
+  border-radius: ${({ theme }) => theme.borderRadius.md};
+`;
+
+const CloseModalButton = styled.button`
+  position: absolute;
+  top: -40px;
+  right: 0;
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  font-size: 1.5rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s ease;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.3);
+  }
+`;
+
+const NavigationButton = styled.button<{ $direction: 'prev' | 'next' }>`
+  position: absolute;
+  top: 50%;
+  ${({ $direction }) => $direction === 'prev' ? 'left: -60px;' : 'right: -60px;'}
+  transform: translateY(-50%);
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: none;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  font-size: 1.5rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s ease;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.3);
+  }
+
+  &:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+  }
+`;
+
 interface PostCardProps {
   post: Post;
   onUpdate?: () => void;
@@ -422,6 +504,8 @@ const PostCard: React.FC<PostCardProps> = ({ post, onUpdate }) => {
   const [allComments, setAllComments] = useState<Comment[]>([]);
   const [hasMoreComments, setHasMoreComments] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   // Scroll position tracking
   const commentsListRef = useRef<HTMLDivElement>(null);
@@ -688,6 +772,32 @@ const PostCard: React.FC<PostCardProps> = ({ post, onUpdate }) => {
     toggleCommentsView();
   };
 
+  // Image modal handlers
+  const openImageModal = (index: number) => {
+    setCurrentImageIndex(index);
+    setShowImageModal(true);
+  };
+
+  const closeImageModal = () => {
+    setShowImageModal(false);
+  };
+
+  const nextImage = () => {
+    const imageMedia = post.media?.filter(m => m.media_type === 'image') || [];
+    if (currentImageIndex < imageMedia.length - 1) {
+      setCurrentImageIndex(currentImageIndex + 1);
+    }
+  };
+
+  const prevImage = () => {
+    if (currentImageIndex > 0) {
+      setCurrentImageIndex(currentImageIndex - 1);
+    }
+  };
+
+  // Get only image media for modal
+  const imageMedia = post.media?.filter(m => m.media_type === 'image') || [];
+
 
   return (
     <Card>
@@ -728,7 +838,11 @@ const PostCard: React.FC<PostCardProps> = ({ post, onUpdate }) => {
         {post.media && post.media.length > 0 && (
           <MediaGrid $count={post.media.length}>
             {post.media.slice(0, 4).map((media, index) => (
-              <MediaItem key={media.id} $isVideo={media.media_type === 'video'}>
+              <MediaItem
+                key={media.id}
+                $isVideo={media.media_type === 'video'}
+                onClick={() => media.media_type === 'image' && openImageModal(imageMedia.findIndex(m => m.id === media.id))}
+              >
                 {media.media_type === 'image' && (
                   <img
                     src={`${getApiBaseUrl()}${media.file_url || `/uploads/${media.file_path}`}`}
@@ -826,6 +940,40 @@ const PostCard: React.FC<PostCardProps> = ({ post, onUpdate }) => {
           }}
         />
       </CommentsSection>
+
+      {/* Image Modal */}
+      {showImageModal && imageMedia.length > 0 && createPortal(
+        <ModalOverlay onClick={closeImageModal}>
+          <ModalContent onClick={(e) => e.stopPropagation()}>
+            <CloseModalButton onClick={closeImageModal}>×</CloseModalButton>
+
+            {imageMedia.length > 1 && (
+              <>
+                <NavigationButton
+                  $direction="prev"
+                  onClick={prevImage}
+                  disabled={currentImageIndex === 0}
+                >
+                  ‹
+                </NavigationButton>
+                <NavigationButton
+                  $direction="next"
+                  onClick={nextImage}
+                  disabled={currentImageIndex === imageMedia.length - 1}
+                >
+                  ›
+                </NavigationButton>
+              </>
+            )}
+
+            <ModalImage
+              src={`${getApiBaseUrl()}${imageMedia[currentImageIndex].file_url || `/uploads/${imageMedia[currentImageIndex].file_path}`}`}
+              alt={imageMedia[currentImageIndex].alt_text || 'Post image'}
+            />
+          </ModalContent>
+        </ModalOverlay>,
+        document.body
+      )}
     </Card>
   );
 };
