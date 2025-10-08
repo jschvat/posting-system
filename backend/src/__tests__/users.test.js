@@ -345,6 +345,113 @@ describe('Users Routes', () => {
 
       expectNotFoundError(response);
     });
+
+    it('should update user profile with address fields', async () => {
+      const updateData = {
+        address: '123 Main St',
+        location_city: 'New York',
+        location_state: 'NY',
+        location_zip: '10001',
+        location_country: 'USA'
+      };
+
+      const response = await request(app)
+        .put(`/api/users/${testUser1.id}`)
+        .set('Authorization', authHeader(token1))
+        .send(updateData);
+
+      const body = expectSuccessResponse(response);
+      expect(body.data.address).toBe(updateData.address);
+      expect(body.data.location_city).toBe(updateData.location_city);
+      expect(body.data.location_state).toBe(updateData.location_state);
+      expect(body.data.location_zip).toBe(updateData.location_zip);
+      expect(body.data.location_country).toBe(updateData.location_country);
+    });
+
+    it('should allow partial address field updates', async () => {
+      // First set full address
+      await request(app)
+        .put(`/api/users/${testUser1.id}`)
+        .set('Authorization', authHeader(token1))
+        .send({
+          address: '123 Main St',
+          location_city: 'New York',
+          location_state: 'NY',
+          location_zip: '10001'
+        });
+
+      // Update only city and state
+      const partialUpdate = {
+        location_city: 'Boston',
+        location_state: 'MA'
+      };
+
+      const response = await request(app)
+        .put(`/api/users/${testUser1.id}`)
+        .set('Authorization', authHeader(token1))
+        .send(partialUpdate);
+
+      const body = expectSuccessResponse(response);
+      expect(body.data.location_city).toBe('Boston');
+      expect(body.data.location_state).toBe('MA');
+      expect(body.data.address).toBe('123 Main St'); // Unchanged
+      expect(body.data.location_zip).toBe('10001'); // Unchanged
+    });
+
+    it('should validate address field lengths', async () => {
+      const invalidData = {
+        address: 'a'.repeat(256), // Too long
+        location_zip: 'a'.repeat(21) // Too long
+      };
+
+      const response = await request(app)
+        .put(`/api/users/${testUser1.id}`)
+        .set('Authorization', authHeader(token1))
+        .send(invalidData);
+
+      expectValidationError(response);
+    });
+
+    it('should update avatar_url with relative path', async () => {
+      const updateData = {
+        avatar_url: '/uploads/avatars/user_123.png'
+      };
+
+      const response = await request(app)
+        .put(`/api/users/${testUser1.id}`)
+        .set('Authorization', authHeader(token1))
+        .send(updateData);
+
+      const body = expectSuccessResponse(response);
+      expect(body.data.avatar_url).toBe(updateData.avatar_url);
+    });
+
+    it('should update avatar_url with full URL', async () => {
+      const updateData = {
+        avatar_url: 'https://example.com/avatar.png'
+      };
+
+      const response = await request(app)
+        .put(`/api/users/${testUser1.id}`)
+        .set('Authorization', authHeader(token1))
+        .send(updateData);
+
+      const body = expectSuccessResponse(response);
+      expect(body.data.avatar_url).toBe(updateData.avatar_url);
+    });
+
+    it('should reject invalid avatar_url format', async () => {
+      const invalidData = {
+        avatar_url: 'not-a-valid-path-or-url'
+      };
+
+      const response = await request(app)
+        .put(`/api/users/${testUser1.id}`)
+        .set('Authorization', authHeader(token1))
+        .send(invalidData);
+
+      expectValidationError(response);
+    });
   });
 
   describe('DELETE /api/users/:id', () => {
