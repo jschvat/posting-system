@@ -9,8 +9,10 @@ import { ApiResponse } from '../types';
 export interface Location {
   latitude: number | null;
   longitude: number | null;
+  address: string | null;
   city: string | null;
   state: string | null;
+  zip: string | null;
   country: string | null;
   accuracy: number | null;
   updated_at: string | null;
@@ -20,8 +22,10 @@ export interface Location {
 export interface LocationUpdate {
   latitude: number;
   longitude: number;
+  address?: string;
   city?: string;
   state?: string;
+  zip?: string;
   country?: string;
   accuracy?: number;
 }

@@ -514,12 +514,27 @@ const UserProfilePage: React.FC = () => {
     }
 
     if (user.location_sharing === 'exact') {
-      // Show full address if available
-      if (user.location_city && user.location_state) {
-        const parts = [user.location_city, user.location_state, user.location_country].filter(Boolean);
+      // Show full address when available
+      if (user.address) {
+        // Full address format: "123 Main St, City, State ZIP, Country"
+        const parts = [
+          user.address,
+          user.location_city,
+          user.location_state && user.location_zip ? `${user.location_state} ${user.location_zip}` : user.location_state,
+          user.location_country
+        ].filter(Boolean);
         return parts.join(', ');
       }
-      // Otherwise show coordinates
+      // Fallback to city/state/country if no street address
+      if (user.location_city || user.location_state) {
+        const parts = [
+          user.location_city,
+          user.location_state && user.location_zip ? `${user.location_state} ${user.location_zip}` : user.location_state,
+          user.location_country
+        ].filter(Boolean);
+        return parts.join(', ');
+      }
+      // Last resort: show coordinates
       if (user.location_latitude != null && user.location_longitude != null) {
         return `${user.location_latitude.toFixed(4)}, ${user.location_longitude.toFixed(4)}`;
       }

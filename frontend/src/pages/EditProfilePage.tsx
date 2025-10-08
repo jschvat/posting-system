@@ -291,8 +291,10 @@ interface ProfileData {
 interface LocationData {
   latitude?: number;
   longitude?: number;
+  address?: string;
   city?: string;
   state?: string;
+  zip?: string;
   country?: string;
   accuracy?: number;
 }
@@ -517,21 +519,25 @@ const EditProfilePage: React.FC = () => {
         const locationResult = await locationApi.updateLocation({
           latitude: locationData.latitude,
           longitude: locationData.longitude,
+          address: locationData.address || undefined,
           city: locationData.city || undefined,
           state: locationData.state || undefined,
+          zip: locationData.zip || undefined,
           country: locationData.country || undefined,
           accuracy: locationData.accuracy || undefined,
         });
         console.log('Location update result:', locationResult);
-      } else if (locationData.city || locationData.state || locationData.country) {
+      } else if (locationData.city || locationData.state || locationData.country || locationData.address) {
         // For manual entry without GPS, we'll need to geocode or set coordinates to 0,0
         console.log('Updating location without coordinates (manual entry)...');
         // Use 0,0 as placeholder coordinates when only city/state/country provided
         const locationResult = await locationApi.updateLocation({
           latitude: 0,
           longitude: 0,
+          address: locationData.address || undefined,
           city: locationData.city || undefined,
           state: locationData.state || undefined,
+          zip: locationData.zip || undefined,
           country: locationData.country || undefined,
           accuracy: undefined,
         });
@@ -838,6 +844,17 @@ const EditProfilePage: React.FC = () => {
             </>
           ) : (
             <FormGrid>
+              <FormGroup $fullWidth>
+                <Label>Address</Label>
+                <Input
+                  type="text"
+                  name="address"
+                  value={locationData.address || ''}
+                  onChange={handleLocationChange}
+                  placeholder="123 Main St"
+                />
+              </FormGroup>
+
               <FormGroup>
                 <Label>City</Label>
                 <Input
@@ -860,7 +877,18 @@ const EditProfilePage: React.FC = () => {
                 />
               </FormGroup>
 
-              <FormGroup $fullWidth>
+              <FormGroup>
+                <Label>ZIP / Postal Code</Label>
+                <Input
+                  type="text"
+                  name="zip"
+                  value={locationData.zip || ''}
+                  onChange={handleLocationChange}
+                  placeholder="94102"
+                />
+              </FormGroup>
+
+              <FormGroup>
                 <Label>Country</Label>
                 <Input
                   type="text"
@@ -876,21 +904,24 @@ const EditProfilePage: React.FC = () => {
           <FormGroup $fullWidth>
             <Label>Privacy Settings</Label>
             <PrivacyOptions>
-              <RadioOption>
-                <RadioInput
-                  type="radio"
-                  name="location_sharing"
-                  value="exact"
-                  checked={locationSharing === 'exact'}
-                  onChange={(e) => setLocationSharing(e.target.value as 'exact')}
-                />
-                <RadioContent>
-                  <RadioTitle>Share Exact Location</RadioTitle>
-                  <RadioDescription>
-                    Show your precise location. Users can see your exact distance.
-                  </RadioDescription>
-                </RadioContent>
-              </RadioOption>
+              {/* Only show "exact" option for manual entry */}
+              {locationMethod === 'manual' && (
+                <RadioOption>
+                  <RadioInput
+                    type="radio"
+                    name="location_sharing"
+                    value="exact"
+                    checked={locationSharing === 'exact'}
+                    onChange={(e) => setLocationSharing(e.target.value as 'exact')}
+                  />
+                  <RadioContent>
+                    <RadioTitle>Share Exact Address</RadioTitle>
+                    <RadioDescription>
+                      Show your full address including street, city, state, and ZIP.
+                    </RadioDescription>
+                  </RadioContent>
+                </RadioOption>
+              )}
 
               <RadioOption>
                 <RadioInput

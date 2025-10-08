@@ -15,16 +15,18 @@ class Location {
     userId,
     latitude,
     longitude,
+    address = null,
     city = null,
     state = null,
+    zip = null,
     country = null,
     accuracy = null,
     ipAddress = null,
     userAgent = null
   }) {
     const result = await query(
-      'SELECT update_user_location($1, $2, $3, $4, $5, $6, $7, $8, $9)',
-      [userId, latitude, longitude, city, state, country, accuracy, ipAddress, userAgent]
+      'SELECT update_user_location($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)',
+      [userId, latitude, longitude, address, city, state, zip, country, accuracy, ipAddress, userAgent]
     );
     return result.rows[0].update_user_location;
   }

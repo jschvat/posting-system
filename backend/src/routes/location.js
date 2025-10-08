@@ -20,7 +20,7 @@ const {
  */
 router.post('/update', authenticate, async (req, res) => {
   try {
-    const { latitude, longitude, city, state, country, accuracy } = req.body;
+    const { latitude, longitude, address, city, state, zip, country, accuracy } = req.body;
 
     // Validate coordinates
     if (!isValidCoordinates(latitude, longitude)) {
@@ -42,8 +42,10 @@ router.post('/update', authenticate, async (req, res) => {
       userId: req.user.id,
       latitude,
       longitude,
+      address,
       city,
       state,
+      zip,
       country,
       accuracy,
       ipAddress,
