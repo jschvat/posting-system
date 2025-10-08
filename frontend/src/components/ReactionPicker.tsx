@@ -183,6 +183,9 @@ const ReactionPicker: React.FC<ReactionPickerProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
 
+  // Debug logging
+  console.log('[ReactionPicker] Render:', { currentReaction, totalReactions });
+
   const { refs, floatingStyles, context } = useFloating({
     open: isOpen,
     onOpenChange: setIsOpen,

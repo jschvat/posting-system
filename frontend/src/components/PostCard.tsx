@@ -757,6 +757,7 @@ const PostCard: React.FC<PostCardProps> = ({ post, onUpdate }) => {
     detailedReactions.find(reaction => reaction.user_id === state.user?.id) : null;
 
   const handleReaction = (emojiName: string) => {
+    console.log('[PostCard] handleReaction called:', { emojiName, currentReaction: currentUserReaction?.emoji_name });
     if (state.isAuthenticated) {
       reactMutation.mutate(emojiName);
     }
