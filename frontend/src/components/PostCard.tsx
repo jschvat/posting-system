@@ -752,23 +752,19 @@ const PostCard: React.FC<PostCardProps> = ({ post, onUpdate }) => {
   const comments = allComments;
   const totalReactions = reactions.reduce((sum, r) => sum + r.count, 0);
 
-  // Debug logging
-  console.log('[PostCard] Reaction data:', {
-    postId: post.id,
-    userId: state.user?.id,
-    reactions,
-    detailedReactions,
-    reactionsData: reactionsData?.data
-  });
-
   // Find current user's reaction
   const currentUserReaction = state.user ?
     detailedReactions.find(reaction => reaction.user_id === state.user?.id) : null;
 
-  console.log('[PostCard] Current user reaction:', currentUserReaction);
-
   const handleReaction = (emojiName: string) => {
-    console.log('[PostCard] handleReaction called:', { emojiName, currentReaction: currentUserReaction?.emoji_name });
+    // Debug only when reaction changes
+    console.log('[REACTION DEBUG]', {
+      postId: post.id,
+      userId: state.user?.id,
+      detailedReactions,
+      currentUserReaction,
+      newEmoji: emojiName
+    });
     if (state.isAuthenticated) {
       reactMutation.mutate(emojiName);
     }
