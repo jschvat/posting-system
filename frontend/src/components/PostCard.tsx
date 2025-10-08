@@ -658,8 +658,12 @@ const PostCard: React.FC<PostCardProps> = ({ post, onUpdate }) => {
 
   // React to post mutation
   const reactMutation = useMutation({
-    mutationFn: (emojiName: string) => reactionsApi.togglePostReaction(post.id, { emoji_name: emojiName }),
+    mutationFn: (emojiName: string) => {
+      if (post.id === 34) console.log('[MUTATION] Starting API call for:', emojiName);
+      return reactionsApi.togglePostReaction(post.id, { emoji_name: emojiName });
+    },
     onMutate: async (emojiName: string) => {
+      if (post.id === 34) console.log('[MUTATION] onMutate called for:', emojiName);
       // Cancel any outgoing refetches (so they don't overwrite our optimistic update)
       await queryClient.cancelQueries({ queryKey: ['reactions', 'post', post.id] });
 
@@ -748,11 +752,16 @@ const PostCard: React.FC<PostCardProps> = ({ post, onUpdate }) => {
       // Return a context object with the snapshotted value
       return { previousReactions };
     },
+    onSuccess: (response) => {
+      if (post.id === 34) console.log('[MUTATION] onSuccess, API returned:', response);
+    },
     onError: (err, newReaction, context) => {
+      if (post.id === 34) console.log('[MUTATION] onError');
       // If the mutation fails, use the context returned from onMutate to roll back
       queryClient.setQueryData(['reactions', 'post', post.id], context?.previousReactions);
     },
     onSettled: () => {
+      if (post.id === 34) console.log('[MUTATION] onSettled - invalidating and refetching');
       // Always refetch after error or success to ensure server state
       queryClient.invalidateQueries({ queryKey: ['reactions', 'post', post.id] });
       onUpdate?.();
