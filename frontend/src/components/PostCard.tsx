@@ -520,10 +520,22 @@ const PostCard: React.FC<PostCardProps> = ({ post, onUpdate }) => {
   const hasAuthorAvatar: boolean = Boolean(post.author?.avatar_url);
 
   // Fetch post reactions with user details
-  const { data: reactionsData } = useQuery({
+  const { data: reactionsData, dataUpdatedAt } = useQuery({
     queryKey: ['reactions', 'post', post.id],
     queryFn: () => reactionsApi.getPostReactions(post.id, { include_users: true }),
   });
+
+  // Debug initial data load
+  React.useEffect(() => {
+    if (post.id === 34 && reactionsData) {
+      console.log('[INITIAL REACTIONS DATA]', {
+        dataUpdatedAt,
+        hasDetailedReactions: !!reactionsData?.data?.detailed_reactions,
+        detailedReactionsLength: reactionsData?.data?.detailed_reactions?.length || 0,
+        fullData: reactionsData?.data
+      });
+    }
+  }, [reactionsData, dataUpdatedAt]);
 
   // Fetch initial comments when shown
   const { data: commentsData, isLoading: commentsLoading } = useQuery({
