@@ -75,15 +75,15 @@ const TriggerElement = styled.div`
   align-items: center;
 `;
 
-// Emoji mapping - same as ReactionPicker
+// Emoji mapping - must match ReactionPicker exactly
 const REACTION_EMOJIS = [
-  { emoji: '❤️', name: 'heart', label: 'Love' },
-  { emoji: '👍', name: 'thumbs_up', label: 'Like' },
+  { emoji: '❤️', name: 'love', label: 'Love' },
+  { emoji: '👍', name: 'like', label: 'Like' },
   { emoji: '👎', name: 'thumbs_down', label: 'Dislike' },
-  { emoji: '😂', name: 'joy', label: 'Funny' },
-  { emoji: '😮', name: 'astonished', label: 'Wow' },
-  { emoji: '😢', name: 'cry', label: 'Sad' },
-  { emoji: '😡', name: 'rage', label: 'Angry' },
+  { emoji: '😂', name: 'laugh', label: 'Funny' },
+  { emoji: '😮', name: 'wow', label: 'Wow' },
+  { emoji: '😢', name: 'sad', label: 'Sad' },
+  { emoji: '😡', name: 'angry', label: 'Angry' },
   { emoji: '🤔', name: 'thinking', label: 'Thinking' },
   { emoji: '🎉', name: 'tada', label: 'Celebrate' },
   { emoji: '👏', name: 'clap', label: 'Applause' },

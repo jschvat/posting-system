@@ -520,22 +520,11 @@ const PostCard: React.FC<PostCardProps> = ({ post, onUpdate }) => {
   const hasAuthorAvatar: boolean = Boolean(post.author?.avatar_url);
 
   // Fetch post reactions with user details
-  const { data: reactionsData, dataUpdatedAt } = useQuery({
+  const { data: reactionsData } = useQuery({
     queryKey: ['reactions', 'post', post.id],
     queryFn: () => reactionsApi.getPostReactions(post.id, { include_users: true }),
   });
 
-  // Debug initial data load
-  React.useEffect(() => {
-    if (post.id === 34 && reactionsData) {
-      console.log('[INITIAL REACTIONS DATA]', {
-        dataUpdatedAt,
-        hasDetailedReactions: !!reactionsData?.data?.detailed_reactions,
-        detailedReactionsLength: reactionsData?.data?.detailed_reactions?.length || 0,
-        fullData: reactionsData?.data
-      });
-    }
-  }, [reactionsData, dataUpdatedAt]);
 
   // Fetch initial comments when shown
   const { data: commentsData, isLoading: commentsLoading } = useQuery({
@@ -659,11 +648,9 @@ const PostCard: React.FC<PostCardProps> = ({ post, onUpdate }) => {
   // React to post mutation
   const reactMutation = useMutation({
     mutationFn: (emojiName: string) => {
-      if (post.id === 34) console.log('[MUTATION] Starting API call for:', emojiName);
       return reactionsApi.togglePostReaction(post.id, { emoji_name: emojiName });
     },
     onMutate: async (emojiName: string) => {
-      if (post.id === 34) console.log('[MUTATION] onMutate called for:', emojiName);
       // Cancel any outgoing refetches (so they don't overwrite our optimistic update)
       await queryClient.cancelQueries({ queryKey: ['reactions', 'post', post.id] });
 
@@ -752,16 +739,11 @@ const PostCard: React.FC<PostCardProps> = ({ post, onUpdate }) => {
       // Return a context object with the snapshotted value
       return { previousReactions };
     },
-    onSuccess: (response) => {
-      if (post.id === 34) console.log('[MUTATION] onSuccess, API returned:', response);
-    },
     onError: (err, newReaction, context) => {
-      if (post.id === 34) console.log('[MUTATION] onError');
       // If the mutation fails, use the context returned from onMutate to roll back
       queryClient.setQueryData(['reactions', 'post', post.id], context?.previousReactions);
     },
     onSettled: () => {
-      if (post.id === 34) console.log('[MUTATION] onSettled - invalidating and refetching');
       // Always refetch after error or success to ensure server state
       queryClient.invalidateQueries({ queryKey: ['reactions', 'post', post.id] });
       onUpdate?.();
@@ -775,31 +757,9 @@ const PostCard: React.FC<PostCardProps> = ({ post, onUpdate }) => {
 
   // Find current user's reaction
   const currentUserReaction = state.user ?
-    detailedReactions.find(reaction => {
-      // Debug the comparison for post 34
-      if (post.id === 34) {
-        console.log('[USER ID COMPARE]', {
-          reactionUserId: reaction.user_id,
-          reactionUserIdType: typeof reaction.user_id,
-          currentUserId: state.user?.id,
-          currentUserIdType: typeof state.user?.id,
-          matches: reaction.user_id === state.user?.id,
-          strictMatch: reaction.user_id === state.user?.id,
-          looseMatch: reaction.user_id == state.user?.id
-        });
-      }
-      return reaction.user_id === state.user?.id;
-    }) : null;
+    detailedReactions.find(reaction => reaction.user_id === state.user?.id) : null;
 
   const handleReaction = (emojiName: string) => {
-    // Debug only when reaction changes
-    console.log('[REACTION DEBUG]', {
-      postId: post.id,
-      userId: state.user?.id,
-      detailedReactions,
-      currentUserReaction,
-      newEmoji: emojiName
-    });
     if (state.isAuthenticated) {
       reactMutation.mutate(emojiName);
     }
