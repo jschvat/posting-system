@@ -756,6 +756,18 @@ const PostCard: React.FC<PostCardProps> = ({ post, onUpdate }) => {
   const currentUserReaction = state.user ?
     detailedReactions.find(reaction => reaction.user_id === state.user?.id) : null;
 
+  // Debug after data fetches - only for first post to reduce noise
+  React.useEffect(() => {
+    if (post.id === 34 && detailedReactions.length > 0) {
+      console.log('[REACTION DATA FETCHED]', {
+        postId: post.id,
+        userId: state.user?.id,
+        detailedReactions: detailedReactions.map(r => ({ user_id: r.user_id, emoji: r.emoji_name })),
+        currentUserReaction: currentUserReaction ? { user_id: currentUserReaction.user_id, emoji: currentUserReaction.emoji_name } : null
+      });
+    }
+  }, [detailedReactions, currentUserReaction]);
+
   const handleReaction = (emojiName: string) => {
     // Debug only when reaction changes
     console.log('[REACTION DEBUG]', {
