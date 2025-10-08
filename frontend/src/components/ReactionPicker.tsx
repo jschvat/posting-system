@@ -30,6 +30,7 @@ const TriggerButton = styled.button<{ $active?: boolean }>`
   padding: ${({ theme }) => theme.spacing.sm};
   border-radius: ${({ theme }) => theme.borderRadius.sm};
   transition: all 0.2s ease;
+  min-width: 70px;
 
   &:hover {
     background: ${({ theme }) => theme.colors.background};
@@ -37,7 +38,11 @@ const TriggerButton = styled.button<{ $active?: boolean }>`
   }
 
   .emoji {
-    font-size: 1.1em;
+    font-size: 1.2em;
+    min-width: 24px;
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
   }
 `;
 
@@ -221,7 +226,7 @@ const ReactionPicker: React.FC<ReactionPickerProps> = ({
         {...getReferenceProps()}
         $active={!!currentReaction}
       >
-        <span className="emoji">
+        <span className="emoji" key={currentReaction || 'default'}>
           {currentReaction ? currentEmojiData?.emoji : '👍'}
         </span>
         <span>{totalReactions}</span>
