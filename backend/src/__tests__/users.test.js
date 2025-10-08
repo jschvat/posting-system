@@ -452,6 +452,84 @@ describe('Users Routes', () => {
 
       expectValidationError(response);
     });
+
+    it('should geocode address and save GPS coordinates', async () => {
+      const updateData = {
+        address: '1600 Pennsylvania Avenue NW',
+        location_city: 'Washington',
+        location_state: 'DC',
+        location_zip: '20500',
+        location_country: 'USA'
+      };
+
+      const response = await request(app)
+        .put(`/api/users/${testUser1.id}`)
+        .set('Authorization', authHeader(token1))
+        .send(updateData);
+
+      const body = expectSuccessResponse(response);
+      expect(body.data.address).toBe(updateData.address);
+      expect(body.data.location_city).toBe(updateData.location_city);
+
+      // Should have geocoded coordinates
+      expect(body.data.location_latitude).toBeDefined();
+      expect(body.data.location_longitude).toBeDefined();
+      expect(typeof body.data.location_latitude).toBe('string');
+      expect(typeof body.data.location_longitude).toBe('string');
+
+      // Verify coordinates are reasonable (DC is around 38.9°N, 77°W)
+      const lat = parseFloat(body.data.location_latitude);
+      const lon = parseFloat(body.data.location_longitude);
+      expect(lat).toBeGreaterThan(38);
+      expect(lat).toBeLessThan(39);
+      expect(lon).toBeGreaterThan(-78);
+      expect(lon).toBeLessThan(-76);
+    }, 10000); // Increase timeout for API call
+
+    it('should geocode city/state without full address', async () => {
+      const updateData = {
+        location_city: 'New York',
+        location_state: 'NY'
+      };
+
+      const response = await request(app)
+        .put(`/api/users/${testUser1.id}`)
+        .set('Authorization', authHeader(token1))
+        .send(updateData);
+
+      const body = expectSuccessResponse(response);
+      expect(body.data.location_city).toBe(updateData.location_city);
+      expect(body.data.location_state).toBe(updateData.location_state);
+
+      // Should have geocoded coordinates even without full address
+      expect(body.data.location_latitude).toBeDefined();
+      expect(body.data.location_longitude).toBeDefined();
+
+      // NYC is around 40.7°N, 74°W
+      const lat = parseFloat(body.data.location_latitude);
+      const lon = parseFloat(body.data.location_longitude);
+      expect(lat).toBeGreaterThan(40);
+      expect(lat).toBeLessThan(41);
+      expect(lon).toBeGreaterThan(-75);
+      expect(lon).toBeLessThan(-73);
+    }, 10000); // Increase timeout for API call
+
+    it('should handle geocoding failure gracefully', async () => {
+      const updateData = {
+        location_city: 'NonExistentCity123456789',
+        location_state: 'XX'
+      };
+
+      const response = await request(app)
+        .put(`/api/users/${testUser1.id}`)
+        .set('Authorization', authHeader(token1))
+        .send(updateData);
+
+      // Should still succeed even if geocoding fails
+      const body = expectSuccessResponse(response);
+      expect(body.data.location_city).toBe(updateData.location_city);
+      expect(body.data.location_state).toBe(updateData.location_state);
+    }, 10000); // Increase timeout for API call
   });
 
   describe('DELETE /api/users/:id', () => {

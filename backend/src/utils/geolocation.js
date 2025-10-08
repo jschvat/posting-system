@@ -149,24 +149,116 @@ function isInBoundingBox(lat, lon, box) {
 }
 
 /**
- * Reverse geocode coordinates to city/state (requires external API)
- * This is a placeholder - you would integrate with a service like:
- * - OpenStreetMap Nominatim
- * - Google Geocoding API
- * - Mapbox Geocoding API
- *
+ * Reverse geocode coordinates to city/state using OpenStreetMap Nominatim
  * @param {number} lat - Latitude
  * @param {number} lon - Longitude
  * @returns {Promise<Object>} Location details
  */
 async function reverseGeocode(lat, lon) {
-  // Placeholder implementation
-  // In production, integrate with a geocoding service
-  return {
-    city: null,
-    state: null,
-    country: null
-  };
+  try {
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&addressdetails=1`,
+      {
+        headers: {
+          'User-Agent': 'PostingSystem/1.0' // Required by Nominatim usage policy
+        }
+      }
+    );
+
+    if (!response.ok) {
+      console.error('Reverse geocoding failed:', response.status);
+      return { city: null, state: null, country: null };
+    }
+
+    const data = await response.json();
+    const address = data.address || {};
+
+    return {
+      city: address.city || address.town || address.village || null,
+      state: address.state || null,
+      country: address.country || null,
+      address: data.display_name || null
+    };
+  } catch (error) {
+    console.error('Reverse geocoding error:', error);
+    return { city: null, state: null, country: null };
+  }
+}
+
+/**
+ * Geocode an address to coordinates using OpenStreetMap Nominatim
+ * @param {Object} addressParts - Address components
+ * @param {string} addressParts.address - Street address
+ * @param {string} addressParts.city - City
+ * @param {string} addressParts.state - State
+ * @param {string} addressParts.zip - ZIP code
+ * @param {string} addressParts.country - Country
+ * @returns {Promise<Object>} Coordinates and location details
+ */
+async function geocodeAddress(addressParts) {
+  try {
+    // Build search query from address parts
+    const queryParts = [];
+    if (addressParts.address) queryParts.push(addressParts.address);
+    if (addressParts.city) queryParts.push(addressParts.city);
+    if (addressParts.state) queryParts.push(addressParts.state);
+    if (addressParts.zip) queryParts.push(addressParts.zip);
+    if (addressParts.country) queryParts.push(addressParts.country);
+
+    if (queryParts.length === 0) {
+      return {
+        success: false,
+        error: 'No address components provided'
+      };
+    }
+
+    const query = encodeURIComponent(queryParts.join(', '));
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=1&addressdetails=1`,
+      {
+        headers: {
+          'User-Agent': 'PostingSystem/1.0' // Required by Nominatim usage policy
+        }
+      }
+    );
+
+    if (!response.ok) {
+      console.error('Geocoding failed:', response.status);
+      return {
+        success: false,
+        error: `Geocoding API returned status ${response.status}`
+      };
+    }
+
+    const data = await response.json();
+
+    if (!data || data.length === 0) {
+      return {
+        success: false,
+        error: 'Address not found'
+      };
+    }
+
+    const result = data[0];
+    const address = result.address || {};
+
+    return {
+      success: true,
+      latitude: parseFloat(result.lat),
+      longitude: parseFloat(result.lon),
+      city: address.city || address.town || address.village || addressParts.city,
+      state: address.state || addressParts.state,
+      country: address.country || addressParts.country,
+      displayAddress: result.display_name,
+      boundingBox: result.boundingbox
+    };
+  } catch (error) {
+    console.error('Geocoding error:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
 }
 
 /**
@@ -241,6 +333,7 @@ module.exports = {
   getBoundingBox,
   isInBoundingBox,
   reverseGeocode,
+  geocodeAddress,
   isValidSharingLevel,
   getPrivacyFilteredLocation,
   getRecommendedRadius

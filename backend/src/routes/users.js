@@ -327,6 +327,47 @@ router.put('/:id',
       if (location_country !== undefined) updateData.location_country = location_country;
       if (is_active !== undefined) updateData.is_active = is_active;
 
+      // If address fields are being updated, try to geocode them to get GPS coordinates
+      const hasAddressUpdate = address !== undefined || location_city !== undefined ||
+                               location_state !== undefined || location_zip !== undefined ||
+                               location_country !== undefined;
+
+      if (hasAddressUpdate) {
+        try {
+          const { geocodeAddress } = require('../utils/geolocation');
+          const geocodeResult = await geocodeAddress({
+            address: address || user.address,
+            city: location_city || user.location_city,
+            state: location_state || user.location_state,
+            zip: location_zip || user.location_zip,
+            country: location_country || user.location_country
+          });
+
+          if (geocodeResult.success) {
+            // Update GPS coordinates if geocoding succeeded
+            updateData.location_latitude = geocodeResult.latitude;
+            updateData.location_longitude = geocodeResult.longitude;
+
+            // Update normalized city/state/country from geocoding result if not explicitly provided
+            if (location_city === undefined && geocodeResult.city) {
+              updateData.location_city = geocodeResult.city;
+            }
+            if (location_state === undefined && geocodeResult.state) {
+              updateData.location_state = geocodeResult.state;
+            }
+            if (location_country === undefined && geocodeResult.country) {
+              updateData.location_country = geocodeResult.country;
+            }
+          } else {
+            console.warn('Geocoding failed for user address update:', geocodeResult.error);
+            // Continue with update even if geocoding fails
+          }
+        } catch (geocodeError) {
+          console.error('Error during address geocoding:', geocodeError);
+          // Continue with update even if geocoding fails
+        }
+      }
+
       const updatedUser = await User.update(userId, updateData);
 
       res.json({
