@@ -12,6 +12,7 @@ import { useAuth } from '../contexts/AuthContext';
 
 interface ShareButtonProps {
   postId: number;
+  postAuthorId: number;
   initialShareCount?: number;
   onShareChange?: (isShared: boolean, shareCount: number) => void;
 }
@@ -155,12 +156,14 @@ const Overlay = styled.div`
 
 const ShareButton: React.FC<ShareButtonProps> = ({
   postId,
+  postAuthorId,
   initialShareCount = 0,
   onShareChange
 }) => {
   const { state } = useAuth();
   const user = state.user;
   const isAuthenticated = state.isAuthenticated;
+  const isOwnPost = user?.id === postAuthorId;
   const queryClient = useQueryClient();
   const [showModal, setShowModal] = useState(false);
   const [shareComment, setShareComment] = useState('');
@@ -221,11 +224,16 @@ const ShareButton: React.FC<ShareButtonProps> = ({
     e.preventDefault();
     e.stopPropagation();
 
-    console.log('[ShareButton] Click event:', { postId, user: user?.id, isShared });
+    console.log('[ShareButton] Click event:', { postId, user: user?.id, isShared, isOwnPost });
 
     if (!user) {
       console.log('[ShareButton] No user logged in');
       alert('Please login to share posts');
+      return;
+    }
+
+    if (isOwnPost) {
+      console.log('[ShareButton] Cannot share own post');
       return;
     }
 
@@ -274,9 +282,9 @@ const ShareButton: React.FC<ShareButtonProps> = ({
       <ShareContainer>
         <ShareBtn
           onClick={handleClick}
-          disabled={isLoading}
+          disabled={isLoading || isOwnPost}
           $isShared={isShared}
-          title={isShared ? 'Unshare' : 'Share'}
+          title={isOwnPost ? 'Cannot share your own post' : (isShared ? 'Unshare' : 'Share')}
         >
           <svg fill="currentColor" viewBox="0 0 24 24">
             <path d="M23.77 15.67a.749.749 0 0 0-1.06 0l-2.22 2.22V7.65a3.755 3.755 0 0 0-3.75-3.75h-5.85a.75.75 0 0 0 0 1.5h5.85c1.24 0 2.25 1.01 2.25 2.25v10.24l-2.22-2.22a.749.749 0 1 0-1.06 1.06l3.5 3.5a.747.747 0 0 0 1.06 0l3.5-3.5a.749.749 0 0 0 0-1.06Zm-10.66 3.28H7.26a2.25 2.25 0 0 1-2.25-2.25V6.46l2.22 2.22a.75.75 0 0 0 1.06-1.06l-3.5-3.5a.747.747 0 0 0-1.06 0l-3.5 3.5a.749.749 0 1 0 1.06 1.06l2.22-2.22V16.7a3.755 3.755 0 0 0 3.75 3.75h5.85a.75.75 0 0 0 0-1.5Z"/>
