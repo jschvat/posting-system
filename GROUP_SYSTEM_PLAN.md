@@ -42,6 +42,52 @@
 
 ## Database Schema
 
+### Integration with Existing System
+
+**✅ This plan fully integrates with the existing database schema:**
+
+#### Uses Existing `users` Table
+All group functionality references the existing `users` table:
+- **Group creators:** `groups.creator_id` → `users.id`
+- **Group members:** `group_memberships.user_id` → `users.id`
+- **Post authors:** `group_posts.user_id` → `users.id`
+- **Comment authors:** `group_comments.user_id` → `users.id`
+- **Moderators/Admins:** Stored as roles in `group_memberships`
+- **Inviters/Invitees:** `group_invitations` → `users.id`
+- **Voters:** `group_votes.user_id` → `users.id`
+
+#### Existing User Data Utilized
+- User profiles (username, avatar, bio) display in groups
+- User authentication (existing JWT system) works for groups
+- User location data can be displayed in group profiles
+- User reputation/stats can extend to group activity
+
+#### No Changes to Existing Tables
+- ✅ `users` table: **No modifications needed**
+- ✅ `posts` table: **Remains unchanged** (groups use separate `group_posts`)
+- ✅ `comments` table: **Remains unchanged** (groups use separate `group_comments`)
+- ✅ `media` table: **Remains unchanged** (groups use separate `group_post_media`)
+- ✅ `reactions` table: **Can coexist** (groups use separate `group_votes`)
+- ✅ `follows` table: **Compatible** (users can follow group members)
+
+#### New Tables Added
+9 new tables, all prefixed with `group_` for clarity:
+1. `groups` - Group metadata and settings
+2. `group_memberships` - User membership and roles
+3. `group_posts` - Posts within groups
+4. `group_post_media` - Media attachments for posts
+5. `group_comments` - Nested comments on posts
+6. `group_comment_media` - Media attachments for comments
+7. `group_invitations` - Invitation system
+8. `group_votes` - Upvote/downvote system
+9. `group_activity_log` - Moderation audit trail
+
+#### Architecture Benefits
+- **Non-disruptive:** Existing features continue working unchanged
+- **Parallel systems:** Groups and regular posts can coexist
+- **Data integrity:** Foreign key constraints ensure consistency
+- **Extensible:** Easy to add cross-posting between groups and main feed later
+
 ### 1. Groups Table
 ```sql
 CREATE TABLE groups (
