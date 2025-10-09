@@ -31,6 +31,9 @@ const timelineRoutes = require('./routes/timeline');
 const ratingsRoutes = require('./routes/ratings');
 const reputationRoutes = require('./routes/reputation');
 const locationRoutes = require('./routes/location');
+const groupsRoutes = require('./routes/groups');
+const groupPostsRoutes = require('./routes/groupPosts');
+const groupCommentsRoutes = require('./routes/groupComments');
 
 // Import middleware
 const errorHandler = require('./middleware/errorHandler');
@@ -105,6 +108,9 @@ app.use('/api/timeline', timelineRoutes);
 app.use('/api/ratings', ratingsRoutes);
 app.use('/api/reputation', reputationRoutes);
 app.use('/api/location', locationRoutes);
+app.use('/api/groups', groupsRoutes);
+app.use('/api/groups', groupPostsRoutes);
+app.use('/api/groups', groupCommentsRoutes);
 
 // Catch-all route for undefined endpoints
 app.use(notFound);

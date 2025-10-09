@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { authenticateToken, optionalAuth } = require('../middleware/auth');
+const { authenticate: authenticateToken, optionalAuthenticate: optionalAuth } = require('../middleware/auth');
 const Group = require('../models/Group');
 const GroupMembership = require('../models/GroupMembership');
 
