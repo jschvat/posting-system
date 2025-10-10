@@ -399,7 +399,7 @@ router.delete('/:slug/comments/:commentId', authenticateToken, async (req, res) 
       });
     }
 
-    await GroupComment.softDelete(parseInt(commentId));
+    await GroupComment.delete(parseInt(commentId));
 
     res.json({
       success: true,
@@ -462,7 +462,8 @@ router.post('/:slug/comments/:commentId/vote', authenticateToken, async (req, re
       data: {
         vote,
         counts: voteCounts
-      }
+      },
+      message: vote ? 'Vote recorded' : 'Vote removed'
     });
   } catch (error) {
     console.error('Error voting on comment:', error);
@@ -500,7 +501,10 @@ router.delete('/:slug/comments/:commentId/vote', authenticateToken, async (req, 
 
     res.json({
       success: true,
-      data: voteCounts
+      data: {
+        counts: voteCounts
+      },
+      message: 'Vote removed'
     });
   } catch (error) {
     console.error('Error removing vote:', error);
@@ -519,7 +523,14 @@ router.delete('/:slug/comments/:commentId/vote', authenticateToken, async (req, 
 router.post('/:slug/comments/:commentId/remove', authenticateToken, async (req, res) => {
   try {
     const { slug, commentId } = req.params;
-    const { reason } = req.body;
+    const { removal_reason } = req.body;
+
+    if (!removal_reason) {
+      return res.status(400).json({
+        success: false,
+        error: 'Removal reason is required'
+      });
+    }
 
     const group = await Group.findBySlug(slug);
     if (!group) {
@@ -537,7 +548,7 @@ router.post('/:slug/comments/:commentId/remove', authenticateToken, async (req, 
       });
     }
 
-    const comment = await GroupComment.remove(parseInt(commentId), req.user.id, reason);
+    const comment = await GroupComment.remove(parseInt(commentId), req.user.id, removal_reason);
 
     res.json({
       success: true,

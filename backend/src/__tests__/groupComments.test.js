@@ -34,7 +34,7 @@ jest.mock('../config/database', () => ({
 }));
 
 describe('Group Comments Routes', () => {
-  let models, testUser1, testUser2, testUser3, token1, token2, token3;
+  let models, testUser1, testUser2, testUser3, testUser4, token1, token2, token3, token4;
   let testGroup, testPost, testComment;
 
   beforeAll(() => {
@@ -49,10 +49,12 @@ describe('Group Comments Routes', () => {
     testUser1 = await createTestUser({ username: 'commentadmin', email: 'commentadmin@test.com' });
     testUser2 = await createTestUser({ username: 'commentmod', email: 'commentmod@test.com' });
     testUser3 = await createTestUser({ username: 'commentmember', email: 'commentmember@test.com' });
+    testUser4 = await createTestUser({ username: 'nonmember', email: 'nonmember@test.com' });
 
     token1 = generateTestToken(testUser1);
     token2 = generateTestToken(testUser2);
     token3 = generateTestToken(testUser3);
+    token4 = generateTestToken(testUser4);
 
     // Create test group
     const groupResponse = await request(app)
@@ -439,10 +441,10 @@ describe('Group Comments Routes', () => {
       expectSuccessResponse(response);
     });
 
-    it('should prevent non-author from deleting comment', async () => {
+    it('should prevent non-author non-moderator from deleting comment', async () => {
       const response = await request(app)
         .delete(`/api/groups/commentgroup/comments/${testComment.id}`)
-        .set('Authorization', authHeader(token1));
+        .set('Authorization', authHeader(token4));
 
       expect(response.status).toBe(403);
     });
