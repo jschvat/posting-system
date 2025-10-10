@@ -110,7 +110,12 @@ router.get('/search', async (req, res) => {
 
     res.json({
       success: true,
-      data: groups
+      data: {
+        groups,
+        total: groups.length,
+        limit: parseInt(limit),
+        offset: parseInt(offset)
+      }
     });
   } catch (error) {
     console.error('Error searching groups:', error);
@@ -473,6 +478,15 @@ router.post('/:slug/leave', authenticateToken, async (req, res) => {
       });
     }
 
+    // Check if user is a member
+    const isMember = await GroupMembership.isMember(group.id, req.user.id);
+    if (!isMember) {
+      return res.status(400).json({
+        success: false,
+        error: 'You are not a member of this group'
+      });
+    }
+
     await GroupMembership.delete(group.id, req.user.id);
 
     res.json({
@@ -545,7 +559,7 @@ router.post('/:slug/members/:userId/role', authenticateToken, async (req, res) =
 router.post('/:slug/members/:userId/ban', authenticateToken, async (req, res) => {
   try {
     const { slug, userId } = req.params;
-    const { reason } = req.body;
+    const { banned_reason } = req.body;
 
     const group = await Group.findBySlug(slug);
     if (!group) {
@@ -568,7 +582,7 @@ router.post('/:slug/members/:userId/ban', authenticateToken, async (req, res) =>
       group.id,
       parseInt(userId),
       req.user.id,
-      reason
+      banned_reason
     );
 
     res.json({
