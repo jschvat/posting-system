@@ -52,7 +52,9 @@ router.get('/:slug/posts/:postId/comments', optionalAuth, async (req, res) => {
 
     res.json({
       success: true,
-      data: comments
+      data: {
+        comments
+      }
     });
   } catch (error) {
     console.error('Error getting comments:', error);
@@ -106,7 +108,9 @@ router.get('/:slug/posts/:postId/comments/nested', optionalAuth, async (req, res
 
     res.json({
       success: true,
-      data: comments
+      data: {
+        comments
+      }
     });
   } catch (error) {
     console.error('Error getting nested comments:', error);
@@ -290,7 +294,9 @@ router.get('/:slug/comments/:commentId/replies', optionalAuth, async (req, res) 
 
     res.json({
       success: true,
-      data: replies
+      data: {
+        replies
+      }
     });
   } catch (error) {
     console.error('Error getting comment replies:', error);
