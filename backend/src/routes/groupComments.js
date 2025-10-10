@@ -34,7 +34,7 @@ router.get('/:slug/posts/:postId/comments', optionalAuth, async (req, res) => {
         });
       }
 
-      const isMember = await GroupMembership.isMember(group.id, req.user.userId);
+      const isMember = await GroupMembership.isMember(group.id, req.user.id);
       if (!isMember) {
         return res.status(403).json({
           success: false,
@@ -90,7 +90,7 @@ router.get('/:slug/posts/:postId/comments/nested', optionalAuth, async (req, res
         });
       }
 
-      const isMember = await GroupMembership.isMember(group.id, req.user.userId);
+      const isMember = await GroupMembership.isMember(group.id, req.user.id);
       if (!isMember) {
         return res.status(403).json({
           success: false,
@@ -143,7 +143,7 @@ router.post('/:slug/posts/:postId/comments', authenticateToken, async (req, res)
     }
 
     // Check if user is a member
-    const isMember = await GroupMembership.isMember(group.id, req.user.userId);
+    const isMember = await GroupMembership.isMember(group.id, req.user.id);
     if (!isMember) {
       return res.status(403).json({
         success: false,
@@ -161,7 +161,7 @@ router.post('/:slug/posts/:postId/comments', authenticateToken, async (req, res)
     }
 
     if (post.is_locked) {
-      const isModerator = await GroupMembership.isModerator(group.id, req.user.userId);
+      const isModerator = await GroupMembership.isModerator(group.id, req.user.id);
       if (!isModerator) {
         return res.status(403).json({
           success: false,
@@ -173,12 +173,12 @@ router.post('/:slug/posts/:postId/comments', authenticateToken, async (req, res)
     const comment = await GroupComment.create({
       post_id: parseInt(postId),
       parent_id: parent_id ? parseInt(parent_id) : null,
-      user_id: req.user.userId,
+      user_id: req.user.id,
       content
     });
 
     // Get comment with author info
-    const commentWithAuthor = await GroupComment.getWithAuthor(comment.id, req.user.userId);
+    const commentWithAuthor = await GroupComment.getWithAuthor(comment.id, req.user.id);
 
     res.status(201).json({
       success: true,
@@ -219,7 +219,7 @@ router.get('/:slug/comments/:commentId', optionalAuth, async (req, res) => {
         });
       }
 
-      const isMember = await GroupMembership.isMember(group.id, req.user.userId);
+      const isMember = await GroupMembership.isMember(group.id, req.user.id);
       if (!isMember) {
         return res.status(403).json({
           success: false,
@@ -275,7 +275,7 @@ router.get('/:slug/comments/:commentId/replies', optionalAuth, async (req, res) 
         });
       }
 
-      const isMember = await GroupMembership.isMember(group.id, req.user.userId);
+      const isMember = await GroupMembership.isMember(group.id, req.user.id);
       if (!isMember) {
         return res.status(403).json({
           success: false,
@@ -335,7 +335,7 @@ router.put('/:slug/comments/:commentId', authenticateToken, async (req, res) => 
     }
 
     // Check if user is the author
-    if (comment.user_id !== req.user.userId) {
+    if (comment.user_id !== req.user.id) {
       return res.status(403).json({
         success: false,
         error: 'Only the author can edit this comment'
@@ -383,8 +383,8 @@ router.delete('/:slug/comments/:commentId', authenticateToken, async (req, res) 
     }
 
     // Check permissions
-    const isModerator = await GroupMembership.isModerator(group.id, req.user.userId);
-    const isAuthor = comment.user_id === req.user.userId;
+    const isModerator = await GroupMembership.isModerator(group.id, req.user.id);
+    const isAuthor = comment.user_id === req.user.id;
 
     if (!isAuthor && !isModerator) {
       return res.status(403).json({
@@ -434,7 +434,7 @@ router.post('/:slug/comments/:commentId/vote', authenticateToken, async (req, re
     }
 
     // Check if user is a member
-    const isMember = await GroupMembership.isMember(group.id, req.user.userId);
+    const isMember = await GroupMembership.isMember(group.id, req.user.id);
     if (!isMember) {
       return res.status(403).json({
         success: false,
@@ -443,7 +443,7 @@ router.post('/:slug/comments/:commentId/vote', authenticateToken, async (req, re
     }
 
     const vote = await GroupVote.toggleVote({
-      user_id: req.user.userId,
+      user_id: req.user.id,
       comment_id: parseInt(commentId),
       vote_type
     });
@@ -485,7 +485,7 @@ router.delete('/:slug/comments/:commentId/vote', authenticateToken, async (req, 
     }
 
     await GroupVote.unvote({
-      user_id: req.user.userId,
+      user_id: req.user.id,
       comment_id: parseInt(commentId)
     });
 
@@ -523,7 +523,7 @@ router.post('/:slug/comments/:commentId/remove', authenticateToken, async (req, 
       });
     }
 
-    const isModerator = await GroupMembership.isModerator(group.id, req.user.userId);
+    const isModerator = await GroupMembership.isModerator(group.id, req.user.id);
     if (!isModerator) {
       return res.status(403).json({
         success: false,
@@ -531,7 +531,7 @@ router.post('/:slug/comments/:commentId/remove', authenticateToken, async (req, 
       });
     }
 
-    const comment = await GroupComment.remove(parseInt(commentId), req.user.userId, reason);
+    const comment = await GroupComment.remove(parseInt(commentId), req.user.id, reason);
 
     res.json({
       success: true,

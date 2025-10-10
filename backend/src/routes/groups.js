@@ -176,13 +176,13 @@ router.post('/', authenticateToken, async (req, res) => {
       allow_multimedia,
       allowed_media_types,
       max_file_size_mb,
-      creator_id: req.user.userId
+      creator_id: req.user.id
     });
 
     // Add creator as admin
     await GroupMembership.create({
       group_id: group.id,
-      user_id: req.user.userId,
+      user_id: req.user.id,
       role: 'admin',
       status: 'active'
     });
@@ -220,7 +220,7 @@ router.get('/:slug', optionalAuth, async (req, res) => {
     // Check if user is a member (if authenticated)
     let membership = null;
     if (req.user) {
-      membership = await GroupMembership.getUserRole(group.id, req.user.userId);
+      membership = await GroupMembership.getUserRole(group.id, req.user.id);
     }
 
     // Check visibility
@@ -269,7 +269,7 @@ router.put('/:slug', authenticateToken, async (req, res) => {
     }
 
     // Check if user is admin
-    const isAdmin = await GroupMembership.isAdmin(group.id, req.user.userId);
+    const isAdmin = await GroupMembership.isAdmin(group.id, req.user.id);
     if (!isAdmin) {
       return res.status(403).json({
         success: false,
@@ -310,7 +310,7 @@ router.delete('/:slug', authenticateToken, async (req, res) => {
     }
 
     // Check if user is admin
-    const isAdmin = await GroupMembership.isAdmin(group.id, req.user.userId);
+    const isAdmin = await GroupMembership.isAdmin(group.id, req.user.id);
     if (!isAdmin) {
       return res.status(403).json({
         success: false,
@@ -360,7 +360,7 @@ router.get('/:slug/members', optionalAuth, async (req, res) => {
         });
       }
 
-      const isMember = await GroupMembership.isMember(group.id, req.user.userId);
+      const isMember = await GroupMembership.isMember(group.id, req.user.id);
       if (!isMember) {
         return res.status(403).json({
           success: false,
@@ -407,7 +407,7 @@ router.post('/:slug/join', authenticateToken, async (req, res) => {
     }
 
     // Check if already a member
-    const existingMembership = await GroupMembership.findByGroupAndUser(group.id, req.user.userId);
+    const existingMembership = await GroupMembership.findByGroupAndUser(group.id, req.user.id);
     if (existingMembership) {
       return res.status(400).json({
         success: false,
@@ -429,7 +429,7 @@ router.post('/:slug/join', authenticateToken, async (req, res) => {
 
     const membership = await GroupMembership.create({
       group_id: group.id,
-      user_id: req.user.userId,
+      user_id: req.user.id,
       role: 'member',
       status
     });
@@ -466,14 +466,14 @@ router.post('/:slug/leave', authenticateToken, async (req, res) => {
     }
 
     // Check if user is the creator
-    if (group.creator_id === req.user.userId) {
+    if (group.creator_id === req.user.id) {
       return res.status(400).json({
         success: false,
         error: 'Group creator cannot leave. Transfer ownership or delete the group.'
       });
     }
 
-    await GroupMembership.delete(group.id, req.user.userId);
+    await GroupMembership.delete(group.id, req.user.id);
 
     res.json({
       success: true,
@@ -514,7 +514,7 @@ router.post('/:slug/members/:userId/role', authenticateToken, async (req, res) =
     }
 
     // Check if user is admin
-    const isAdmin = await GroupMembership.isAdmin(group.id, req.user.userId);
+    const isAdmin = await GroupMembership.isAdmin(group.id, req.user.id);
     if (!isAdmin) {
       return res.status(403).json({
         success: false,
@@ -556,7 +556,7 @@ router.post('/:slug/members/:userId/ban', authenticateToken, async (req, res) =>
     }
 
     // Check if user is moderator or admin
-    const isModerator = await GroupMembership.isModerator(group.id, req.user.userId);
+    const isModerator = await GroupMembership.isModerator(group.id, req.user.id);
     if (!isModerator) {
       return res.status(403).json({
         success: false,
@@ -567,7 +567,7 @@ router.post('/:slug/members/:userId/ban', authenticateToken, async (req, res) =>
     const updatedMembership = await GroupMembership.ban(
       group.id,
       parseInt(userId),
-      req.user.userId,
+      req.user.id,
       reason
     );
 
@@ -602,7 +602,7 @@ router.post('/:slug/members/:userId/unban', authenticateToken, async (req, res) 
     }
 
     // Check if user is moderator or admin
-    const isModerator = await GroupMembership.isModerator(group.id, req.user.userId);
+    const isModerator = await GroupMembership.isModerator(group.id, req.user.id);
     if (!isModerator) {
       return res.status(403).json({
         success: false,

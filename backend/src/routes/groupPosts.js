@@ -33,7 +33,7 @@ router.get('/:slug/posts', optionalAuth, async (req, res) => {
         });
       }
 
-      const isMember = await GroupMembership.isMember(group.id, req.user.userId);
+      const isMember = await GroupMembership.isMember(group.id, req.user.id);
       if (!isMember) {
         return res.status(403).json({
           success: false,
@@ -92,7 +92,7 @@ router.post('/:slug/posts', authenticateToken, async (req, res) => {
     }
 
     // Check if user is a member
-    const membership = await GroupMembership.findByGroupAndUser(group.id, req.user.userId);
+    const membership = await GroupMembership.findByGroupAndUser(group.id, req.user.id);
     if (!membership || membership.status !== 'active') {
       return res.status(403).json({
         success: false,
@@ -116,7 +116,7 @@ router.post('/:slug/posts', authenticateToken, async (req, res) => {
 
     const post = await GroupPost.create({
       group_id: group.id,
-      user_id: req.user.userId,
+      user_id: req.user.id,
       title,
       content,
       post_type,
@@ -169,7 +169,7 @@ router.get('/:slug/posts/:postId', optionalAuth, async (req, res) => {
         });
       }
 
-      const isMember = await GroupMembership.isMember(group.id, req.user.userId);
+      const isMember = await GroupMembership.isMember(group.id, req.user.id);
       if (!isMember) {
         return res.status(403).json({
           success: false,
@@ -226,8 +226,8 @@ router.put('/:slug/posts/:postId', authenticateToken, async (req, res) => {
     }
 
     // Check permissions: author or moderator
-    const isModerator = await GroupMembership.isModerator(group.id, req.user.userId);
-    const isAuthor = post.user_id === req.user.userId;
+    const isModerator = await GroupMembership.isModerator(group.id, req.user.id);
+    const isAuthor = post.user_id === req.user.id;
 
     if (!isAuthor && !isModerator) {
       return res.status(403).json({
@@ -282,8 +282,8 @@ router.delete('/:slug/posts/:postId', authenticateToken, async (req, res) => {
     }
 
     // Check permissions
-    const isModerator = await GroupMembership.isModerator(group.id, req.user.userId);
-    const isAuthor = post.user_id === req.user.userId;
+    const isModerator = await GroupMembership.isModerator(group.id, req.user.id);
+    const isAuthor = post.user_id === req.user.id;
 
     if (!isAuthor && !isModerator) {
       return res.status(403).json({
@@ -333,7 +333,7 @@ router.post('/:slug/posts/:postId/vote', authenticateToken, async (req, res) => 
     }
 
     // Check if user is a member
-    const isMember = await GroupMembership.isMember(group.id, req.user.userId);
+    const isMember = await GroupMembership.isMember(group.id, req.user.id);
     if (!isMember) {
       return res.status(403).json({
         success: false,
@@ -342,7 +342,7 @@ router.post('/:slug/posts/:postId/vote', authenticateToken, async (req, res) => 
     }
 
     const vote = await GroupVote.toggleVote({
-      user_id: req.user.userId,
+      user_id: req.user.id,
       post_id: parseInt(postId),
       vote_type
     });
@@ -384,7 +384,7 @@ router.delete('/:slug/posts/:postId/vote', authenticateToken, async (req, res) =
     }
 
     await GroupVote.unvote({
-      user_id: req.user.userId,
+      user_id: req.user.id,
       post_id: parseInt(postId)
     });
 
@@ -421,7 +421,7 @@ router.post('/:slug/posts/:postId/pin', authenticateToken, async (req, res) => {
       });
     }
 
-    const isModerator = await GroupMembership.isModerator(group.id, req.user.userId);
+    const isModerator = await GroupMembership.isModerator(group.id, req.user.id);
     if (!isModerator) {
       return res.status(403).json({
         success: false,
@@ -461,7 +461,7 @@ router.post('/:slug/posts/:postId/lock', authenticateToken, async (req, res) => 
       });
     }
 
-    const isModerator = await GroupMembership.isModerator(group.id, req.user.userId);
+    const isModerator = await GroupMembership.isModerator(group.id, req.user.id);
     if (!isModerator) {
       return res.status(403).json({
         success: false,
@@ -502,7 +502,7 @@ router.post('/:slug/posts/:postId/remove', authenticateToken, async (req, res) =
       });
     }
 
-    const isModerator = await GroupMembership.isModerator(group.id, req.user.userId);
+    const isModerator = await GroupMembership.isModerator(group.id, req.user.id);
     if (!isModerator) {
       return res.status(403).json({
         success: false,
@@ -510,7 +510,7 @@ router.post('/:slug/posts/:postId/remove', authenticateToken, async (req, res) =
       });
     }
 
-    const post = await GroupPost.remove(parseInt(postId), req.user.userId, reason);
+    const post = await GroupPost.remove(parseInt(postId), req.user.id, reason);
 
     res.json({
       success: true,
@@ -542,7 +542,7 @@ router.post('/:slug/posts/:postId/approve', authenticateToken, async (req, res) 
       });
     }
 
-    const isModerator = await GroupMembership.isModerator(group.id, req.user.userId);
+    const isModerator = await GroupMembership.isModerator(group.id, req.user.id);
     if (!isModerator) {
       return res.status(403).json({
         success: false,
@@ -550,7 +550,7 @@ router.post('/:slug/posts/:postId/approve', authenticateToken, async (req, res) 
       });
     }
 
-    const post = await GroupPost.approve(parseInt(postId), req.user.userId);
+    const post = await GroupPost.approve(parseInt(postId), req.user.id);
 
     res.json({
       success: true,
@@ -583,7 +583,7 @@ router.get('/:slug/posts/pending', authenticateToken, async (req, res) => {
       });
     }
 
-    const isModerator = await GroupMembership.isModerator(group.id, req.user.userId);
+    const isModerator = await GroupMembership.isModerator(group.id, req.user.id);
     if (!isModerator) {
       return res.status(403).json({
         success: false,
@@ -636,7 +636,7 @@ router.get('/:slug/posts/top', optionalAuth, async (req, res) => {
         });
       }
 
-      const isMember = await GroupMembership.isMember(group.id, req.user.userId);
+      const isMember = await GroupMembership.isMember(group.id, req.user.id);
       if (!isMember) {
         return res.status(403).json({
           success: false,
