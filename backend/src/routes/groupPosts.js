@@ -83,6 +83,14 @@ router.post('/:slug/posts', authenticateToken, async (req, res) => {
       is_spoiler = false
     } = req.body;
 
+    // Validate required fields
+    if (!title) {
+      return res.status(400).json({
+        success: false,
+        error: 'Title is required'
+      });
+    }
+
     const group = await Group.findBySlug(slug);
     if (!group) {
       return res.status(404).json({
@@ -139,6 +147,105 @@ router.post('/:slug/posts', authenticateToken, async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to create post'
+    });
+  }
+});
+
+/**
+ * @route   GET /api/groups/:slug/posts/pending
+ * @desc    Get pending posts (requiring approval)
+ * @access  Private (Moderator only)
+ */
+router.get('/:slug/posts/pending', authenticateToken, async (req, res) => {
+  try {
+    const { slug } = req.params;
+    const { limit = 20, offset = 0 } = req.query;
+
+    const group = await Group.findBySlug(slug);
+    if (!group) {
+      return res.status(404).json({
+        success: false,
+        error: 'Group not found'
+      });
+    }
+
+    const isModerator = await GroupMembership.isModerator(group.id, req.user.id);
+    if (!isModerator) {
+      return res.status(403).json({
+        success: false,
+        error: 'Only moderators can view pending posts'
+      });
+    }
+
+    const posts = await GroupPost.getPendingPosts(group.id, {
+      limit: parseInt(limit),
+      offset: parseInt(offset)
+    });
+
+    res.json({
+      success: true,
+      data: posts
+    });
+  } catch (error) {
+    console.error('Error getting pending posts:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get pending posts'
+    });
+  }
+});
+
+/**
+ * @route   GET /api/groups/:slug/posts/top
+ * @desc    Get top posts in a time period
+ * @access  Public (for public groups) / Members only (for private groups)
+ */
+router.get('/:slug/posts/top', optionalAuth, async (req, res) => {
+  try {
+    const { slug } = req.params;
+    const { period = 'week', limit = 20, offset = 0 } = req.query;
+
+    const group = await Group.findBySlug(slug);
+    if (!group) {
+      return res.status(404).json({
+        success: false,
+        error: 'Group not found'
+      });
+    }
+
+    // Check visibility
+    if (group.visibility === 'private') {
+      if (!req.user) {
+        return res.status(401).json({
+          success: false,
+          error: 'Authentication required'
+        });
+      }
+
+      const isMember = await GroupMembership.isMember(group.id, req.user.id);
+      if (!isMember) {
+        return res.status(403).json({
+          success: false,
+          error: 'Only members can view posts in private groups'
+        });
+      }
+    }
+
+    const posts = await GroupPost.getTopPosts(group.id, {
+      period,
+      limit: parseInt(limit),
+      offset: parseInt(offset)
+    });
+
+    res.json({
+      success: true,
+      data: posts
+    });
+  } catch (error) {
+    console.error('Error getting top posts:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get top posts'
     });
   }
 });
@@ -355,7 +462,8 @@ router.post('/:slug/posts/:postId/vote', authenticateToken, async (req, res) => 
       data: {
         vote,
         counts: voteCounts
-      }
+      },
+      message: vote ? 'Vote recorded' : 'Vote removed'
     });
   } catch (error) {
     console.error('Error voting on post:', error);
@@ -393,7 +501,10 @@ router.delete('/:slug/posts/:postId/vote', authenticateToken, async (req, res) =
 
     res.json({
       success: true,
-      data: voteCounts
+      data: {
+        counts: voteCounts
+      },
+      message: 'Vote removed'
     });
   } catch (error) {
     console.error('Error removing vote:', error);
@@ -492,7 +603,14 @@ router.post('/:slug/posts/:postId/lock', authenticateToken, async (req, res) => 
 router.post('/:slug/posts/:postId/remove', authenticateToken, async (req, res) => {
   try {
     const { slug, postId } = req.params;
-    const { reason } = req.body;
+    const { removal_reason } = req.body;
+
+    if (!removal_reason) {
+      return res.status(400).json({
+        success: false,
+        error: 'Removal reason is required'
+      });
+    }
 
     const group = await Group.findBySlug(slug);
     if (!group) {
@@ -510,7 +628,7 @@ router.post('/:slug/posts/:postId/remove', authenticateToken, async (req, res) =
       });
     }
 
-    const post = await GroupPost.remove(parseInt(postId), req.user.id, reason);
+    const post = await GroupPost.remove(parseInt(postId), req.user.id, removal_reason);
 
     res.json({
       success: true,
@@ -561,105 +679,6 @@ router.post('/:slug/posts/:postId/approve', authenticateToken, async (req, res) 
     res.status(500).json({
       success: false,
       error: 'Failed to approve post'
-    });
-  }
-});
-
-/**
- * @route   GET /api/groups/:slug/posts/pending
- * @desc    Get pending posts (requiring approval)
- * @access  Private (Moderator only)
- */
-router.get('/:slug/posts/pending', authenticateToken, async (req, res) => {
-  try {
-    const { slug } = req.params;
-    const { limit = 20, offset = 0 } = req.query;
-
-    const group = await Group.findBySlug(slug);
-    if (!group) {
-      return res.status(404).json({
-        success: false,
-        error: 'Group not found'
-      });
-    }
-
-    const isModerator = await GroupMembership.isModerator(group.id, req.user.id);
-    if (!isModerator) {
-      return res.status(403).json({
-        success: false,
-        error: 'Only moderators can view pending posts'
-      });
-    }
-
-    const posts = await GroupPost.getPendingPosts(group.id, {
-      limit: parseInt(limit),
-      offset: parseInt(offset)
-    });
-
-    res.json({
-      success: true,
-      data: posts
-    });
-  } catch (error) {
-    console.error('Error getting pending posts:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to get pending posts'
-    });
-  }
-});
-
-/**
- * @route   GET /api/groups/:slug/posts/top
- * @desc    Get top posts in a time period
- * @access  Public (for public groups) / Members only (for private groups)
- */
-router.get('/:slug/posts/top', optionalAuth, async (req, res) => {
-  try {
-    const { slug } = req.params;
-    const { period = 'week', limit = 20, offset = 0 } = req.query;
-
-    const group = await Group.findBySlug(slug);
-    if (!group) {
-      return res.status(404).json({
-        success: false,
-        error: 'Group not found'
-      });
-    }
-
-    // Check visibility
-    if (group.visibility === 'private') {
-      if (!req.user) {
-        return res.status(401).json({
-          success: false,
-          error: 'Authentication required'
-        });
-      }
-
-      const isMember = await GroupMembership.isMember(group.id, req.user.id);
-      if (!isMember) {
-        return res.status(403).json({
-          success: false,
-          error: 'Only members can view posts in private groups'
-        });
-      }
-    }
-
-    const posts = await GroupPost.getTopPosts(group.id, {
-      period,
-      limit: parseInt(limit),
-      offset: parseInt(offset)
-    });
-
-    res.json({
-      success: true,
-      data: posts
-    });
-  } catch (error) {
-    console.error('Error getting top posts:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to get top posts'
     });
   }
 });

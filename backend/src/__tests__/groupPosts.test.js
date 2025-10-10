@@ -32,7 +32,7 @@ jest.mock('../config/database', () => ({
 }));
 
 describe('Group Posts Routes', () => {
-  let models, testUser1, testUser2, testUser3, token1, token2, token3;
+  let models, testUser1, testUser2, testUser3, testUser4, token1, token2, token3, token4;
   let testGroup, testPost;
 
   beforeAll(() => {
@@ -47,10 +47,12 @@ describe('Group Posts Routes', () => {
     testUser1 = await createTestUser({ username: 'postadmin', email: 'postadmin@test.com' });
     testUser2 = await createTestUser({ username: 'postmod', email: 'postmod@test.com' });
     testUser3 = await createTestUser({ username: 'postmember', email: 'postmember@test.com' });
+    testUser4 = await createTestUser({ username: 'nonmember', email: 'nonmember@test.com' });
 
     token1 = generateTestToken(testUser1);
     token2 = generateTestToken(testUser2);
     token3 = generateTestToken(testUser3);
+    token4 = generateTestToken(testUser4);
 
     // Create test group
     const groupResponse = await request(app)
@@ -315,10 +317,10 @@ describe('Group Posts Routes', () => {
       expect(response.body.data.title).toBe('Moderator Updated');
     });
 
-    it('should prevent non-author from updating post', async () => {
+    it('should prevent non-author non-moderator from updating post', async () => {
       const response = await request(app)
         .put(`/api/groups/testgroup/posts/${testPost.id}`)
-        .set('Authorization', authHeader(token1))
+        .set('Authorization', authHeader(token4))
         .send({
           title: 'Hacked'
         });
@@ -361,10 +363,10 @@ describe('Group Posts Routes', () => {
       expectSuccessResponse(response);
     });
 
-    it('should prevent non-author from deleting post', async () => {
+    it('should prevent non-author non-moderator from deleting post', async () => {
       const response = await request(app)
         .delete(`/api/groups/testgroup/posts/${testPost.id}`)
-        .set('Authorization', authHeader(token1));
+        .set('Authorization', authHeader(token4));
 
       expect(response.status).toBe(403);
     });
