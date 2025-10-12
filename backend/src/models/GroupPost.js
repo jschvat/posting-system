@@ -1,4 +1,5 @@
 const db = require('../config/database');
+const GroupPostMedia = require('./GroupPostMedia');
 
 class GroupPost {
   /**
@@ -69,7 +70,14 @@ class GroupPost {
 
     const values = user_id ? [id, user_id] : [id];
     const result = await db.query(query, values);
-    return result.rows[0];
+    const post = result.rows[0];
+
+    if (post) {
+      // Fetch media for this post
+      post.media = await GroupPostMedia.getByPostId(post.id);
+    }
+
+    return post;
   }
 
   /**
@@ -229,8 +237,17 @@ class GroupPost {
       db.query(countQuery, [group_id, status])
     ]);
 
+    const posts = postsResult.rows;
+
+    // Fetch media for each post
+    await Promise.all(
+      posts.map(async (post) => {
+        post.media = await GroupPostMedia.getByPostId(post.id);
+      })
+    );
+
     return {
-      posts: postsResult.rows,
+      posts,
       total: parseInt(countResult.rows[0].total),
       limit,
       offset

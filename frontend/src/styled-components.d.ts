@@ -16,10 +16,12 @@ declare module 'styled-components' {
         muted: string;
       };
       textLight: string;
+      textSecondary: string;
       border: string;
       error: string;
       errorLight: string;
       success: string;
+      successLight: string;
       warning: string;
       hover: string;
     };
@@ -36,6 +38,13 @@ declare module 'styled-components' {
       md: string;
       lg: string;
       full: string;
+    };
+    fontSize: {
+      xs: string;
+      sm: string;
+      md: string;
+      lg: string;
+      xl: string;
     };
     fontWeight: {
       normal: number;

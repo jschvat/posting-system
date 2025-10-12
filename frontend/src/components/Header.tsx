@@ -255,6 +255,9 @@ const Header: React.FC = () => {
           <NavLink to="/" $isActive={isActive('/')}>
             Home
           </NavLink>
+          <NavLink to="/groups" $isActive={isActive('/groups')}>
+            Groups
+          </NavLink>
           <CreateButton to="/create">
             Create Post
           </CreateButton>

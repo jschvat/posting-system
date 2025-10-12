@@ -23,6 +23,10 @@ import UserProfilePage from './pages/UserProfilePage';
 import CreatePostPage from './pages/CreatePostPage';
 import EditProfilePage from './pages/EditProfilePage';
 import NotFoundPage from './pages/NotFoundPage';
+import GroupListPage from './pages/GroupListPage';
+import GroupPage from './pages/GroupPage';
+import CreateGroupPage from './pages/CreateGroupPage';
+import GroupPostPage from './pages/GroupPostPage';
 
 // Import components
 import Header from './components/Header';
@@ -199,6 +203,12 @@ const AuthenticatedApp: React.FC = () => {
             {/* Edit profile / Settings */}
             <Route path="/settings" element={<EditProfilePage />} />
             <Route path="/profile/edit" element={<EditProfilePage />} />
+
+            {/* Groups */}
+            <Route path="/groups" element={<GroupListPage />} />
+            <Route path="/groups/create" element={<CreateGroupPage />} />
+            <Route path="/g/:slug" element={<GroupPage />} />
+            <Route path="/g/:slug/posts/:postId" element={<GroupPostPage />} />
 
             {/* Redirect to home for any other routes */}
             <Route path="*" element={<Navigate to="/" replace />} />

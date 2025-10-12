@@ -34,6 +34,7 @@ const locationRoutes = require('./routes/location');
 const groupsRoutes = require('./routes/groups');
 const groupPostsRoutes = require('./routes/groupPosts');
 const groupCommentsRoutes = require('./routes/groupComments');
+const groupMediaRoutes = require('./routes/groupMedia');
 
 // Import middleware
 const errorHandler = require('./middleware/errorHandler');
@@ -83,6 +84,7 @@ if (config.database.logging) {
 // Static file serving for uploaded media
 // Note: Files are uploaded to src/uploads by the media routes
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/media', express.static(path.join(__dirname, '../public/media')));
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -111,6 +113,7 @@ app.use('/api/location', locationRoutes);
 app.use('/api/groups', groupsRoutes);
 app.use('/api/groups', groupPostsRoutes);
 app.use('/api/groups', groupCommentsRoutes);
+app.use('/api/groups', groupMediaRoutes);
 
 // Catch-all route for undefined endpoints
 app.use(notFound);

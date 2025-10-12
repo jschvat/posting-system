@@ -1,0 +1,326 @@
+import React, { useState } from 'react';
+import styled from 'styled-components';
+import { ContentType, CreatePostData } from '../../types/group';
+
+interface GroupPostComposerProps {
+  onSubmit: (data: CreatePostData) => Promise<void>;
+  allowedTypes: {
+    text: boolean;
+    link: boolean;
+    image: boolean;
+    video: boolean;
+    poll: boolean;
+  };
+  requiresApproval?: boolean;
+}
+
+const GroupPostComposer: React.FC<GroupPostComposerProps> = ({
+  onSubmit,
+  allowedTypes,
+  requiresApproval = false
+}) => {
+  const [contentType, setContentType] = useState<ContentType>('text');
+  const [title, setTitle] = useState('');
+  const [content, setContent] = useState('');
+  const [linkUrl, setLinkUrl] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+
+    if (!title.trim()) {
+      setError('Title is required');
+      return;
+    }
+
+    if (contentType === 'link' && !linkUrl.trim()) {
+      setError('Link URL is required');
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      const postData: CreatePostData = {
+        title: title.trim(),
+        content_type: contentType
+      };
+
+      if (content.trim()) {
+        postData.content = content.trim();
+      }
+
+      if (contentType === 'link' && linkUrl.trim()) {
+        postData.link_url = linkUrl.trim();
+      }
+
+      await onSubmit(postData);
+
+      // Reset form
+      setTitle('');
+      setContent('');
+      setLinkUrl('');
+      setContentType('text');
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to create post');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const getAvailableTypes = (): ContentType[] => {
+    const types: ContentType[] = [];
+    if (allowedTypes.text) types.push('text');
+    if (allowedTypes.link) types.push('link');
+    if (allowedTypes.image) types.push('image');
+    if (allowedTypes.video) types.push('video');
+    if (allowedTypes.poll) types.push('poll');
+    return types;
+  };
+
+  const availableTypes = getAvailableTypes();
+
+  // Set default content type to first available
+  React.useEffect(() => {
+    if (availableTypes.length > 0 && !availableTypes.includes(contentType)) {
+      setContentType(availableTypes[0]);
+    }
+  }, [availableTypes]);
+
+  return (
+    <ComposerCard>
+      <ComposerTitle>Create a Post</ComposerTitle>
+
+      {requiresApproval && (
+        <ApprovalNotice>
+          Posts in this group require moderator approval before they are visible to others.
+        </ApprovalNotice>
+      )}
+
+      <Form onSubmit={handleSubmit}>
+        {availableTypes.length > 1 && (
+          <TypeSelector>
+            {availableTypes.map(type => (
+              <TypeButton
+                key={type}
+                type="button"
+                $active={contentType === type}
+                onClick={() => setContentType(type)}
+              >
+                {type.charAt(0).toUpperCase() + type.slice(1)}
+              </TypeButton>
+            ))}
+          </TypeSelector>
+        )}
+
+        <FormGroup>
+          <Input
+            type="text"
+            placeholder="Title"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            maxLength={300}
+            required
+          />
+        </FormGroup>
+
+        {(contentType === 'text' || contentType === 'link') && (
+          <FormGroup>
+            <TextArea
+              placeholder={
+                contentType === 'text'
+                  ? 'Write something...'
+                  : 'Add an optional description...'
+              }
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              rows={6}
+            />
+          </FormGroup>
+        )}
+
+        {contentType === 'link' && (
+          <FormGroup>
+            <Input
+              type="url"
+              placeholder="https://example.com"
+              value={linkUrl}
+              onChange={(e) => setLinkUrl(e.target.value)}
+              required
+            />
+          </FormGroup>
+        )}
+
+        {(contentType === 'image' || contentType === 'video') && (
+          <FormGroup>
+            <UploadNotice>
+              Media upload functionality coming soon. For now, use link posts to share images and videos.
+            </UploadNotice>
+          </FormGroup>
+        )}
+
+        {contentType === 'poll' && (
+          <FormGroup>
+            <UploadNotice>
+              Poll functionality coming soon.
+            </UploadNotice>
+          </FormGroup>
+        )}
+
+        {error && <ErrorMessage>{error}</ErrorMessage>}
+
+        <FormActions>
+          <SubmitButton type="submit" disabled={submitting}>
+            {submitting ? 'Posting...' : 'Post'}
+          </SubmitButton>
+        </FormActions>
+      </Form>
+    </ComposerCard>
+  );
+};
+
+const ComposerCard = styled.div`
+  background: ${props => props.theme.colors.surface};
+  border: 1px solid ${props => props.theme.colors.border};
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 24px;
+`;
+
+const ComposerTitle = styled.h2`
+  margin: 0 0 16px 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: ${props => props.theme.colors.text};
+`;
+
+const ApprovalNotice = styled.div`
+  padding: 12px;
+  background: rgba(33, 150, 243, 0.1);
+  border: 1px solid #2196F3;
+  border-radius: 4px;
+  color: #2196F3;
+  font-size: 14px;
+  margin-bottom: 16px;
+`;
+
+const Form = styled.form`
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+`;
+
+const TypeSelector = styled.div`
+  display: flex;
+  gap: 8px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid ${props => props.theme.colors.border};
+`;
+
+const TypeButton = styled.button<{ $active: boolean }>`
+  padding: 8px 16px;
+  border-radius: 20px;
+  border: 1px solid ${props => props.$active ? props.theme.colors.primary : props.theme.colors.border};
+  background: ${props => props.$active ? props.theme.colors.primary : 'transparent'};
+  color: ${props => props.$active ? 'white' : props.theme.colors.text};
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover {
+    border-color: ${props => props.theme.colors.primary};
+    background: ${props => props.$active ? props.theme.colors.primary : props.theme.colors.background};
+  }
+`;
+
+const FormGroup = styled.div`
+  display: flex;
+  flex-direction: column;
+`;
+
+const Input = styled.input`
+  padding: 12px;
+  border: 1px solid ${props => props.theme.colors.border};
+  border-radius: 8px;
+  background: ${props => props.theme.colors.background};
+  color: ${props => props.theme.colors.text};
+  font-size: 16px;
+
+  &:focus {
+    outline: none;
+    border-color: ${props => props.theme.colors.primary};
+  }
+
+  &::placeholder {
+    color: ${props => props.theme.colors.text.secondary};
+  }
+`;
+
+const TextArea = styled.textarea`
+  padding: 12px;
+  border: 1px solid ${props => props.theme.colors.border};
+  border-radius: 8px;
+  background: ${props => props.theme.colors.background};
+  color: ${props => props.theme.colors.text};
+  font-size: 16px;
+  font-family: inherit;
+  resize: vertical;
+  min-height: 120px;
+
+  &:focus {
+    outline: none;
+    border-color: ${props => props.theme.colors.primary};
+  }
+
+  &::placeholder {
+    color: ${props => props.theme.colors.text.secondary};
+  }
+`;
+
+const UploadNotice = styled.div`
+  padding: 32px;
+  background: ${props => props.theme.colors.background};
+  border: 2px dashed ${props => props.theme.colors.border};
+  border-radius: 8px;
+  text-align: center;
+  color: ${props => props.theme.colors.text.secondary};
+  font-size: 14px;
+`;
+
+const ErrorMessage = styled.div`
+  padding: 12px;
+  background: rgba(244, 67, 54, 0.1);
+  border: 1px solid #f44336;
+  border-radius: 4px;
+  color: #f44336;
+  font-size: 14px;
+`;
+
+const FormActions = styled.div`
+  display: flex;
+  justify-content: flex-end;
+`;
+
+const SubmitButton = styled.button`
+  padding: 12px 32px;
+  border-radius: 8px;
+  border: none;
+  background: ${props => props.theme.colors.primary};
+  color: white;
+  font-weight: 600;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+
+  &:hover:not(:disabled) {
+    background: ${props => props.theme.colors.primary};
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+`;
+
+export default GroupPostComposer;

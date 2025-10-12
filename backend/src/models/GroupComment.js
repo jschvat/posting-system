@@ -1,4 +1,5 @@
 const db = require('../config/database');
+const GroupCommentMedia = require('./GroupCommentMedia');
 
 class GroupComment {
   /**
@@ -48,7 +49,14 @@ class GroupComment {
 
     const values = user_id ? [id, user_id] : [id];
     const result = await db.query(query, values);
-    return result.rows[0];
+    const comment = result.rows[0];
+
+    if (comment) {
+      // Fetch media for this comment
+      comment.media = await GroupCommentMedia.getByCommentId(comment.id);
+    }
+
+    return comment;
   }
 
   /**
@@ -173,7 +181,16 @@ class GroupComment {
       : [post_id, status, limit, offset];
 
     const result = await db.query(query, values);
-    return result.rows;
+    const comments = result.rows;
+
+    // Fetch media for each comment
+    await Promise.all(
+      comments.map(async (comment) => {
+        comment.media = await GroupCommentMedia.getByCommentId(comment.id);
+      })
+    );
+
+    return comments;
   }
 
   /**
