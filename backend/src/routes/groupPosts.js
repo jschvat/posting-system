@@ -113,7 +113,16 @@ router.post('/:slug/posts', authenticateToken, async (req, res) => {
     // Check location restrictions (for both members and non-members in public posting groups)
     if (group.location_restricted) {
       const user = await User.findById(req.user.id);
-      const userLocation = user.location_data;
+
+      // Construct location object from individual columns
+      const userLocation = {
+        latitude: user.location_latitude,
+        longitude: user.location_longitude,
+        city: user.location_city,
+        state: user.location_state,
+        country: user.location_country,
+        sharing: user.location_sharing
+      };
 
       const locationCheck = validateUserLocation(userLocation, group);
       if (!locationCheck.allowed) {
