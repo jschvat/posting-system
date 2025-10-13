@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import styled from 'styled-components';
 import { useAuth } from '../contexts/AuthContext';
 import groupsApi from '../services/groupsApi';
@@ -31,10 +31,12 @@ const GroupPage: React.FC = () => {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [showComposer, setShowComposer] = useState(false);
+  const [moderators, setModerators] = useState<any[]>([]);
 
   useEffect(() => {
     if (slug) {
       loadGroupData();
+      loadModerators();
     }
   }, [slug]);
 
@@ -67,6 +69,33 @@ const GroupPage: React.FC = () => {
       setError(getErrorMessage(err) || 'Failed to load group');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadModerators = async () => {
+    if (!slug) return;
+
+    try {
+      // Fetch admins and moderators
+      const response = await groupsApi.getGroupMembers(slug, {
+        limit: 50,
+        status: 'active'
+      });
+
+      if (response.success && response.data) {
+        const data = response.data as any;
+        const members = data.members || data.items || [];
+
+        // Filter for admin and moderator roles
+        const modList = members.filter((m: any) =>
+          m.role === 'admin' || m.role === 'moderator'
+        );
+
+        setModerators(modList);
+      }
+    } catch (err: any) {
+      console.error('Failed to load moderators:', err);
+      // Don't show error to user, just log it
     }
   };
 
@@ -134,12 +163,21 @@ const GroupPage: React.FC = () => {
   const handleCreatePost = async (data: CreatePostData) => {
     if (!slug) return;
 
-    const response = await groupPostsApi.createPost(slug, data);
-    if (response.success) {
-      setShowComposer(false);
-      loadPosts(); // Reload posts
-      if (group?.post_approval_required && userRole === 'member') {
-        alert('Your post has been submitted for approval by moderators.');
+    try {
+      const response = await groupPostsApi.createPost(slug, data);
+      if (response.success) {
+        setShowComposer(false);
+        loadPosts(); // Reload posts
+        if (group?.post_approval_required && userRole === 'member') {
+          alert('Your post has been submitted for approval by moderators.');
+        }
+      }
+    } catch (err: any) {
+      const errorMsg = getErrorMessage(err);
+      if (errorMsg.toLowerCase().includes('member')) {
+        alert('You must be a member of this group to create posts. Please join the group first.');
+      } else {
+        alert(errorMsg || 'Failed to create post');
       }
     }
   };
@@ -168,7 +206,12 @@ const GroupPage: React.FC = () => {
         ));
       }
     } catch (err: any) {
-      console.error('Failed to vote:', err);
+      const errorMsg = getErrorMessage(err);
+      if (errorMsg.toLowerCase().includes('member')) {
+        alert('You must be a member of this group to vote on posts. Please join the group first.');
+      } else {
+        alert(errorMsg || 'Failed to vote');
+      }
     }
   };
 
@@ -243,6 +286,24 @@ const GroupPage: React.FC = () => {
               <Stat>{group.member_count.toLocaleString()} members</Stat>
               <Separator>•</Separator>
               <Stat>{group.post_count.toLocaleString()} posts</Stat>
+              {moderators.length > 0 && (
+                <>
+                  <Separator>•</Separator>
+                  <ModeratorsList>
+                    {moderators.map((mod: any) => (
+                      <ModeratorItem key={mod.user_id}>
+                        <ModeratorAvatar
+                          src={mod.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(mod.username || 'User')}&background=random`}
+                          alt={mod.username}
+                        />
+                        <ModeratorLink to={`/user/${mod.user_id}`} $isAdmin={mod.role === 'admin'}>
+                          {mod.display_name || mod.username}
+                        </ModeratorLink>
+                      </ModeratorItem>
+                    ))}
+                  </ModeratorsList>
+                </>
+              )}
             </GroupStats>
           </GroupMeta>
           <GroupActions>
@@ -350,20 +411,6 @@ const GroupPage: React.FC = () => {
         </MainContent>
 
         <Sidebar>
-          <SidebarCard>
-            <SidebarTitle>About</SidebarTitle>
-            {group.description && <SidebarText>{group.description}</SidebarText>}
-            <SidebarStat>
-              <strong>{group.member_count.toLocaleString()}</strong> members
-            </SidebarStat>
-            <SidebarStat>
-              <strong>{group.post_count.toLocaleString()}</strong> posts
-            </SidebarStat>
-            <SidebarStat>
-              Created {new Date(group.created_at).toLocaleDateString()}
-            </SidebarStat>
-          </SidebarCard>
-
           {group.rules && (
             <SidebarCard>
               <SidebarTitle>Rules</SidebarTitle>
@@ -465,6 +512,37 @@ const Stat = styled.span`
 
 const Separator = styled.span`
   color: ${props => props.theme.colors.text.secondary};
+`;
+
+const ModeratorsList = styled.div`
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+`;
+
+const ModeratorItem = styled.div`
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+`;
+
+const ModeratorAvatar = styled.img`
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  object-fit: cover;
+`;
+
+const ModeratorLink = styled(Link)<{ $isAdmin?: boolean }>`
+  color: ${props => props.$isAdmin ? '#e74c3c' : '#27ae60'};
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 14px;
+
+  &:hover {
+    color: ${props => props.$isAdmin ? '#c0392b' : '#229954'};
+    text-decoration: underline;
+  }
 `;
 
 const GroupActions = styled.div`

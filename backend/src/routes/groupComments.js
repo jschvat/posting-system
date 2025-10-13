@@ -146,13 +146,15 @@ router.post('/:slug/posts/:postId/comments', authenticateToken, async (req, res)
       });
     }
 
-    // Check if user is a member
-    const isMember = await GroupMembership.isMember(group.id, req.user.id);
-    if (!isMember) {
-      return res.status(403).json({
-        success: false,
-        error: 'You must be a member to comment'
-      });
+    // Check if user is a member (unless group allows public posting)
+    if (!group.allow_public_posting) {
+      const isMember = await GroupMembership.isMember(group.id, req.user.id);
+      if (!isMember) {
+        return res.status(403).json({
+          success: false,
+          error: 'You must be a member to comment'
+        });
+      }
     }
 
     // Check if post exists and is not locked
@@ -439,13 +441,15 @@ router.post('/:slug/comments/:commentId/vote', authenticateToken, async (req, re
       });
     }
 
-    // Check if user is a member
-    const isMember = await GroupMembership.isMember(group.id, req.user.id);
-    if (!isMember) {
-      return res.status(403).json({
-        success: false,
-        error: 'You must be a member to vote'
-      });
+    // Check if user is a member (unless group allows public posting)
+    if (!group.allow_public_posting) {
+      const isMember = await GroupMembership.isMember(group.id, req.user.id);
+      if (!isMember) {
+        return res.status(403).json({
+          success: false,
+          error: 'You must be a member to vote'
+        });
+      }
     }
 
     const vote = await GroupVote.toggleVote({

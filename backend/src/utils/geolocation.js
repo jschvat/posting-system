@@ -322,6 +322,204 @@ function getRecommendedRadius(userCount) {
   return 10;
 }
 
+/**
+ * Check if a point is inside a polygon using ray casting algorithm
+ * @param {number} lat - Latitude of point
+ * @param {number} lon - Longitude of point
+ * @param {Array} polygon - Array of [lon, lat] coordinates defining polygon
+ * @returns {boolean} True if point is inside polygon
+ */
+function isPointInPolygon(lat, lon, polygon) {
+  let inside = false;
+
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const xi = polygon[i][0], yi = polygon[i][1];
+    const xj = polygon[j][0], yj = polygon[j][1];
+
+    const intersect =
+      yi > lat !== yj > lat &&
+      lon < ((xj - xi) * (lat - yi)) / (yj - yi) + xi;
+
+    if (intersect) inside = !inside;
+  }
+
+  return inside;
+}
+
+/**
+ * Validate if a user's location meets group location restrictions
+ * @param {Object} userLocation - User's location data { latitude, longitude, country, state, city }
+ * @param {Object} group - Group object with location restriction settings
+ * @returns {Object} { allowed: boolean, reason: string }
+ */
+function validateUserLocation(userLocation, group) {
+  // If group doesn't have location restrictions, allow access
+  if (!group.location_restricted) {
+    return { allowed: true };
+  }
+
+  // User must have location data
+  if (!userLocation) {
+    return {
+      allowed: false,
+      reason: 'Location data required to access this group. Please enable location access in your profile settings.'
+    };
+  }
+
+  const locationType = group.location_type;
+
+  switch (locationType) {
+    case 'radius':
+      return validateRadiusRestriction(userLocation, group);
+
+    case 'country':
+      return validateCountryRestriction(userLocation, group);
+
+    case 'state':
+      return validateStateRestriction(userLocation, group);
+
+    case 'city':
+      return validateCityRestriction(userLocation, group);
+
+    case 'polygon':
+      return validatePolygonRestriction(userLocation, group);
+
+    default:
+      return {
+        allowed: false,
+        reason: 'Invalid location restriction type'
+      };
+  }
+}
+
+/**
+ * Validate radius-based restriction (converts to miles for compatibility)
+ */
+function validateRadiusRestriction(userLocation, group) {
+  if (!userLocation.latitude || !userLocation.longitude) {
+    return {
+      allowed: false,
+      reason: 'GPS coordinates required to access this location-restricted group.'
+    };
+  }
+
+  const distanceMiles = calculateDistance(
+    userLocation.latitude,
+    userLocation.longitude,
+    group.location_latitude,
+    group.location_longitude
+  );
+
+  // Convert km to miles (group.location_radius_km stored in km)
+  const radiusMiles = group.location_radius_km * 0.621371;
+
+  if (distanceMiles <= radiusMiles) {
+    return { allowed: true };
+  }
+
+  return {
+    allowed: false,
+    reason: `This group is restricted to users within ${group.location_radius_km}km (${radiusMiles.toFixed(1)} mi) of ${group.location_name || 'the specified location'}. You are ${(distanceMiles / 0.621371).toFixed(1)}km (${distanceMiles.toFixed(1)} mi) away.`
+  };
+}
+
+/**
+ * Validate country-based restriction
+ */
+function validateCountryRestriction(userLocation, group) {
+  if (!userLocation.country) {
+    return {
+      allowed: false,
+      reason: 'Country location required to access this group.'
+    };
+  }
+
+  if (userLocation.country.toUpperCase() === group.location_country.toUpperCase()) {
+    return { allowed: true };
+  }
+
+  return {
+    allowed: false,
+    reason: `This group is restricted to users in ${group.location_country}.`
+  };
+}
+
+/**
+ * Validate state/province-based restriction
+ */
+function validateStateRestriction(userLocation, group) {
+  if (!userLocation.state) {
+    return {
+      allowed: false,
+      reason: 'State/province location required to access this group.'
+    };
+  }
+
+  // Case-insensitive comparison
+  if (userLocation.state.toLowerCase() === group.location_state.toLowerCase()) {
+    return { allowed: true };
+  }
+
+  return {
+    allowed: false,
+    reason: `This group is restricted to users in ${group.location_state}.`
+  };
+}
+
+/**
+ * Validate city-based restriction
+ */
+function validateCityRestriction(userLocation, group) {
+  if (!userLocation.city) {
+    return {
+      allowed: false,
+      reason: 'City location required to access this group.'
+    };
+  }
+
+  // Case-insensitive comparison
+  if (userLocation.city.toLowerCase() === group.location_city.toLowerCase()) {
+    return { allowed: true };
+  }
+
+  return {
+    allowed: false,
+    reason: `This group is restricted to users in ${group.location_city}.`
+  };
+}
+
+/**
+ * Validate polygon-based restriction (custom geographic boundary)
+ */
+function validatePolygonRestriction(userLocation, group) {
+  if (!userLocation.latitude || !userLocation.longitude) {
+    return {
+      allowed: false,
+      reason: 'GPS coordinates required to access this location-restricted group.'
+    };
+  }
+
+  if (!group.location_polygon || !group.location_polygon.coordinates) {
+    return {
+      allowed: false,
+      reason: 'Invalid polygon configuration'
+    };
+  }
+
+  // GeoJSON polygon format: coordinates[0] is the outer ring
+  const polygon = group.location_polygon.coordinates[0];
+  const inside = isPointInPolygon(userLocation.latitude, userLocation.longitude, polygon);
+
+  if (inside) {
+    return { allowed: true };
+  }
+
+  return {
+    allowed: false,
+    reason: `This group is restricted to users within ${group.location_name || 'the specified area'}.`
+  };
+}
+
 module.exports = {
   calculateDistance,
   toRadians,
@@ -336,5 +534,7 @@ module.exports = {
   geocodeAddress,
   isValidSharingLevel,
   getPrivacyFilteredLocation,
-  getRecommendedRadius
+  getRecommendedRadius,
+  isPointInPolygon,
+  validateUserLocation
 };

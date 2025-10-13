@@ -3,6 +3,8 @@ const router = express.Router();
 const { authenticate: authenticateToken, optionalAuthenticate: optionalAuth } = require('../middleware/auth');
 const Group = require('../models/Group');
 const GroupMembership = require('../models/GroupMembership');
+const User = require('../models/User');
+const { validateUserLocation } = require('../utils/geolocation');
 
 /**
  * @route   GET /api/groups
@@ -418,6 +420,20 @@ router.post('/:slug/join', authenticateToken, async (req, res) => {
         success: false,
         error: 'Already a member of this group'
       });
+    }
+
+    // Check location restrictions
+    if (group.location_restricted) {
+      const user = await User.findById(req.user.id);
+      const userLocation = user.location_data;
+
+      const locationCheck = validateUserLocation(userLocation, group);
+      if (!locationCheck.allowed) {
+        return res.status(403).json({
+          success: false,
+          error: locationCheck.reason
+        });
+      }
     }
 
     // Check group settings

@@ -5,6 +5,8 @@ const Group = require('../models/Group');
 const GroupPost = require('../models/GroupPost');
 const GroupMembership = require('../models/GroupMembership');
 const GroupVote = require('../models/GroupVote');
+const User = require('../models/User');
+const { validateUserLocation } = require('../utils/geolocation');
 
 /**
  * @route   GET /api/groups/:slug/posts
@@ -99,13 +101,27 @@ router.post('/:slug/posts', authenticateToken, async (req, res) => {
       });
     }
 
-    // Check if user is a member
+    // Check if user is a member (unless group allows public posting)
     const membership = await GroupMembership.findByGroupAndUser(group.id, req.user.id);
-    if (!membership || membership.status !== 'active') {
+    if (!group.allow_public_posting && (!membership || membership.status !== 'active')) {
       return res.status(403).json({
         success: false,
         error: 'You must be a member to post in this group'
       });
+    }
+
+    // Check location restrictions (for both members and non-members in public posting groups)
+    if (group.location_restricted) {
+      const user = await User.findById(req.user.id);
+      const userLocation = user.location_data;
+
+      const locationCheck = validateUserLocation(userLocation, group);
+      if (!locationCheck.allowed) {
+        return res.status(403).json({
+          success: false,
+          error: locationCheck.reason
+        });
+      }
     }
 
     // Check if posts are allowed
@@ -439,13 +455,15 @@ router.post('/:slug/posts/:postId/vote', authenticateToken, async (req, res) => 
       });
     }
 
-    // Check if user is a member
-    const isMember = await GroupMembership.isMember(group.id, req.user.id);
-    if (!isMember) {
-      return res.status(403).json({
-        success: false,
-        error: 'You must be a member to vote'
-      });
+    // Check if user is a member (unless group allows public posting)
+    if (!group.allow_public_posting) {
+      const isMember = await GroupMembership.isMember(group.id, req.user.id);
+      if (!isMember) {
+        return res.status(403).json({
+          success: false,
+          error: 'You must be a member to vote'
+        });
+      }
     }
 
     const vote = await GroupVote.toggleVote({

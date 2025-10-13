@@ -106,7 +106,12 @@ const GroupPostPage: React.FC = () => {
         await loadPostAndComments();
       }
     } catch (err: any) {
-      alert(getErrorMessage(err) || 'Failed to post comment');
+      const errorMsg = getErrorMessage(err);
+      if (errorMsg.toLowerCase().includes('member')) {
+        alert('You must be a member of this group to comment on posts. Please join the group first.');
+      } else {
+        alert(errorMsg || 'Failed to post comment');
+      }
     } finally {
       setSubmitting(false);
     }
@@ -122,7 +127,12 @@ const GroupPostPage: React.FC = () => {
       await groupCommentsApi.voteOnComment(slug!, commentId, voteType);
       await loadPostAndComments();
     } catch (err: any) {
-      console.error('Failed to vote on comment:', err);
+      const errorMsg = getErrorMessage(err);
+      if (errorMsg.toLowerCase().includes('member')) {
+        alert('You must be a member of this group to vote on comments. Please join the group first.');
+      } else {
+        alert(errorMsg || 'Failed to vote on comment');
+      }
     }
   };
 
@@ -139,7 +149,12 @@ const GroupPostPage: React.FC = () => {
         await loadPostAndComments();
       }
     } catch (err: any) {
-      throw new Error(getErrorMessage(err) || 'Failed to post reply');
+      const errorMsg = getErrorMessage(err);
+      if (errorMsg.toLowerCase().includes('member')) {
+        throw new Error('You must be a member of this group to reply to comments. Please join the group first.');
+      } else {
+        throw new Error(errorMsg || 'Failed to post reply');
+      }
     }
   };
 
