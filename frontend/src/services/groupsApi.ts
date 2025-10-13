@@ -243,6 +243,7 @@ export default {
   updateGroup,
   deleteGroup,
   searchGroups,
+  getFilteredGroups,
   joinGroup,
   leaveGroup,
   getGroupMembers,
