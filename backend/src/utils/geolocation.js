@@ -445,6 +445,39 @@ function validateCountryRestriction(userLocation, group) {
 }
 
 /**
+ * US state abbreviation to full name mapping
+ */
+const US_STATE_MAP = {
+  'AL': 'Alabama', 'AK': 'Alaska', 'AZ': 'Arizona', 'AR': 'Arkansas', 'CA': 'California',
+  'CO': 'Colorado', 'CT': 'Connecticut', 'DE': 'Delaware', 'FL': 'Florida', 'GA': 'Georgia',
+  'HI': 'Hawaii', 'ID': 'Idaho', 'IL': 'Illinois', 'IN': 'Indiana', 'IA': 'Iowa',
+  'KS': 'Kansas', 'KY': 'Kentucky', 'LA': 'Louisiana', 'ME': 'Maine', 'MD': 'Maryland',
+  'MA': 'Massachusetts', 'MI': 'Michigan', 'MN': 'Minnesota', 'MS': 'Mississippi', 'MO': 'Missouri',
+  'MT': 'Montana', 'NE': 'Nebraska', 'NV': 'Nevada', 'NH': 'New Hampshire', 'NJ': 'New Jersey',
+  'NM': 'New Mexico', 'NY': 'New York', 'NC': 'North Carolina', 'ND': 'North Dakota', 'OH': 'Ohio',
+  'OK': 'Oklahoma', 'OR': 'Oregon', 'PA': 'Pennsylvania', 'RI': 'Rhode Island', 'SC': 'South Carolina',
+  'SD': 'South Dakota', 'TN': 'Tennessee', 'TX': 'Texas', 'UT': 'Utah', 'VT': 'Vermont',
+  'VA': 'Virginia', 'WA': 'Washington', 'WV': 'West Virginia', 'WI': 'Wisconsin', 'WY': 'Wyoming',
+  'DC': 'District of Columbia'
+};
+
+/**
+ * Normalize state name to handle both abbreviations and full names
+ */
+function normalizeStateName(state) {
+  if (!state) return null;
+  const upperState = state.toUpperCase().trim();
+
+  // If it's a 2-letter code, convert to full name
+  if (upperState.length === 2 && US_STATE_MAP[upperState]) {
+    return US_STATE_MAP[upperState].toLowerCase();
+  }
+
+  // Otherwise return as lowercase for comparison
+  return state.toLowerCase().trim();
+}
+
+/**
  * Validate state/province-based restriction
  */
 function validateStateRestriction(userLocation, group) {
@@ -455,8 +488,11 @@ function validateStateRestriction(userLocation, group) {
     };
   }
 
-  // Case-insensitive comparison
-  if (userLocation.state.toLowerCase() === group.location_state.toLowerCase()) {
+  // Normalize both states for comparison (handles CA vs California)
+  const normalizedUserState = normalizeStateName(userLocation.state);
+  const normalizedGroupState = normalizeStateName(group.location_state);
+
+  if (normalizedUserState === normalizedGroupState) {
     return { allowed: true };
   }
 
