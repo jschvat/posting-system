@@ -93,6 +93,104 @@ router.get('/recent', async (req, res) => {
 });
 
 /**
+ * @route   GET /api/groups/filtered
+ * @desc    Get groups filtered by user's membership/location status
+ * @access  Private
+ * @query   filter: 'all' | 'joined' | 'pending' | 'available' | 'unavailable'
+ */
+router.get('/filtered', authenticateToken, async (req, res) => {
+  try {
+    const { filter = 'all', limit = 20, offset = 0 } = req.query;
+    const userId = req.user.id;
+
+    // Get user's location for geolocation checks
+    const user = await User.findById(userId);
+    const userLocation = {
+      latitude: user.location_latitude,
+      longitude: user.location_longitude,
+      city: user.location_city,
+      state: user.location_state,
+      country: user.location_country,
+      sharing: user.location_sharing
+    };
+
+    // Get all groups
+    const allGroups = await Group.list({
+      limit: 1000, // Get all for filtering
+      offset: 0,
+      sort_by: 'created_at',
+      sort_order: 'DESC'
+    });
+
+    // Get user's memberships
+    const memberships = await GroupMembership.findByUserId(userId);
+    const membershipMap = new Map();
+    memberships.forEach(m => {
+      membershipMap.set(m.group_id, m.status);
+    });
+
+    // Filter groups based on filter type
+    let filteredGroups = allGroups.groups || [];
+
+    if (filter === 'joined') {
+      // Only groups user is an active member of
+      filteredGroups = filteredGroups.filter(g => membershipMap.get(g.id) === 'active');
+    } else if (filter === 'pending') {
+      // Only groups with pending membership
+      filteredGroups = filteredGroups.filter(g => membershipMap.get(g.id) === 'pending');
+    } else if (filter === 'available') {
+      // Groups user can join (not joined, not pending, location allows)
+      filteredGroups = filteredGroups.filter(g => {
+        const status = membershipMap.get(g.id);
+        if (status === 'active' || status === 'pending') return false;
+
+        if (g.location_restricted) {
+          const locationCheck = validateUserLocation(userLocation, g);
+          return locationCheck.allowed;
+        }
+        return true;
+      });
+    } else if (filter === 'unavailable') {
+      // Groups user can't join due to location restrictions
+      filteredGroups = filteredGroups.filter(g => {
+        const status = membershipMap.get(g.id);
+        if (status === 'active' || status === 'pending') return false;
+
+        if (g.location_restricted) {
+          const locationCheck = validateUserLocation(userLocation, g);
+          return !locationCheck.allowed;
+        }
+        return false;
+      });
+    }
+    // 'all' shows everything
+
+    // Apply pagination to filtered results
+    const total = filteredGroups.length;
+    const paginatedGroups = filteredGroups.slice(
+      parseInt(offset),
+      parseInt(offset) + parseInt(limit)
+    );
+
+    res.json({
+      success: true,
+      data: {
+        groups: paginatedGroups,
+        total,
+        limit: parseInt(limit),
+        offset: parseInt(offset)
+      }
+    });
+  } catch (error) {
+    console.error('Error filtering groups:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to filter groups'
+    });
+  }
+});
+
+/**
  * @route   GET /api/groups/search
  * @desc    Search groups by name or description
  * @access  Public

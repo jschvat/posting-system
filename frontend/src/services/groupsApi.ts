@@ -78,6 +78,19 @@ export const searchGroups = async (params: {
   return response.data;
 };
 
+/**
+ * Get filtered groups by membership/location status
+ */
+export const getFilteredGroups = async (params: {
+  filter: 'all' | 'joined' | 'pending' | 'available' | 'unavailable';
+  page?: number;
+  limit?: number;
+  offset?: number;
+}): Promise<ApiResponse<PaginatedResponse<Group>>> => {
+  const response = await api.get('/groups/filtered', { params });
+  return response.data;
+};
+
 // ============================================================================
 // MEMBERSHIP OPERATIONS
 // ============================================================================

@@ -13,6 +13,8 @@ const getErrorMessage = (err: any): string => {
   return err.message || 'An error occurred';
 };
 
+type FilterType = 'all' | 'joined' | 'pending' | 'available' | 'unavailable';
+
 const GroupListPage: React.FC = () => {
   const { state } = useAuth();
   const user = state.user;
@@ -25,10 +27,11 @@ const GroupListPage: React.FC = () => {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [membershipMap, setMembershipMap] = useState<Map<string, boolean>>(new Map());
+  const [filter, setFilter] = useState<FilterType>('all');
 
   useEffect(() => {
     loadGroups();
-  }, [page]);
+  }, [page, filter]);
 
   const loadGroups = async () => {
     try {
@@ -36,7 +39,20 @@ const GroupListPage: React.FC = () => {
       setError(null);
       const limit = 20;
       const offset = (page - 1) * limit;
-      const response = await groupsApi.getGroups({ page, limit, offset } as any);
+
+      let response;
+      if (user && filter !== 'all') {
+        // Use filtered endpoint for logged-in users with active filters
+        response = await groupsApi.getFilteredGroups({
+          filter,
+          page,
+          limit,
+          offset
+        });
+      } else {
+        // Use regular endpoint for 'all' filter or non-logged-in users
+        response = await groupsApi.getGroups({ page, limit, offset } as any);
+      }
 
       if (response.success && response.data) {
         const data = response.data as any;
@@ -135,6 +151,15 @@ const GroupListPage: React.FC = () => {
     navigate('/groups/create');
   };
 
+  const handleFilterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    if (!user && e.target.value !== 'all') {
+      navigate('/login');
+      return;
+    }
+    setFilter(e.target.value as FilterType);
+    setPage(1); // Reset to first page when filter changes
+  };
+
   return (
     <Container>
       <Header>
@@ -144,17 +169,29 @@ const GroupListPage: React.FC = () => {
         </CreateButton>
       </Header>
 
-      <SearchForm onSubmit={handleSearch}>
-        <SearchInput
-          type="text"
-          placeholder="Search groups..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-        />
-        <SearchButton type="submit" disabled={isSearching}>
-          {isSearching ? 'Searching...' : 'Search'}
-        </SearchButton>
-      </SearchForm>
+      <FiltersRow>
+        <SearchForm onSubmit={handleSearch}>
+          <SearchInput
+            type="text"
+            placeholder="Search groups..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+          <SearchButton type="submit" disabled={isSearching}>
+            {isSearching ? 'Searching...' : 'Search'}
+          </SearchButton>
+        </SearchForm>
+
+        {user && (
+          <FilterSelect value={filter} onChange={handleFilterChange}>
+            <option value="all">All Groups</option>
+            <option value="joined">Joined</option>
+            <option value="pending">Pending Approval</option>
+            <option value="available">Available to Join</option>
+            <option value="unavailable">Location Restricted</option>
+          </FilterSelect>
+        )}
+      </FiltersRow>
 
       {error && <ErrorMessage>{error}</ErrorMessage>}
 
@@ -239,10 +276,21 @@ const CreateButton = styled.button`
   }
 `;
 
-const SearchForm = styled.form`
+const FiltersRow = styled.div`
   display: flex;
   gap: 12px;
   margin-bottom: 24px;
+  align-items: center;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+  }
+`;
+
+const SearchForm = styled.form`
+  display: flex;
+  gap: 12px;
+  flex: 1;
 `;
 
 const SearchInput = styled.input`
@@ -278,6 +326,26 @@ const SearchButton = styled.button`
   &:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+  }
+`;
+
+const FilterSelect = styled.select`
+  padding: 12px 16px;
+  border: 1px solid ${props => props.theme.colors.border};
+  border-radius: 8px;
+  background: ${props => props.theme.colors.surface};
+  color: ${props => props.theme.colors.text};
+  font-size: 16px;
+  cursor: pointer;
+  min-width: 200px;
+
+  &:focus {
+    outline: none;
+    border-color: ${props => props.theme.colors.primary};
+  }
+
+  @media (max-width: 768px) {
+    width: 100%;
   }
 `;
 
