@@ -2,7 +2,7 @@
  * PostCard Component - displays individual posts in the feed
  */
 
-import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import styled from 'styled-components';
 import { createPortal } from 'react-dom';
@@ -645,106 +645,13 @@ const PostCard: React.FC<PostCardProps> = ({ post, onUpdate }) => {
     setShowComments(!showComments);
   };
 
-  // React to post mutation
+  // React to post mutation - simplified for better performance
   const reactMutation = useMutation({
     mutationFn: (emojiName: string) => {
       return reactionsApi.togglePostReaction(post.id, { emoji_name: emojiName });
     },
-    onMutate: async (emojiName: string) => {
-      // Cancel any outgoing refetches (so they don't overwrite our optimistic update)
-      await queryClient.cancelQueries({ queryKey: ['reactions', 'post', post.id] });
-
-      // Snapshot the previous value
-      const previousReactions = queryClient.getQueryData(['reactions', 'post', post.id]);
-
-      // Optimistically update to the new value
-      queryClient.setQueryData(['reactions', 'post', post.id], (old: any) => {
-        if (!old || !state.user) return old;
-
-        const data = old.data;
-        const reactionCounts = [...(data.reaction_counts || [])];
-        const detailedReactions = [...(data.detailed_reactions || [])];
-
-        // Find existing user reaction
-        const existingReactionIndex = detailedReactions.findIndex(r => r.user_id === state.user?.id);
-
-        if (existingReactionIndex >= 0) {
-          const existingReaction = detailedReactions[existingReactionIndex];
-
-          // If same emoji, remove reaction
-          if (existingReaction.emoji_name === emojiName) {
-            detailedReactions.splice(existingReactionIndex, 1);
-            // Decrease count
-            const countIndex = reactionCounts.findIndex(rc => rc.emoji_name === emojiName);
-            if (countIndex >= 0) {
-              if (reactionCounts[countIndex].count > 1) {
-                reactionCounts[countIndex] = { ...reactionCounts[countIndex], count: reactionCounts[countIndex].count - 1 };
-              } else {
-                reactionCounts.splice(countIndex, 1);
-              }
-            }
-          } else {
-            // Different emoji, replace reaction
-            // Decrease old emoji count
-            const oldCountIndex = reactionCounts.findIndex(rc => rc.emoji_name === existingReaction.emoji_name);
-            if (oldCountIndex >= 0) {
-              if (reactionCounts[oldCountIndex].count > 1) {
-                reactionCounts[oldCountIndex] = { ...reactionCounts[oldCountIndex], count: reactionCounts[oldCountIndex].count - 1 };
-              } else {
-                reactionCounts.splice(oldCountIndex, 1);
-              }
-            }
-
-            // Update detailed reaction
-            detailedReactions[existingReactionIndex] = { ...existingReaction, emoji_name: emojiName };
-
-            // Increase new emoji count
-            const newCountIndex = reactionCounts.findIndex(rc => rc.emoji_name === emojiName);
-            if (newCountIndex >= 0) {
-              reactionCounts[newCountIndex] = { ...reactionCounts[newCountIndex], count: reactionCounts[newCountIndex].count + 1 };
-            } else {
-              reactionCounts.push({ emoji_name: emojiName, count: 1 });
-            }
-          }
-        } else {
-          // No existing reaction, add new one
-          detailedReactions.push({
-            id: Date.now(), // temporary ID
-            user_id: state.user.id,
-            post_id: post.id,
-            emoji_name: emojiName,
-            created_at: new Date().toISOString(),
-          });
-
-          // Increase count
-          const countIndex = reactionCounts.findIndex(rc => rc.emoji_name === emojiName);
-          if (countIndex >= 0) {
-            reactionCounts[countIndex] = { ...reactionCounts[countIndex], count: reactionCounts[countIndex].count + 1 };
-          } else {
-            reactionCounts.push({ emoji_name: emojiName, count: 1 });
-          }
-        }
-
-        return {
-          ...old,
-          data: {
-            ...data,
-            reaction_counts: reactionCounts,
-            detailed_reactions: detailedReactions,
-            total_reactions: reactionCounts.reduce((sum, rc) => sum + rc.count, 0)
-          }
-        };
-      });
-
-      // Return a context object with the snapshotted value
-      return { previousReactions };
-    },
-    onError: (err, newReaction, context) => {
-      // If the mutation fails, use the context returned from onMutate to roll back
-      queryClient.setQueryData(['reactions', 'post', post.id], context?.previousReactions);
-    },
-    onSettled: () => {
-      // Always refetch after error or success to ensure server state
+    onSuccess: () => {
+      // Invalidate to refetch fresh data from server
       queryClient.invalidateQueries({ queryKey: ['reactions', 'post', post.id] });
       onUpdate?.();
     },
@@ -753,11 +660,18 @@ const PostCard: React.FC<PostCardProps> = ({ post, onUpdate }) => {
   const reactions = reactionsData?.data?.reaction_counts || [];
   const detailedReactions = reactionsData?.data?.detailed_reactions || [];
   const comments = allComments;
-  const totalReactions = reactions.reduce((sum, r) => sum + r.count, 0);
+
+  // Memoize expensive computations
+  const totalReactions = useMemo(() =>
+    reactions.reduce((sum, r) => sum + r.count, 0),
+    [reactions]
+  );
 
   // Find current user's reaction
-  const currentUserReaction = state.user ?
-    detailedReactions.find(reaction => reaction.user_id === state.user?.id) : null;
+  const currentUserReaction = useMemo(() =>
+    state.user ? detailedReactions.find(reaction => reaction.user_id === state.user?.id) : null,
+    [state.user, detailedReactions]
+  );
 
   const handleReaction = (emojiName: string) => {
     if (state.isAuthenticated) {
