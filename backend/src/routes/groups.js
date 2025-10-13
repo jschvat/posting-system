@@ -122,10 +122,14 @@ router.get('/filtered', authenticateToken, async (req, res) => {
       sort_order: 'DESC'
     });
 
-    // Get user's memberships
-    const memberships = await GroupMembership.findByUserId(userId);
+    // Get user's memberships using direct query
+    const db = require('../config/database');
+    const membershipResult = await db.query(
+      'SELECT group_id, status FROM group_memberships WHERE user_id = $1',
+      [userId]
+    );
     const membershipMap = new Map();
-    memberships.forEach(m => {
+    membershipResult.rows.forEach(m => {
       membershipMap.set(m.group_id, m.status);
     });
 
