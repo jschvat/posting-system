@@ -701,4 +701,138 @@ router.post('/:slug/posts/:postId/approve', authenticateToken, async (req, res) 
   }
 });
 
+/**
+ * @route   POST /api/groups/:slug/posts/:postId/reject
+ * @desc    Reject a pending post
+ * @access  Private (Moderators/Admins only)
+ */
+router.post('/:slug/posts/:postId/reject', authenticateToken, async (req, res) => {
+  try {
+    const { slug, postId } = req.params;
+    const { rejection_reason } = req.body;
+
+    const group = await Group.findBySlug(slug);
+    if (!group) {
+      return res.status(404).json({
+        success: false,
+        error: 'Group not found'
+      });
+    }
+
+    // Check if user is moderator or admin
+    const isModerator = await GroupMembership.isModerator(group.id, req.user.id);
+    if (!isModerator) {
+      return res.status(403).json({
+        success: false,
+        error: 'Only moderators can reject posts'
+      });
+    }
+
+    // Delete the post (rejected posts are removed)
+    await GroupPost.delete(parseInt(postId));
+
+    res.json({
+      success: true,
+      message: 'Post rejected and removed',
+      data: { rejection_reason }
+    });
+  } catch (error) {
+    console.error('Error rejecting post:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to reject post'
+    });
+  }
+});
+
+/**
+ * @route   POST /api/groups/:slug/posts/:postId/restore
+ * @desc    Restore a removed post
+ * @access  Private (Moderators/Admins only)
+ */
+router.post('/:slug/posts/:postId/restore', authenticateToken, async (req, res) => {
+  try {
+    const { slug, postId } = req.params;
+
+    const group = await Group.findBySlug(slug);
+    if (!group) {
+      return res.status(404).json({
+        success: false,
+        error: 'Group not found'
+      });
+    }
+
+    // Check if user is moderator or admin
+    const isModerator = await GroupMembership.isModerator(group.id, req.user.id);
+    if (!isModerator) {
+      return res.status(403).json({
+        success: false,
+        error: 'Only moderators can restore posts'
+      });
+    }
+
+    const post = await GroupPost.restore(parseInt(postId));
+
+    res.json({
+      success: true,
+      data: post,
+      message: 'Post restored successfully'
+    });
+  } catch (error) {
+    console.error('Error restoring post:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to restore post'
+    });
+  }
+});
+
+/**
+ * @route   GET /api/groups/:slug/posts/removed
+ * @desc    Get removed posts (for moderation review)
+ * @access  Private (Moderators/Admins only)
+ */
+router.get('/:slug/posts/removed', authenticateToken, async (req, res) => {
+  try {
+    const { slug } = req.params;
+    const { limit = 20, offset = 0 } = req.query;
+
+    const group = await Group.findBySlug(slug);
+    if (!group) {
+      return res.status(404).json({
+        success: false,
+        error: 'Group not found'
+      });
+    }
+
+    // Check if user is moderator or admin
+    const isModerator = await GroupMembership.isModerator(group.id, req.user.id);
+    if (!isModerator) {
+      return res.status(403).json({
+        success: false,
+        error: 'Only moderators can view removed posts'
+      });
+    }
+
+    const posts = await GroupPost.list({
+      group_id: group.id,
+      status: 'removed',
+      limit: parseInt(limit),
+      offset: parseInt(offset),
+      include_removed: true
+    });
+
+    res.json({
+      success: true,
+      data: posts
+    });
+  } catch (error) {
+    console.error('Error getting removed posts:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get removed posts'
+    });
+  }
+});
+
 module.exports = router;

@@ -655,4 +655,248 @@ router.post('/:slug/members/:userId/unban', authenticateToken, async (req, res) 
   }
 });
 
+/**
+ * @route   GET /api/groups/:slug/members/pending
+ * @desc    Get pending membership requests
+ * @access  Private (Moderators/Admins only)
+ */
+router.get('/:slug/members/pending', authenticateToken, async (req, res) => {
+  try {
+    const { slug } = req.params;
+    const { limit = 20, offset = 0 } = req.query;
+
+    const group = await Group.findBySlug(slug);
+    if (!group) {
+      return res.status(404).json({
+        success: false,
+        error: 'Group not found'
+      });
+    }
+
+    // Check if user is moderator or admin
+    const isModerator = await GroupMembership.isModerator(group.id, req.user.id);
+    if (!isModerator) {
+      return res.status(403).json({
+        success: false,
+        error: 'Only moderators and admins can view pending membership requests'
+      });
+    }
+
+    const result = await GroupMembership.list({
+      group_id: group.id,
+      status: 'pending',
+      limit: parseInt(limit),
+      offset: parseInt(offset)
+    });
+
+    res.json({
+      success: true,
+      data: result
+    });
+  } catch (error) {
+    console.error('Error getting pending members:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get pending members'
+    });
+  }
+});
+
+/**
+ * @route   POST /api/groups/:slug/members/:userId/approve
+ * @desc    Approve a pending membership request
+ * @access  Private (Moderators/Admins only)
+ */
+router.post('/:slug/members/:userId/approve', authenticateToken, async (req, res) => {
+  try {
+    const { slug, userId } = req.params;
+
+    const group = await Group.findBySlug(slug);
+    if (!group) {
+      return res.status(404).json({
+        success: false,
+        error: 'Group not found'
+      });
+    }
+
+    // Check if user is moderator or admin
+    const isModerator = await GroupMembership.isModerator(group.id, req.user.id);
+    if (!isModerator) {
+      return res.status(403).json({
+        success: false,
+        error: 'Only moderators and admins can approve membership requests'
+      });
+    }
+
+    const membership = await GroupMembership.approve(group.id, parseInt(userId));
+
+    res.json({
+      success: true,
+      data: membership,
+      message: 'Membership approved successfully'
+    });
+  } catch (error) {
+    console.error('Error approving membership:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to approve membership'
+    });
+  }
+});
+
+/**
+ * @route   POST /api/groups/:slug/members/:userId/reject
+ * @desc    Reject a pending membership request
+ * @access  Private (Moderators/Admins only)
+ */
+router.post('/:slug/members/:userId/reject', authenticateToken, async (req, res) => {
+  try {
+    const { slug, userId } = req.params;
+
+    const group = await Group.findBySlug(slug);
+    if (!group) {
+      return res.status(404).json({
+        success: false,
+        error: 'Group not found'
+      });
+    }
+
+    // Check if user is moderator or admin
+    const isModerator = await GroupMembership.isModerator(group.id, req.user.id);
+    if (!isModerator) {
+      return res.status(403).json({
+        success: false,
+        error: 'Only moderators and admins can reject membership requests'
+      });
+    }
+
+    await GroupMembership.reject(group.id, parseInt(userId));
+
+    res.json({
+      success: true,
+      message: 'Membership rejected successfully'
+    });
+  } catch (error) {
+    console.error('Error rejecting membership:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to reject membership'
+    });
+  }
+});
+
+/**
+ * @route   GET /api/groups/:slug/activity
+ * @desc    Get group activity log
+ * @access  Private (Moderators/Admins only)
+ */
+router.get('/:slug/activity', authenticateToken, async (req, res) => {
+  try {
+    const { slug } = req.params;
+    const { limit = 50, offset = 0 } = req.query;
+
+    const group = await Group.findBySlug(slug);
+    if (!group) {
+      return res.status(404).json({
+        success: false,
+        error: 'Group not found'
+      });
+    }
+
+    // Check if user is moderator or admin
+    const isModerator = await GroupMembership.isModerator(group.id, req.user.id);
+    if (!isModerator) {
+      return res.status(403).json({
+        success: false,
+        error: 'Only moderators and admins can view activity log'
+      });
+    }
+
+    // Query activity log
+    const query = `
+      SELECT
+        ga.*,
+        u.username as user_username,
+        u.first_name,
+        u.last_name,
+        t.username as target_username
+      FROM group_activity_log ga
+      LEFT JOIN users u ON ga.user_id = u.id
+      LEFT JOIN users t ON ga.target_user_id = t.id
+      WHERE ga.group_id = $1
+      ORDER BY ga.created_at DESC
+      LIMIT $2 OFFSET $3
+    `;
+
+    const result = await sequelize.query(query, {
+      bind: [group.id, parseInt(limit), parseInt(offset)],
+      type: sequelize.QueryTypes.SELECT
+    });
+
+    res.json({
+      success: true,
+      data: {
+        activities: result,
+        pagination: {
+          limit: parseInt(limit),
+          offset: parseInt(offset)
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Error getting activity log:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get activity log'
+    });
+  }
+});
+
+/**
+ * @route   GET /api/groups/:slug/members/banned
+ * @desc    Get banned members list
+ * @access  Private (Moderators/Admins only)
+ */
+router.get('/:slug/members/banned', authenticateToken, async (req, res) => {
+  try {
+    const { slug } = req.params;
+    const { limit = 20, offset = 0 } = req.query;
+
+    const group = await Group.findBySlug(slug);
+    if (!group) {
+      return res.status(404).json({
+        success: false,
+        error: 'Group not found'
+      });
+    }
+
+    // Check if user is moderator or admin
+    const isModerator = await GroupMembership.isModerator(group.id, req.user.id);
+    if (!isModerator) {
+      return res.status(403).json({
+        success: false,
+        error: 'Only moderators and admins can view banned members'
+      });
+    }
+
+    const result = await GroupMembership.list({
+      group_id: group.id,
+      status: 'banned',
+      limit: parseInt(limit),
+      offset: parseInt(offset)
+    });
+
+    res.json({
+      success: true,
+      data: result
+    });
+  } catch (error) {
+    console.error('Error getting banned members:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get banned members'
+    });
+  }
+});
+
 module.exports = router;
