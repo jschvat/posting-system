@@ -243,10 +243,13 @@ router.get('/filtered', authenticateToken, async (req, res) => {
       parseInt(offset) + parseInt(limit)
     );
 
+    // Transform groups with full URLs
+    const transformedGroups = paginatedGroups.map(transformGroupWithFullUrls);
+
     res.json({
       success: true,
       data: {
-        groups: paginatedGroups,
+        groups: transformedGroups,
         total,
         limit: parseInt(limit),
         offset: parseInt(offset)
@@ -279,11 +282,14 @@ router.get('/search', async (req, res) => {
 
     const groups = await Group.search(q, parseInt(limit), parseInt(offset));
 
+    // Transform groups with full URLs
+    const transformedGroups = groups.map(transformGroupWithFullUrls);
+
     res.json({
       success: true,
       data: {
-        groups,
-        total: groups.length,
+        groups: transformedGroups,
+        total: transformedGroups.length,
         limit: parseInt(limit),
         offset: parseInt(offset)
       }
