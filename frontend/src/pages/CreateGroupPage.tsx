@@ -31,6 +31,8 @@ const CreateGroupPage: React.FC = () => {
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
 
   if (!user) {
     navigate('/login');
@@ -77,6 +79,26 @@ const CreateGroupPage: React.FC = () => {
     return Object.keys(newErrors).length === 0;
   };
 
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        alert('File size must be less than 5MB');
+        return;
+      }
+      if (!['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(file.type)) {
+        alert('Only JPEG, PNG, GIF, and WebP images are allowed');
+        return;
+      }
+      setAvatarFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setAvatarPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -89,7 +111,19 @@ const CreateGroupPage: React.FC = () => {
       const response = await groupsApi.createGroup(formData);
 
       if (response.success && response.data) {
-        navigate(`/g/${response.data.group.slug}`);
+        const groupSlug = response.data.group.slug;
+
+        // Upload avatar if selected
+        if (avatarFile) {
+          try {
+            await groupsApi.uploadGroupAvatar(groupSlug, avatarFile);
+          } catch (avatarErr) {
+            console.error('Failed to upload avatar:', avatarErr);
+            // Continue anyway, group was created
+          }
+        }
+
+        navigate(`/g/${groupSlug}`);
       }
     } catch (err: any) {
       const errorMessage = getErrorMessage(err) || 'Failed to create group';
@@ -146,6 +180,22 @@ const CreateGroupPage: React.FC = () => {
               $hasError={!!errors.display_name}
             />
             {errors.display_name && <ErrorText>{errors.display_name}</ErrorText>}
+          </FormGroup>
+
+          <FormGroup>
+            <Label htmlFor="avatar">
+              Group Avatar
+              <HelpText>Upload an image for your group (max 5MB)</HelpText>
+            </Label>
+            {avatarPreview && (
+              <AvatarPreview src={avatarPreview} alt="Avatar preview" />
+            )}
+            <Input
+              id="avatar"
+              type="file"
+              accept="image/jpeg,image/png,image/gif,image/webp"
+              onChange={handleAvatarChange}
+            />
           </FormGroup>
 
           <FormGroup>
@@ -420,6 +470,15 @@ const ErrorText = styled.span`
   margin-top: 4px;
   font-size: 13px;
   color: ${props => props.theme.colors.error};
+`;
+
+const AvatarPreview = styled.img`
+  width: 120px;
+  height: 120px;
+  border-radius: 8px;
+  object-fit: cover;
+  margin: 12px 0;
+  border: 2px solid ${props => props.theme.colors.border};
 `;
 
 const FormActions = styled.div`

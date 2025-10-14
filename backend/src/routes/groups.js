@@ -1,10 +1,48 @@
 const express = require('express');
 const router = express.Router();
+const multer = require('multer');
+const sharp = require('sharp');
+const path = require('path');
+const fs = require('fs').promises;
+const { v4: uuidv4 } = require('uuid');
 const { authenticate: authenticateToken, optionalAuthenticate: optionalAuth } = require('../middleware/auth');
 const Group = require('../models/Group');
 const GroupMembership = require('../models/GroupMembership');
 const User = require('../models/User');
 const { validateUserLocation } = require('../utils/geolocation');
+
+// Multer configuration for avatar uploads
+const storage = multer.diskStorage({
+  destination: async (req, file, cb) => {
+    const uploadDir = path.join(__dirname, '../../../uploads/images');
+    try {
+      await fs.mkdir(uploadDir, { recursive: true });
+      cb(null, uploadDir);
+    } catch (error) {
+      cb(error);
+    }
+  },
+  filename: (req, file, cb) => {
+    const uniqueId = uuidv4();
+    const ext = path.extname(file.originalname);
+    cb(null, `group-avatar-${uniqueId}${ext}`);
+  }
+});
+
+const upload = multer({
+  storage,
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type. Only JPEG, PNG, GIF, and WebP are allowed.'));
+    }
+  }
+});
 
 /**
  * @route   GET /api/groups
@@ -397,6 +435,74 @@ router.put('/:slug', authenticateToken, async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to update group'
+    });
+  }
+});
+
+/**
+ * @route   POST /api/groups/:slug/avatar
+ * @desc    Upload group avatar
+ * @access  Private (Admin only)
+ */
+router.post('/:slug/avatar', authenticateToken, upload.single('avatar'), async (req, res) => {
+  try {
+    const { slug } = req.params;
+    const group = await Group.findBySlug(slug);
+
+    if (!group) {
+      return res.status(404).json({
+        success: false,
+        error: 'Group not found'
+      });
+    }
+
+    // Check if user is admin
+    const isAdmin = await GroupMembership.isAdmin(group.id, req.user.id);
+    if (!isAdmin) {
+      return res.status(403).json({
+        success: false,
+        error: 'Only admins can update group avatar'
+      });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        error: 'No file uploaded'
+      });
+    }
+
+    // Resize and optimize image
+    const resizedFilename = `resized-${req.file.filename}`;
+    const resizedPath = path.join(path.dirname(req.file.path), resizedFilename);
+
+    await sharp(req.file.path)
+      .resize(400, 400, {
+        fit: 'cover',
+        position: 'center'
+      })
+      .jpeg({ quality: 85 })
+      .toFile(resizedPath);
+
+    // Delete original file
+    await fs.unlink(req.file.path);
+
+    // Update group avatar URL
+    const avatar_url = `/uploads/images/${resizedFilename}`;
+    const updatedGroup = await Group.update(group.id, { avatar_url });
+
+    res.json({
+      success: true,
+      data: {
+        group: updatedGroup,
+        avatar_url
+      }
+    });
+  } catch (error) {
+    console.error('Error uploading group avatar:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to upload avatar'
     });
   }
 });

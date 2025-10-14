@@ -67,6 +67,20 @@ export const deleteGroup = async (slug: string): Promise<ApiResponse<{ message: 
 };
 
 /**
+ * Upload group avatar (admin only)
+ */
+export const uploadGroupAvatar = async (slug: string, file: File): Promise<ApiResponse<{ group: Group; avatar_url: string }>> => {
+  const formData = new FormData();
+  formData.append('avatar', file);
+  const response = await api.post(`/groups/${slug}/avatar`, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  });
+  return response.data;
+};
+
+/**
  * Search groups by name or description
  */
 export const searchGroups = async (params: {
@@ -242,6 +256,7 @@ export default {
   getGroup,
   updateGroup,
   deleteGroup,
+  uploadGroupAvatar,
   searchGroups,
   getFilteredGroups,
   joinGroup,
