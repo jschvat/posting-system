@@ -313,6 +313,11 @@ const GroupPage: React.FC = () => {
             {user && isMember && (
               <>
                 <ActionButton $secondary onClick={handleLeave}>Leave</ActionButton>
+                {canModerate && (
+                  <ActionButton onClick={() => navigate(`/g/${slug}/moderate`)}>
+                    Moderate
+                  </ActionButton>
+                )}
                 {userRole === 'admin' && (
                   <ActionButton onClick={() => navigate(`/g/${slug}/settings`)}>
                     Settings
