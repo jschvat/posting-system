@@ -152,7 +152,7 @@ const PendingMembersTab: React.FC<{ slug: string }> = ({ slug }) => {
   };
 
   const handleApprove = async (userId: number) => {
-    if (!confirm('Approve this membership request?')) return;
+    if (!window.confirm('Approve this membership request?')) return;
 
     try {
       setActionLoading(userId);
@@ -169,7 +169,7 @@ const PendingMembersTab: React.FC<{ slug: string }> = ({ slug }) => {
   };
 
   const handleReject = async (userId: number) => {
-    if (!confirm('Reject this membership request? This action cannot be undone.')) return;
+    if (!window.confirm('Reject this membership request? This action cannot be undone.')) return;
 
     try {
       setActionLoading(userId);
@@ -260,7 +260,7 @@ const MembersTab: React.FC<{ slug: string; userRole: string }> = ({ slug, userRo
   };
 
   const handleChangeRole = async (userId: number, newRole: string) => {
-    if (!confirm(`Change this member's role to ${newRole}?`)) return;
+    if (!window.confirm(`Change this member's role to ${newRole}?`)) return;
 
     try {
       setActionLoading(userId);
@@ -295,7 +295,7 @@ const MembersTab: React.FC<{ slug: string; userRole: string }> = ({ slug, userRo
   };
 
   const handleRemoveMember = async (userId: number, username: string) => {
-    if (!confirm(`Remove ${username} from this group? This action cannot be undone.`)) return;
+    if (!window.confirm(`Remove ${username} from this group? This action cannot be undone.`)) return;
 
     try {
       setActionLoading(userId);
@@ -399,7 +399,7 @@ const BannedMembersTab: React.FC<{ slug: string }> = ({ slug }) => {
   };
 
   const handleUnban = async (userId: number, username: string) => {
-    if (!confirm(`Unban ${username}?`)) return;
+    if (!window.confirm(`Unban ${username}?`)) return;
 
     try {
       setActionLoading(userId);
