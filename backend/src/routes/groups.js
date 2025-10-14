@@ -11,10 +11,13 @@ const GroupMembership = require('../models/GroupMembership');
 const User = require('../models/User');
 const { validateUserLocation } = require('../utils/geolocation');
 
+// Load environment variables for group uploads
+const GROUP_AVATAR_PATH = process.env.GROUP_AVATAR_PATH || '../uploads/groups/avatars';
+
 // Multer configuration for avatar uploads
 const storage = multer.diskStorage({
   destination: async (req, file, cb) => {
-    const uploadDir = path.join(__dirname, '../../../uploads/images');
+    const uploadDir = path.join(__dirname, GROUP_AVATAR_PATH);
     try {
       await fs.mkdir(uploadDir, { recursive: true });
       cb(null, uploadDir);
@@ -488,7 +491,7 @@ router.post('/:slug/avatar', authenticateToken, upload.single('avatar'), async (
     await fs.unlink(req.file.path);
 
     // Update group avatar URL
-    const avatar_url = `/uploads/images/${resizedFilename}`;
+    const avatar_url = `/uploads/groups/avatars/${resizedFilename}`;
     const updatedGroup = await Group.update(group.id, { avatar_url });
 
     res.json({
