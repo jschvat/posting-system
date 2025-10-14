@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import styled from 'styled-components';
 import { Group } from '../../types/group';
+import { getApiBaseUrl } from '../../config/app.config';
 
 interface GroupCardProps {
   group: Group;
@@ -33,10 +34,21 @@ const GroupCard: React.FC<GroupCardProps> = ({
     return count.toString();
   };
 
+  // Helper function to get full image URL
+  const getFullImageUrl = (url: string | undefined): string | undefined => {
+    if (!url) return undefined;
+    // If URL is already absolute (starts with http:// or https://), return as-is
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      return url;
+    }
+    // Otherwise, prepend API base URL
+    return `${getApiBaseUrl()}${url}`;
+  };
+
   return (
     <Card to={`/g/${group.slug}`}>
       <CardHeader>
-        {group.avatar_url && <GroupIcon src={group.avatar_url} alt={group.display_name} />}
+        {group.avatar_url && <GroupIcon src={getFullImageUrl(group.avatar_url)} alt={group.display_name} />}
         {!group.avatar_url && <DefaultIcon>{group.name.charAt(0).toUpperCase()}</DefaultIcon>}
         <GroupInfo>
           <GroupName>{group.display_name}</GroupName>
