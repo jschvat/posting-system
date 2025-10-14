@@ -215,6 +215,59 @@ export const removeMember = async (
 };
 
 // ============================================================================
+// MODERATION OPERATIONS
+// ============================================================================
+
+/**
+ * Get pending membership requests
+ */
+export const getPendingMembers = async (slug: string): Promise<ApiResponse<{ members: GroupMember[] }>> => {
+  const response = await api.get(`/groups/${slug}/members/pending`);
+  return response.data;
+};
+
+/**
+ * Approve pending membership
+ */
+export const approveMember = async (
+  slug: string,
+  userId: number
+): Promise<ApiResponse<{ message: string }>> => {
+  const response = await api.post(`/groups/${slug}/members/${userId}/approve`);
+  return response.data;
+};
+
+/**
+ * Reject pending membership
+ */
+export const rejectMember = async (
+  slug: string,
+  userId: number
+): Promise<ApiResponse<{ message: string }>> => {
+  const response = await api.post(`/groups/${slug}/members/${userId}/reject`);
+  return response.data;
+};
+
+/**
+ * Get banned members
+ */
+export const getBannedMembers = async (slug: string): Promise<ApiResponse<{ members: GroupMember[] }>> => {
+  const response = await api.get(`/groups/${slug}/members/banned`);
+  return response.data;
+};
+
+/**
+ * Get activity log
+ */
+export const getActivityLog = async (slug: string, params?: {
+  limit?: number;
+  offset?: number;
+}): Promise<ApiResponse<{ activities: any[]; total: number }>> => {
+  const response = await api.get(`/groups/${slug}/activity`, { params });
+  return response.data;
+};
+
+// ============================================================================
 // HELPER FUNCTIONS
 // ============================================================================
 
@@ -267,6 +320,11 @@ export default {
   banMember,
   unbanMember,
   removeMember,
+  getPendingMembers,
+  approveMember,
+  rejectMember,
+  getBannedMembers,
+  getActivityLog,
   hasModeratorRole,
   hasAdminRole,
   canPost,
