@@ -27,6 +27,7 @@ export interface Group {
   display_name: string;
   description?: string;
   icon_url?: string;
+  avatar_url?: string;
   banner_url?: string;
   visibility: GroupVisibility;
   post_approval_required: boolean;
@@ -248,6 +249,7 @@ export interface UpdateGroupData {
   display_name?: string;
   description?: string;
   icon_url?: string;
+  avatar_url?: string;
   banner_url?: string;
   visibility?: GroupVisibility;
   post_approval_required?: boolean;
