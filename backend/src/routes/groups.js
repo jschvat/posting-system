@@ -13,6 +13,26 @@ const { validateUserLocation } = require('../utils/geolocation');
 
 // Load environment variables for group uploads
 const GROUP_AVATAR_PATH = process.env.GROUP_AVATAR_PATH || '../uploads/groups/avatars';
+const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:3001';
+
+// Helper function to construct full avatar URL
+const getFullAvatarUrl = (relativePath) => {
+  if (!relativePath) return null;
+  if (relativePath.startsWith('http://') || relativePath.startsWith('https://')) {
+    return relativePath;
+  }
+  return `${API_BASE_URL}${relativePath}`;
+};
+
+// Helper function to transform group object with full URLs
+const transformGroupWithFullUrls = (group) => {
+  if (!group) return null;
+  return {
+    ...group,
+    avatar_url: getFullAvatarUrl(group.avatar_url),
+    banner_url: getFullAvatarUrl(group.banner_url)
+  };
+};
 
 // Multer configuration for avatar uploads
 const storage = multer.diskStorage({
@@ -74,9 +94,15 @@ router.get('/', optionalAuth, async (req, res) => {
       sort_order
     });
 
+    // Transform groups with full URLs
+    const transformedResult = {
+      ...result,
+      groups: result.groups.map(transformGroupWithFullUrls)
+    };
+
     res.json({
       success: true,
-      data: result
+      data: transformedResult
     });
   } catch (error) {
     console.error('Error listing groups:', error);
@@ -384,10 +410,13 @@ router.get('/:slug', optionalAuth, async (req, res) => {
     // Get group with creator info
     const groupWithCreator = await Group.getWithCreator(group.id);
 
+    // Transform URLs to full paths
+    const transformedGroup = transformGroupWithFullUrls(groupWithCreator);
+
     res.json({
       success: true,
       data: {
-        ...groupWithCreator,
+        ...transformedGroup,
         user_role: membership?.role || null,
         user_status: membership?.status || null
       }
