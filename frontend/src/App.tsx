@@ -27,6 +27,7 @@ import GroupListPage from './pages/GroupListPage';
 import GroupPage from './pages/GroupPage';
 import CreateGroupPage from './pages/CreateGroupPage';
 import GroupPostPage from './pages/GroupPostPage';
+import GroupModPage from './pages/GroupModPage';
 
 // Import components
 import Header from './components/Header';
@@ -208,6 +209,7 @@ const AuthenticatedApp: React.FC = () => {
             <Route path="/groups" element={<GroupListPage />} />
             <Route path="/groups/create" element={<CreateGroupPage />} />
             <Route path="/g/:slug" element={<GroupPage />} />
+            <Route path="/g/:slug/moderate" element={<GroupModPage />} />
             <Route path="/g/:slug/posts/:postId" element={<GroupPostPage />} />
 
             {/* Redirect to home for any other routes */}
