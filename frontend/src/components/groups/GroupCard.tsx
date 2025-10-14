@@ -36,8 +36,8 @@ const GroupCard: React.FC<GroupCardProps> = ({
   return (
     <Card to={`/g/${group.slug}`}>
       <CardHeader>
-        {group.icon_url && <GroupIcon src={group.icon_url} alt={group.display_name} />}
-        {!group.icon_url && <DefaultIcon>{group.name.charAt(0).toUpperCase()}</DefaultIcon>}
+        {group.avatar_url && <GroupIcon src={group.avatar_url} alt={group.display_name} />}
+        {!group.avatar_url && <DefaultIcon>{group.name.charAt(0).toUpperCase()}</DefaultIcon>}
         <GroupInfo>
           <GroupName>{group.display_name}</GroupName>
           <GroupSlug>g/{group.name}</GroupSlug>
