@@ -41,14 +41,16 @@ class Post extends BaseModel {
     const result = await this.raw(
       `SELECT p.*,
               u.username, u.first_name, u.last_name, u.avatar_url,
+              COALESCE(ur.reputation_score, 0) as reputation_score,
               COUNT(r.id) as reaction_count,
               COUNT(c.id) as comment_count
        FROM posts p
        JOIN users u ON p.user_id = u.id
+       LEFT JOIN user_reputation ur ON u.id = ur.user_id
        LEFT JOIN reactions r ON p.id = r.post_id
        LEFT JOIN comments c ON p.id = c.post_id
        WHERE p.user_id = $1 AND p.is_published = true
-       GROUP BY p.id, u.id
+       GROUP BY p.id, u.id, ur.reputation_score
        ORDER BY p.created_at DESC
        LIMIT $2 OFFSET $3`,
       [userId, limit, offset]
@@ -67,14 +69,16 @@ class Post extends BaseModel {
     const result = await this.raw(
       `SELECT p.*,
               u.username, u.first_name, u.last_name, u.avatar_url,
+              COALESCE(ur.reputation_score, 0) as reputation_score,
               COUNT(r.id) as reaction_count,
               COUNT(c.id) as comment_count
        FROM posts p
        JOIN users u ON p.user_id = u.id
+       LEFT JOIN user_reputation ur ON u.id = ur.user_id
        LEFT JOIN reactions r ON p.id = r.post_id
        LEFT JOIN comments c ON p.id = c.post_id
        WHERE p.privacy_level = 'public' AND p.is_published = true AND p.is_archived = false
-       GROUP BY p.id, u.id
+       GROUP BY p.id, u.id, ur.reputation_score
        ORDER BY p.created_at DESC
        LIMIT $1 OFFSET $2`,
       [limit, offset]
@@ -92,14 +96,16 @@ class Post extends BaseModel {
     const result = await this.raw(
       `SELECT p.*,
               u.username, u.first_name, u.last_name, u.avatar_url,
+              COALESCE(ur.reputation_score, 0) as reputation_score,
               COUNT(r.id) as reaction_count,
               COUNT(c.id) as comment_count
        FROM posts p
        JOIN users u ON p.user_id = u.id
+       LEFT JOIN user_reputation ur ON u.id = ur.user_id
        LEFT JOIN reactions r ON p.id = r.post_id
        LEFT JOIN comments c ON p.id = c.post_id
        WHERE p.id = $1
-       GROUP BY p.id, u.id`,
+       GROUP BY p.id, u.id, ur.reputation_score`,
       [postId]
     );
 
@@ -219,7 +225,8 @@ class Post extends BaseModel {
         first_name: normalizedPost.first_name,
         last_name: normalizedPost.last_name,
         full_name: `${normalizedPost.first_name} ${normalizedPost.last_name}`,
-        avatar_url: normalizedPost.avatar_url
+        avatar_url: normalizedPost.avatar_url,
+        reputation_score: parseInt(normalizedPost.reputation_score) || 0
       } : undefined,
 
       // Additional computed fields

@@ -31,6 +31,7 @@ export interface User extends BaseEntity {
   location_sharing?: 'exact' | 'city' | 'off';
   location_updated_at?: string;
   location_accuracy?: number;
+  reputation_score?: number;
 }
 
 export interface UserStats {

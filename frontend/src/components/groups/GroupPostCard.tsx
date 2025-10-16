@@ -4,6 +4,7 @@ import styled from 'styled-components';
 import { FaArrowUp, FaArrowDown, FaComment, FaThumbtack, FaLock, FaTrash, FaEdit } from 'react-icons/fa6';
 import { GroupPost, VoteType } from '../../types/group';
 import { formatRelativeTime, formatScore, getVoteState } from '../../services/groupPostsApi';
+import RatingBadge from '../RatingBadge';
 
 interface GroupPostCardProps {
   post: GroupPost;
@@ -90,6 +91,13 @@ const GroupPostCard: React.FC<GroupPostCardProps> = ({
             <AuthorLink to={`/profile/${post.username}`}>
               u/{post.username}
             </AuthorLink>
+            <Separator>•</Separator>
+            <RatingBadge
+              score={post.reputation_score || 0}
+              size="tiny"
+              inline
+              showScore={false}
+            />
             <Separator>•</Separator>
             <Timestamp title={new Date(post.created_at).toLocaleString()}>
               {formatRelativeTime(post.created_at)}

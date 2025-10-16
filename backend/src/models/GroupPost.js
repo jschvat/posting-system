@@ -57,6 +57,7 @@ class GroupPost {
     const query = `
       SELECT gp.*,
              u.username, u.first_name, u.last_name, u.avatar_url,
+             COALESCE(ur.reputation_score, 0) as reputation_score,
              g.name as group_name, g.slug as group_slug, g.display_name as group_display_name,
              g.visibility as group_visibility,
              ${user_id ? `
@@ -64,6 +65,7 @@ class GroupPost {
              ` : 'NULL as user_vote'}
       FROM group_posts gp
       INNER JOIN users u ON gp.user_id = u.id
+      LEFT JOIN user_reputation ur ON u.id = ur.user_id
       INNER JOIN groups g ON gp.group_id = g.id
       WHERE gp.id = $1
     `;
@@ -211,12 +213,14 @@ class GroupPost {
     const query = `
       SELECT gp.*,
              u.username, u.first_name, u.last_name, u.avatar_url,
+             COALESCE(ur.reputation_score, 0) as reputation_score,
              ${user_id ? `
                (SELECT vote_type FROM group_votes WHERE post_id = gp.id AND user_id = $4) as user_vote
              ` : 'NULL as user_vote'},
              (SELECT COUNT(*) FROM group_post_media WHERE post_id = gp.id) as media_count
       FROM group_posts gp
       INNER JOIN users u ON gp.user_id = u.id
+      LEFT JOIN user_reputation ur ON u.id = ur.user_id
       WHERE gp.group_id = $1 AND gp.status = $2
       ORDER BY gp.is_pinned DESC, ${orderClause}
       LIMIT $3 OFFSET ${user_id ? '$5' : '$4'}
@@ -283,9 +287,11 @@ class GroupPost {
   } = {}) {
     const query = `
       SELECT gp.*,
-             u.username, u.first_name, u.last_name, u.avatar_url
+             u.username, u.first_name, u.last_name, u.avatar_url,
+             COALESCE(ur.reputation_score, 0) as reputation_score
       FROM group_posts gp
       INNER JOIN users u ON gp.user_id = u.id
+      LEFT JOIN user_reputation ur ON u.id = ur.user_id
       WHERE gp.group_id = $1 AND gp.status = 'pending'
       ORDER BY gp.created_at ASC
       LIMIT $2 OFFSET $3
@@ -305,9 +311,11 @@ class GroupPost {
     const query = `
       SELECT gp.*,
              u.username, u.first_name, u.last_name, u.avatar_url,
+             COALESCE(ur.reputation_score, 0) as reputation_score,
              mod.username as removed_by_username
       FROM group_posts gp
       INNER JOIN users u ON gp.user_id = u.id
+      LEFT JOIN user_reputation ur ON u.id = ur.user_id
       LEFT JOIN users mod ON gp.removed_by = mod.id
       WHERE gp.group_id = $1 AND gp.status = 'removed'
       ORDER BY gp.removed_at DESC

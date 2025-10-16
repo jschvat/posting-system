@@ -70,12 +70,14 @@ class Comment extends BaseModel {
     const result = await this.raw(
       `SELECT c.*,
               u.username, u.first_name, u.last_name, u.avatar_url,
+              COALESCE(ur.reputation_score, 0) as reputation_score,
               COUNT(r.id) as reaction_count
        FROM comments c
        JOIN users u ON c.user_id = u.id
+       LEFT JOIN user_reputation ur ON u.id = ur.user_id
        LEFT JOIN reactions r ON c.id = r.comment_id
        WHERE c.post_id = $1 AND c.is_published = true AND c.parent_id IS NULL
-       GROUP BY c.id, u.id
+       GROUP BY c.id, u.id, ur.reputation_score
        ORDER BY c.created_at DESC
        LIMIT $2 OFFSET $3`,
       [postId, limit, offset]
@@ -94,12 +96,14 @@ class Comment extends BaseModel {
     const result = await this.raw(
       `SELECT c.*,
               u.username, u.first_name, u.last_name, u.avatar_url,
+              COALESCE(ur.reputation_score, 0) as reputation_score,
               COUNT(r.id) as reaction_count
        FROM comments c
        JOIN users u ON c.user_id = u.id
+       LEFT JOIN user_reputation ur ON u.id = ur.user_id
        LEFT JOIN reactions r ON c.id = r.comment_id
        WHERE c.post_id = $1 AND c.is_published = true
-       GROUP BY c.id, u.id
+       GROUP BY c.id, u.id, ur.reputation_score
        ORDER BY c.created_at ASC`,
       [postId]
     );
@@ -145,12 +149,14 @@ class Comment extends BaseModel {
     const result = await this.raw(
       `SELECT c.*,
               u.username, u.first_name, u.last_name, u.avatar_url,
+              COALESCE(ur.reputation_score, 0) as reputation_score,
               COUNT(r.id) as reaction_count
        FROM comments c
        JOIN users u ON c.user_id = u.id
+       LEFT JOIN user_reputation ur ON u.id = ur.user_id
        LEFT JOIN reactions r ON c.id = r.comment_id
        WHERE c.parent_id = $1 AND c.is_published = true
-       GROUP BY c.id, u.id
+       GROUP BY c.id, u.id, ur.reputation_score
        ORDER BY c.created_at ASC
        LIMIT $2 OFFSET $3`,
       [parentId, limit, offset]
@@ -240,7 +246,8 @@ class Comment extends BaseModel {
         first_name: normalizedComment.first_name,
         last_name: normalizedComment.last_name,
         full_name: `${normalizedComment.first_name} ${normalizedComment.last_name}`,
-        avatar_url: normalizedComment.avatar_url
+        avatar_url: normalizedComment.avatar_url,
+        reputation_score: parseInt(normalizedComment.reputation_score) || 0
       } : undefined,
 
       // Additional computed fields

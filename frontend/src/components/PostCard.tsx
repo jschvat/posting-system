@@ -14,6 +14,7 @@ import ReactionPicker from './ReactionPicker';
 import ReactionsPopup from './ReactionsPopup';
 import CommentForm from './CommentForm';
 import ShareButton from './ShareButton';
+import RatingBadge from './RatingBadge';
 import { getApiBaseUrl } from '../config/app.config';
 
 // Utility function for formatting time ago
@@ -449,7 +450,6 @@ interface PostCardProps {
 // Recursive comment rendering component
 const CommentRenderer: React.FC<{ comment: Comment; depth?: number }> = ({ comment, depth = 0 }) => {
   const commentAvatarUrl = comment.author ? getUserAvatarUrl(comment.author) : '';
-  const hasCommentAvatar = Boolean(comment.author?.avatar_url);
   const isReply = depth > 0;
   const maxDepth = 5; // Maximum nesting depth for visual indentation
 
@@ -466,18 +466,24 @@ const CommentRenderer: React.FC<{ comment: Comment; depth?: number }> = ({ comme
   return (
     <div style={{ marginLeft: `${marginLeft}px` }}>
       <Item>
-        <Avatar $hasImage={hasCommentAvatar}>
-          {hasCommentAvatar && comment.author ? (
-            <img src={commentAvatarUrl} alt={`${comment.author.first_name} ${comment.author.last_name}`} />
+        <Avatar $hasImage={Boolean(commentAvatarUrl)}>
+          {commentAvatarUrl ? (
+            <img src={commentAvatarUrl} alt={`${comment.author?.first_name} ${comment.author?.last_name}`} />
           ) : (
             comment.author ? `${comment.author.first_name[0]}${comment.author.last_name[0]}` : 'U'
           )}
         </Avatar>
         <Content>
-          <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <Author>
               {comment.author ? `${comment.author.first_name} ${comment.author.last_name}` : 'Unknown User'}
             </Author>
+            <RatingBadge
+              score={comment.author?.reputation_score || 0}
+              size="tiny"
+              inline
+              showScore={false}
+            />
           </div>
           <Text>{comment.content}</Text>
           <Time>{formatTimeAgo(comment.created_at)}</Time>
@@ -515,9 +521,8 @@ const PostCard: React.FC<PostCardProps> = ({ post, onUpdate }) => {
     savedScrollHeight: number;
   }>({ isLocked: false, savedScrollTop: 0, savedScrollHeight: 0 });
 
-  // Get author avatar
+  // Get author avatar - getUserAvatarUrl always returns a URL (real or fallback)
   const authorAvatarUrl = post.author ? getUserAvatarUrl(post.author) : '';
-  const hasAuthorAvatar: boolean = Boolean(post.author?.avatar_url);
 
   // Fetch post reactions with user details
   const { data: reactionsData } = useQuery({
@@ -720,9 +725,9 @@ const PostCard: React.FC<PostCardProps> = ({ post, onUpdate }) => {
     <Card>
       {/* Post Header */}
       <PostHeader>
-        <AuthorAvatar $hasImage={hasAuthorAvatar}>
-          {hasAuthorAvatar && post.author ? (
-            <img src={authorAvatarUrl} alt={`${post.author.first_name} ${post.author.last_name}`} />
+        <AuthorAvatar $hasImage={Boolean(authorAvatarUrl)}>
+          {authorAvatarUrl ? (
+            <img src={authorAvatarUrl} alt={`${post.author?.first_name} ${post.author?.last_name}`} />
           ) : (
             post.author ? `${post.author.first_name[0]}${post.author.last_name[0]}` : 'U'
           )}
@@ -734,6 +739,13 @@ const PostCard: React.FC<PostCardProps> = ({ post, onUpdate }) => {
           </AuthorName>
           <PostMeta>
             <span>@{post.author?.username || 'unknown'}</span>
+            <span>•</span>
+            <RatingBadge
+              score={post.author?.reputation_score || 0}
+              size="tiny"
+              inline
+              showScore={false}
+            />
             <span>•</span>
             <span>{formatTimeAgo(post.created_at)}</span>
             {post.privacy_level !== 'public' && (

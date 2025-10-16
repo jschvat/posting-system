@@ -97,6 +97,7 @@ export interface GroupPost {
   username?: string;
   display_name?: string;
   avatar_url?: string;
+  reputation_score?: number;
   group_name?: string;
   group_slug?: string;
   user_vote?: VoteType | null;
