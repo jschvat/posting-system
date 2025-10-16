@@ -3,7 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { useAuth } from '../contexts/AuthContext';
 import groupsApi from '../services/groupsApi';
-import { Group } from '../types/group';
+import groupPostsApi from '../services/groupPostsApi';
+import { Group, GroupPost } from '../types/group';
 
 const getErrorMessage = (err: any): string => {
   const error = err.response?.data?.error;
@@ -228,7 +229,105 @@ const PendingMembersTab: React.FC<{ slug: string }> = ({ slug }) => {
 };
 
 const PendingPostsTab: React.FC<{ slug: string }> = ({ slug }) => {
-  return <Placeholder>Pending Posts - Coming soon</Placeholder>;
+  const [posts, setPosts] = useState<GroupPost[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState<number | null>(null);
+
+  useEffect(() => {
+    loadPendingPosts();
+  }, [slug]);
+
+  const loadPendingPosts = async () => {
+    try {
+      setLoading(true);
+      const res = await groupPostsApi.getPendingPosts(slug);
+      if (res.success && res.data) {
+        const data = res.data as any;
+        setPosts(data.posts || data.items || []);
+      }
+    } catch (err: any) {
+      alert(getErrorMessage(err));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleApprove = async (postId: number) => {
+    if (!window.confirm('Approve this post?')) return;
+
+    try {
+      setActionLoading(postId);
+      const res = await groupPostsApi.approvePost(slug, postId);
+      if (res.success) {
+        alert('Post approved successfully');
+        loadPendingPosts();
+      }
+    } catch (err: any) {
+      alert(getErrorMessage(err));
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleReject = async (postId: number) => {
+    const reason = prompt('Reject this post? Enter reason:');
+    if (!reason) return;
+
+    try {
+      setActionLoading(postId);
+      const res = await groupPostsApi.removePost(slug, postId, { removal_reason: reason });
+      if (res.success) {
+        alert('Post rejected');
+        loadPendingPosts();
+      }
+    } catch (err: any) {
+      alert(getErrorMessage(err));
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  if (loading) {
+    return <LoadingMessage>Loading pending posts...</LoadingMessage>;
+  }
+
+  if (posts.length === 0) {
+    return <EmptyState>No pending posts</EmptyState>;
+  }
+
+  return (
+    <div>
+      <SectionTitle>Pending Posts ({posts.length})</SectionTitle>
+      {posts.map(post => (
+        <PostCard key={post.id}>
+          <PostHeader>
+            <PostAuthor>
+              {post.username && `@${post.username}`}
+              {!post.username && 'Unknown User'}
+            </PostAuthor>
+            <PostDate>{new Date(post.created_at).toLocaleString()}</PostDate>
+          </PostHeader>
+          <PostTitle>{post.title}</PostTitle>
+          {post.content && <PostContent>{post.content.substring(0, 200)}{post.content.length > 200 ? '...' : ''}</PostContent>}
+          {post.link_url && <PostUrl href={post.link_url} target="_blank" rel="noopener noreferrer">{post.link_url}</PostUrl>}
+          <PostActions>
+            <ApproveButton
+              onClick={() => handleApprove(post.id)}
+              disabled={actionLoading === post.id}
+            >
+              {actionLoading === post.id ? 'Processing...' : 'Approve'}
+            </ApproveButton>
+            <RejectButton
+              onClick={() => handleReject(post.id)}
+              disabled={actionLoading === post.id}
+            >
+              Reject
+            </RejectButton>
+          </PostActions>
+        </PostCard>
+      ))}
+    </div>
+  );
 };
 
 const MembersTab: React.FC<{ slug: string; userRole: string }> = ({ slug, userRole }) => {
@@ -610,13 +709,6 @@ const LoadingMessage = styled.div`
   font-size: 18px;
 `;
 
-const Placeholder = styled.div`
-  text-align: center;
-  padding: 48px;
-  color: ${props => props.theme.colors.text.secondary};
-  font-size: 16px;
-`;
-
 const EmptyState = styled.div`
   text-align: center;
   padding: 48px;
@@ -900,6 +992,65 @@ const ActivityTimestamp = styled.div`
   font-size: 12px;
   color: ${props => props.theme.colors.text.secondary};
   margin-top: 4px;
+`;
+
+const PostCard = styled.div`
+  padding: 16px;
+  background: ${props => props.theme.colors.background};
+  border: 1px solid ${props => props.theme.colors.border};
+  border-radius: 8px;
+  margin-bottom: 12px;
+`;
+
+const PostHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+`;
+
+const PostAuthor = styled.div`
+  font-size: 14px;
+  font-weight: 600;
+  color: ${props => props.theme.colors.text};
+`;
+
+const PostDate = styled.div`
+  font-size: 12px;
+  color: ${props => props.theme.colors.text.secondary};
+`;
+
+const PostTitle = styled.h3`
+  font-size: 16px;
+  font-weight: 600;
+  color: ${props => props.theme.colors.text};
+  margin: 0 0 8px 0;
+`;
+
+const PostContent = styled.p`
+  font-size: 14px;
+  line-height: 1.5;
+  color: ${props => props.theme.colors.text.secondary};
+  margin: 0 0 8px 0;
+`;
+
+const PostUrl = styled.a`
+  font-size: 13px;
+  color: ${props => props.theme.colors.primary};
+  text-decoration: none;
+  word-break: break-all;
+  display: block;
+  margin-bottom: 12px;
+
+  &:hover {
+    text-decoration: underline;
+  }
+`;
+
+const PostActions = styled.div`
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
 `;
 
 export default GroupModPage;
