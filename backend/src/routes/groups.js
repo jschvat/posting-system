@@ -13,6 +13,7 @@ const { validateUserLocation } = require('../utils/geolocation');
 
 // Load environment variables for group uploads
 const GROUP_AVATAR_PATH = process.env.GROUP_AVATAR_PATH || '../uploads/groups/avatars';
+const GROUP_BANNER_PATH = process.env.GROUP_BANNER_PATH || '../uploads/groups/banners';
 const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:3001';
 
 // Helper function to construct full avatar URL
@@ -56,6 +57,39 @@ const upload = multer({
   storage,
   limits: {
     fileSize: 5 * 1024 * 1024 // 5MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type. Only JPEG, PNG, GIF, and WebP are allowed.'));
+    }
+  }
+});
+
+// Multer configuration for banner uploads
+const bannerStorage = multer.diskStorage({
+  destination: async (req, file, cb) => {
+    const uploadDir = path.join(__dirname, GROUP_BANNER_PATH);
+    try {
+      await fs.mkdir(uploadDir, { recursive: true });
+      cb(null, uploadDir);
+    } catch (error) {
+      cb(error);
+    }
+  },
+  filename: (req, file, cb) => {
+    const uniqueId = uuidv4();
+    const ext = path.extname(file.originalname);
+    cb(null, `group-banner-${uniqueId}${ext}`);
+  }
+});
+
+const bannerUpload = multer({
+  storage: bannerStorage,
+  limits: {
+    fileSize: 10 * 1024 * 1024 // 10MB limit for banners
   },
   fileFilter: (req, file, cb) => {
     const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
@@ -541,6 +575,74 @@ router.post('/:slug/avatar', authenticateToken, upload.single('avatar'), async (
     res.status(500).json({
       success: false,
       error: 'Failed to upload avatar'
+    });
+  }
+});
+
+/**
+ * @route   POST /api/groups/:slug/banner
+ * @desc    Upload group banner
+ * @access  Private (Admin only)
+ */
+router.post('/:slug/banner', authenticateToken, bannerUpload.single('banner'), async (req, res) => {
+  try {
+    const { slug } = req.params;
+    const group = await Group.findBySlug(slug);
+
+    if (!group) {
+      return res.status(404).json({
+        success: false,
+        error: 'Group not found'
+      });
+    }
+
+    // Check if user is admin
+    const isAdmin = await GroupMembership.isAdmin(group.id, req.user.id);
+    if (!isAdmin) {
+      return res.status(403).json({
+        success: false,
+        error: 'Only admins can update group banner'
+      });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        error: 'No file uploaded'
+      });
+    }
+
+    // Resize and optimize banner image (wider aspect ratio)
+    const resizedFilename = `resized-${req.file.filename}`;
+    const resizedPath = path.join(path.dirname(req.file.path), resizedFilename);
+
+    await sharp(req.file.path)
+      .resize(1200, 400, {
+        fit: 'cover',
+        position: 'center'
+      })
+      .jpeg({ quality: 85 })
+      .toFile(resizedPath);
+
+    // Delete original file
+    await fs.unlink(req.file.path);
+
+    // Update group banner URL
+    const banner_url = `/uploads/groups/banners/${resizedFilename}`;
+    const updatedGroup = await Group.update(group.id, { banner_url });
+
+    res.json({
+      success: true,
+      data: {
+        group: updatedGroup,
+        banner_url
+      }
+    });
+  } catch (error) {
+    console.error('Error uploading group banner:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to upload banner'
     });
   }
 });

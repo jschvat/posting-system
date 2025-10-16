@@ -33,6 +33,8 @@ const CreateGroupPage: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [bannerFile, setBannerFile] = useState<File | null>(null);
+  const [bannerPreview, setBannerPreview] = useState<string | null>(null);
 
   if (!user) {
     navigate('/login');
@@ -99,6 +101,26 @@ const CreateGroupPage: React.FC = () => {
     }
   };
 
+  const handleBannerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 10 * 1024 * 1024) {
+        alert('File size must be less than 10MB');
+        return;
+      }
+      if (!['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(file.type)) {
+        alert('Only JPEG, PNG, GIF, and WebP images are allowed');
+        return;
+      }
+      setBannerFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setBannerPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -119,6 +141,16 @@ const CreateGroupPage: React.FC = () => {
             await groupsApi.uploadGroupAvatar(groupSlug, avatarFile);
           } catch (avatarErr) {
             console.error('Failed to upload avatar:', avatarErr);
+            // Continue anyway, group was created
+          }
+        }
+
+        // Upload banner if selected
+        if (bannerFile) {
+          try {
+            await groupsApi.uploadGroupBanner(groupSlug, bannerFile);
+          } catch (bannerErr) {
+            console.error('Failed to upload banner:', bannerErr);
             // Continue anyway, group was created
           }
         }
@@ -195,6 +227,22 @@ const CreateGroupPage: React.FC = () => {
               type="file"
               accept="image/jpeg,image/png,image/gif,image/webp"
               onChange={handleAvatarChange}
+            />
+          </FormGroup>
+
+          <FormGroup>
+            <Label htmlFor="banner">
+              Group Banner
+              <HelpText>Upload a banner image for your group (1200x400px recommended, max 10MB)</HelpText>
+            </Label>
+            {bannerPreview && (
+              <BannerPreview src={bannerPreview} alt="Banner preview" />
+            )}
+            <Input
+              id="banner"
+              type="file"
+              accept="image/jpeg,image/png,image/gif,image/webp"
+              onChange={handleBannerChange}
             />
           </FormGroup>
 
@@ -475,6 +523,16 @@ const ErrorText = styled.span`
 const AvatarPreview = styled.img`
   width: 120px;
   height: 120px;
+  border-radius: 8px;
+  object-fit: cover;
+  margin: 12px 0;
+  border: 2px solid ${props => props.theme.colors.border};
+`;
+
+const BannerPreview = styled.img`
+  width: 100%;
+  max-width: 600px;
+  height: 200px;
   border-radius: 8px;
   object-fit: cover;
   margin: 12px 0;

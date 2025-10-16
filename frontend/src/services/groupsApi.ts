@@ -81,6 +81,20 @@ export const uploadGroupAvatar = async (slug: string, file: File): Promise<ApiRe
 };
 
 /**
+ * Upload group banner (admin only)
+ */
+export const uploadGroupBanner = async (slug: string, file: File): Promise<ApiResponse<{ group: Group; banner_url: string }>> => {
+  const formData = new FormData();
+  formData.append('banner', file);
+  const response = await api.post(`/groups/${slug}/banner`, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  });
+  return response.data;
+};
+
+/**
  * Search groups by name or description
  */
 export const searchGroups = async (params: {
@@ -310,6 +324,7 @@ export default {
   updateGroup,
   deleteGroup,
   uploadGroupAvatar,
+  uploadGroupBanner,
   searchGroups,
   getFilteredGroups,
   joinGroup,
