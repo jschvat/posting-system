@@ -13,7 +13,7 @@ const getErrorMessage = (err: any): string => {
   return err.message || 'An error occurred';
 };
 
-type TabType = 'pending-members' | 'pending-posts' | 'members' | 'banned' | 'activity';
+type TabType = 'pending-members' | 'pending-posts' | 'posts' | 'members' | 'banned' | 'activity';
 
 const GroupModPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -39,26 +39,42 @@ const GroupModPage: React.FC = () => {
 
     try {
       setLoading(true);
+      console.log('[GroupModPage] Loading group:', slug);
       const groupRes = await groupsApi.getGroup(slug);
+      console.log('[GroupModPage] Group response:', groupRes);
 
       if (groupRes.success && groupRes.data) {
-        setGroup(groupRes.data.group);
+        setGroup(groupRes.data);
+        console.log('[GroupModPage] Group set:', groupRes.data);
 
         // Check membership and role
         const membershipRes = await groupsApi.checkMembership(slug);
+        console.log('[GroupModPage] Membership response:', membershipRes);
+
         if (membershipRes.success && membershipRes.data) {
-          const membership = membershipRes.data.membership;
+          const { is_member, membership } = membershipRes.data;
 
           // Only admins and moderators can access this page
-          if (membership?.role === 'admin' || membership?.role === 'moderator') {
+          if (is_member && membership && (membership.role === 'admin' || membership.role === 'moderator')) {
             setUserRole(membership.role);
+            console.log('[GroupModPage] User role set:', membership.role);
           } else {
+            console.log('[GroupModPage] Access denied - not admin/moderator');
             alert('You must be an admin or moderator to access this page');
             navigate(`/g/${slug}`);
+            return;
           }
+        } else {
+          console.log('[GroupModPage] Membership check failed');
+          alert('Failed to verify your permissions');
+          navigate(`/g/${slug}`);
+          return;
         }
+      } else {
+        console.log('[GroupModPage] Group response not successful');
       }
     } catch (err: any) {
+      console.error('[GroupModPage] Error:', err);
       alert(getErrorMessage(err));
       navigate('/groups');
     } finally {
@@ -70,8 +86,12 @@ const GroupModPage: React.FC = () => {
     return <Container><LoadingMessage>Loading moderation console...</LoadingMessage></Container>;
   }
 
-  if (!group || !userRole) {
-    return null;
+  if (!group) {
+    return <Container><ErrorMessage>Group not found</ErrorMessage></Container>;
+  }
+
+  if (!userRole) {
+    return <Container><ErrorMessage>Checking permissions...</ErrorMessage></Container>;
   }
 
   return (
@@ -98,6 +118,12 @@ const GroupModPage: React.FC = () => {
           Pending Posts
         </Tab>
         <Tab
+          $active={activeTab === 'posts'}
+          onClick={() => setActiveTab('posts')}
+        >
+          All Posts
+        </Tab>
+        <Tab
           $active={activeTab === 'members'}
           onClick={() => setActiveTab('members')}
         >
@@ -120,6 +146,7 @@ const GroupModPage: React.FC = () => {
       <ContentArea>
         {activeTab === 'pending-members' && <PendingMembersTab slug={slug!} />}
         {activeTab === 'pending-posts' && <PendingPostsTab slug={slug!} />}
+        {activeTab === 'posts' && <PostsTab slug={slug!} />}
         {activeTab === 'members' && <MembersTab slug={slug!} userRole={userRole} />}
         {activeTab === 'banned' && <BannedMembersTab slug={slug!} />}
         {activeTab === 'activity' && <ActivityLogTab slug={slug!} />}
@@ -131,12 +158,27 @@ const GroupModPage: React.FC = () => {
 // Tab Components
 const PendingMembersTab: React.FC<{ slug: string }> = ({ slug }) => {
   const [members, setMembers] = useState<any[]>([]);
+  const [filteredMembers, setFilteredMembers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<number | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     loadPendingMembers();
   }, [slug]);
+
+  useEffect(() => {
+    if (searchQuery.trim() === '') {
+      setFilteredMembers(members);
+    } else {
+      const query = searchQuery.toLowerCase();
+      setFilteredMembers(members.filter(member =>
+        member.username?.toLowerCase().includes(query) ||
+        member.display_name?.toLowerCase().includes(query) ||
+        `${member.first_name} ${member.last_name}`.toLowerCase().includes(query)
+      ));
+    }
+  }, [searchQuery, members]);
 
   const loadPendingMembers = async () => {
     try {
@@ -144,6 +186,7 @@ const PendingMembersTab: React.FC<{ slug: string }> = ({ slug }) => {
       const res = await groupsApi.getPendingMembers(slug);
       if (res.success && res.data) {
         setMembers(res.data.members);
+        setFilteredMembers(res.data.members);
       }
     } catch (err: any) {
       alert(getErrorMessage(err));
@@ -196,8 +239,19 @@ const PendingMembersTab: React.FC<{ slug: string }> = ({ slug }) => {
 
   return (
     <div>
-      <SectionTitle>Pending Membership Requests ({members.length})</SectionTitle>
-      {members.map(member => (
+      <SearchHeader>
+        <SectionTitle>Pending Membership Requests ({filteredMembers.length} / {members.length})</SectionTitle>
+        <SearchInput
+          type="text"
+          placeholder="Search by username or name..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+        />
+      </SearchHeader>
+      {filteredMembers.length === 0 && searchQuery && (
+        <EmptyState>No members found matching "{searchQuery}"</EmptyState>
+      )}
+      {filteredMembers.map(member => (
         <MemberCard key={member.user_id}>
           <MemberInfo>
             {member.avatar_url && <MemberAvatar src={member.avatar_url} alt={member.username} />}
@@ -330,15 +384,177 @@ const PendingPostsTab: React.FC<{ slug: string }> = ({ slug }) => {
   );
 };
 
+const PostsTab: React.FC<{ slug: string }> = ({ slug }) => {
+  const [posts, setPosts] = useState<any[]>([]);
+  const [filteredPosts, setFilteredPosts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState<number | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  useEffect(() => {
+    loadPosts();
+  }, [slug]);
+
+  useEffect(() => {
+    if (searchQuery.trim() === '') {
+      setFilteredPosts(posts);
+    } else {
+      const query = searchQuery.toLowerCase();
+      setFilteredPosts(posts.filter(post =>
+        post.title?.toLowerCase().includes(query) ||
+        post.content?.toLowerCase().includes(query) ||
+        post.username?.toLowerCase().includes(query)
+      ));
+    }
+  }, [searchQuery, posts]);
+
+  const loadPosts = async () => {
+    try {
+      setLoading(true);
+      const res = await groupPostsApi.getAllPostsForModeration(slug, { limit: 50 });
+      if (res.success && res.data) {
+        setPosts(res.data.posts || []);
+        setFilteredPosts(res.data.posts || []);
+      } else {
+        setPosts([]);
+        setFilteredPosts([]);
+      }
+    } catch (err: any) {
+      console.error('Error loading posts:', err);
+      alert(getErrorMessage(err));
+      setPosts([]);
+      setFilteredPosts([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDelete = async (postId: number) => {
+    const reason = prompt('Enter reason for removing this post (optional):');
+    if (reason === null) return; // User cancelled
+
+    try {
+      setActionLoading(postId);
+      const res = await groupPostsApi.moderateDeletePost(slug, postId, reason);
+      if (res.success) {
+        alert('Post has been removed');
+        loadPosts();
+      }
+    } catch (err: any) {
+      alert(getErrorMessage(err));
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleRestore = async (postId: number) => {
+    if (!window.confirm('Restore this post?')) return;
+
+    try {
+      setActionLoading(postId);
+      const res = await groupPostsApi.restorePost(slug, postId);
+      if (res.success) {
+        alert('Post has been restored');
+        loadPosts();
+      }
+    } catch (err: any) {
+      alert(getErrorMessage(err));
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  if (loading) {
+    return <LoadingMessage>Loading posts...</LoadingMessage>;
+  }
+
+  if (posts.length === 0) {
+    return <EmptyState>No posts found</EmptyState>;
+  }
+
+  return (
+    <div>
+      <SearchHeader>
+        <SectionTitle>All Posts ({filteredPosts.length} / {posts.length})</SectionTitle>
+        <SearchInput
+          type="text"
+          placeholder="Search by title, content, or author..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+        />
+      </SearchHeader>
+      {filteredPosts.length === 0 && searchQuery && (
+        <EmptyState>No posts found matching "{searchQuery}"</EmptyState>
+      )}
+      {filteredPosts.map(post => (
+        <PostCard key={post.id}>
+          <PostHeader>
+            <PostAuthor>
+              {post.username && `@${post.username}`}
+              {!post.username && 'Unknown User'}
+            </PostAuthor>
+            <PostDate>{new Date(post.created_at).toLocaleString()}</PostDate>
+            {post.status === 'removed' && (
+              <PostStatus $status="removed">REMOVED</PostStatus>
+            )}
+            {post.status === 'pending' && (
+              <PostStatus $status="pending">PENDING</PostStatus>
+            )}
+          </PostHeader>
+          {post.title && <PostTitle>{post.title}</PostTitle>}
+          {post.content && <PostContent>{post.content.substring(0, 200)}{post.content.length > 200 ? '...' : ''}</PostContent>}
+          {post.link_url && <PostUrl href={post.link_url} target="_blank" rel="noopener noreferrer">{post.link_url}</PostUrl>}
+          {post.removal_reason && (
+            <RemovalReason>Removal Reason: {post.removal_reason}</RemovalReason>
+          )}
+          <PostActions>
+            {post.status !== 'removed' && (
+              <RejectButton
+                onClick={() => handleDelete(post.id)}
+                disabled={actionLoading === post.id}
+              >
+                {actionLoading === post.id ? 'Processing...' : 'Remove'}
+              </RejectButton>
+            )}
+            {post.status === 'removed' && (
+              <ApproveButton
+                onClick={() => handleRestore(post.id)}
+                disabled={actionLoading === post.id}
+              >
+                {actionLoading === post.id ? 'Processing...' : 'Restore'}
+              </ApproveButton>
+            )}
+          </PostActions>
+        </PostCard>
+      ))}
+    </div>
+  );
+};
+
 const MembersTab: React.FC<{ slug: string; userRole: string }> = ({ slug, userRole }) => {
   const [members, setMembers] = useState<any[]>([]);
+  const [filteredMembers, setFilteredMembers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<number | null>(null);
   const [roleFilter, setRoleFilter] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     loadMembers();
   }, [slug, roleFilter]);
+
+  useEffect(() => {
+    if (searchQuery.trim() === '') {
+      setFilteredMembers(members);
+    } else {
+      const query = searchQuery.toLowerCase();
+      setFilteredMembers(members.filter(member =>
+        member.username?.toLowerCase().includes(query) ||
+        member.display_name?.toLowerCase().includes(query) ||
+        `${member.first_name} ${member.last_name}`.toLowerCase().includes(query)
+      ));
+    }
+  }, [searchQuery, members]);
 
   const loadMembers = async () => {
     try {
@@ -349,10 +565,17 @@ const MembersTab: React.FC<{ slug: string; userRole: string }> = ({ slug, userRo
       }
       const res = await groupsApi.getGroupMembers(slug, params);
       if (res.success && res.data) {
-        setMembers(res.data.items);
+        setMembers(res.data.members || []);
+        setFilteredMembers(res.data.members || []);
+      } else {
+        setMembers([]);
+        setFilteredMembers([]);
       }
     } catch (err: any) {
+      console.error('Error loading members:', err);
       alert(getErrorMessage(err));
+      setMembers([]);
+      setFilteredMembers([]);
     } finally {
       setLoading(false);
     }
@@ -416,8 +639,17 @@ const MembersTab: React.FC<{ slug: string; userRole: string }> = ({ slug, userRo
 
   return (
     <div>
+      <SearchHeader>
+        <SectionTitle>Members ({filteredMembers.length} / {members.length})</SectionTitle>
+        <SearchInput
+          type="text"
+          placeholder="Search by username or name..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+        />
+      </SearchHeader>
       <MemberManagementHeader>
-        <SectionTitle>Members ({members.length})</SectionTitle>
+        <div></div>
         <RoleFilterBar>
           <RoleFilterButton $active={roleFilter === 'all'} onClick={() => setRoleFilter('all')}>All</RoleFilterButton>
           <RoleFilterButton $active={roleFilter === 'admin'} onClick={() => setRoleFilter('admin')}>Admins</RoleFilterButton>
@@ -427,8 +659,11 @@ const MembersTab: React.FC<{ slug: string; userRole: string }> = ({ slug, userRo
       </MemberManagementHeader>
 
       {members.length === 0 && <EmptyState>No members found</EmptyState>}
+      {filteredMembers.length === 0 && searchQuery && (
+        <EmptyState>No members found matching "{searchQuery}"</EmptyState>
+      )}
 
-      {members.map(member => (
+      {filteredMembers.map(member => (
         <MemberCard key={member.user_id}>
           <MemberInfo>
             {member.avatar_url && <MemberAvatar src={member.avatar_url} alt={member.username} />}
@@ -476,12 +711,27 @@ const MembersTab: React.FC<{ slug: string; userRole: string }> = ({ slug, userRo
 
 const BannedMembersTab: React.FC<{ slug: string }> = ({ slug }) => {
   const [members, setMembers] = useState<any[]>([]);
+  const [filteredMembers, setFilteredMembers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<number | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     loadBannedMembers();
   }, [slug]);
+
+  useEffect(() => {
+    if (searchQuery.trim() === '') {
+      setFilteredMembers(members);
+    } else {
+      const query = searchQuery.toLowerCase();
+      setFilteredMembers(members.filter(member =>
+        member.username?.toLowerCase().includes(query) ||
+        member.display_name?.toLowerCase().includes(query) ||
+        `${member.first_name} ${member.last_name}`.toLowerCase().includes(query)
+      ));
+    }
+  }, [searchQuery, members]);
 
   const loadBannedMembers = async () => {
     try {
@@ -489,6 +739,7 @@ const BannedMembersTab: React.FC<{ slug: string }> = ({ slug }) => {
       const res = await groupsApi.getBannedMembers(slug);
       if (res.success && res.data) {
         setMembers(res.data.members);
+        setFilteredMembers(res.data.members);
       }
     } catch (err: any) {
       alert(getErrorMessage(err));
@@ -524,8 +775,19 @@ const BannedMembersTab: React.FC<{ slug: string }> = ({ slug }) => {
 
   return (
     <div>
-      <SectionTitle>Banned Members ({members.length})</SectionTitle>
-      {members.map(member => (
+      <SearchHeader>
+        <SectionTitle>Banned Members ({filteredMembers.length} / {members.length})</SectionTitle>
+        <SearchInput
+          type="text"
+          placeholder="Search by username or name..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+        />
+      </SearchHeader>
+      {filteredMembers.length === 0 && searchQuery && (
+        <EmptyState>No banned members found matching "{searchQuery}"</EmptyState>
+      )}
+      {filteredMembers.map(member => (
         <MemberCard key={member.user_id}>
           <MemberInfo>
             {member.avatar_url && <MemberAvatar src={member.avatar_url} alt={member.username} />}
@@ -713,6 +975,13 @@ const EmptyState = styled.div`
   text-align: center;
   padding: 48px;
   color: ${props => props.theme.colors.text.secondary};
+  font-size: 16px;
+`;
+
+const ErrorMessage = styled.div`
+  text-align: center;
+  padding: 48px;
+  color: ${props => props.theme.colors.error};
   font-size: 16px;
 `;
 
@@ -1051,6 +1320,62 @@ const PostActions = styled.div`
   display: flex;
   gap: 8px;
   margin-top: 12px;
+`;
+
+const PostStatus = styled.span<{ $status: string }>`
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  background: ${props => props.$status === 'removed' ? '#e74c3c' : '#f39c12'};
+  color: white;
+`;
+
+const RemovalReason = styled.div`
+  padding: 8px;
+  background: rgba(231, 76, 60, 0.1);
+  border-left: 3px solid #e74c3c;
+  color: ${props => props.theme.colors.text.secondary};
+  font-size: 13px;
+  margin-top: 8px;
+  font-style: italic;
+`;
+
+const SearchHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  gap: 16px;
+
+  @media (max-width: ${props => props.theme.breakpoints.tablet}) {
+    flex-direction: column;
+    align-items: stretch;
+  }
+`;
+
+const SearchInput = styled.input`
+  padding: 8px 12px;
+  border: 1px solid ${props => props.theme.colors.border};
+  border-radius: 6px;
+  background: ${props => props.theme.colors.background};
+  color: ${props => props.theme.colors.text};
+  font-size: 14px;
+  min-width: 250px;
+
+  &:focus {
+    outline: none;
+    border-color: ${props => props.theme.colors.primary};
+  }
+
+  &::placeholder {
+    color: ${props => props.theme.colors.text.secondary};
+  }
+
+  @media (max-width: ${props => props.theme.breakpoints.tablet}) {
+    min-width: 100%;
+  }
 `;
 
 export default GroupModPage;

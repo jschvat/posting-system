@@ -844,4 +844,178 @@ router.get('/:slug/posts/removed', authenticateToken, async (req, res) => {
   }
 });
 
+/**
+ * Get all posts for moderation (including deleted)
+ * GET /api/groups/:slug/posts/moderate/all
+ */
+router.get('/:slug/posts/moderate/all', authenticateToken, async (req, res) => {
+  try {
+    const { slug } = req.params;
+    const { limit = 20, offset = 0, include_deleted = 'true' } = req.query;
+
+    const group = await Group.findBySlug(slug);
+    if (!group) {
+      return res.status(404).json({
+        success: false,
+        error: 'Group not found'
+      });
+    }
+
+    // Check if user is moderator or admin
+    const isModerator = await GroupMembership.isModerator(group.id, req.user.id);
+    if (!isModerator) {
+      return res.status(403).json({
+        success: false,
+        error: 'Only moderators can access this endpoint'
+      });
+    }
+
+    // Get all posts including soft-deleted ones
+    const db = require('../config/database');
+    const query = `
+      SELECT
+        gp.*,
+        u.username, u.first_name, u.last_name, u.avatar_url,
+        COALESCE(ur.reputation_score, 0) as reputation_score
+      FROM group_posts gp
+      JOIN users u ON gp.user_id = u.id
+      LEFT JOIN user_reputation ur ON u.id = ur.user_id
+      WHERE gp.group_id = $1
+      ORDER BY gp.created_at DESC
+      LIMIT $2 OFFSET $3
+    `;
+
+    const result = await db.query(query, [group.id, parseInt(limit), parseInt(offset)]);
+
+    res.json({
+      success: true,
+      data: {
+        posts: result.rows,
+        pagination: {
+          limit: parseInt(limit),
+          offset: parseInt(offset),
+          total: result.rowCount
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Error getting all posts for moderation:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get posts'
+    });
+  }
+});
+
+/**
+ * Soft delete a group post (admin/moderator)
+ * POST /api/groups/:slug/posts/:postId/moderate/delete
+ */
+router.post('/:slug/posts/:postId/moderate/delete', authenticateToken, async (req, res) => {
+  try {
+    const { slug, postId } = req.params;
+    const { reason } = req.body;
+
+    const group = await Group.findBySlug(slug);
+    if (!group) {
+      return res.status(404).json({
+        success: false,
+        error: 'Group not found'
+      });
+    }
+
+    // Check if user is moderator or admin
+    const isModerator = await GroupMembership.isModerator(group.id, req.user.id);
+    if (!isModerator) {
+      return res.status(403).json({
+        success: false,
+        error: 'Only moderators can delete posts'
+      });
+    }
+
+    // Check if the post exists and belongs to this group
+    const groupPost = await GroupPost.findByPostId(parseInt(postId));
+    if (!groupPost || groupPost.group_id !== group.id) {
+      return res.status(404).json({
+        success: false,
+        error: 'Post not found in this group'
+      });
+    }
+
+    // For group posts, we'll use the status='removed' system
+    await GroupPost.remove(groupPost.id, req.user.id, reason || 'Removed by moderator');
+
+    res.json({
+      success: true,
+      message: 'Post has been removed',
+      data: {
+        post_id: parseInt(postId),
+        removed_by: req.user.id,
+        reason: reason || 'Removed by moderator'
+      }
+    });
+
+  } catch (error) {
+    console.error('Error deleting post:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to delete post'
+    });
+  }
+});
+
+/**
+ * Restore a removed group post (admin/moderator)
+ * POST /api/groups/:slug/posts/:postId/moderate/restore
+ */
+router.post('/:slug/posts/:postId/moderate/restore', authenticateToken, async (req, res) => {
+  try {
+    const { slug, postId } = req.params;
+
+    const group = await Group.findBySlug(slug);
+    if (!group) {
+      return res.status(404).json({
+        success: false,
+        error: 'Group not found'
+      });
+    }
+
+    // Check if user is moderator or admin
+    const isModerator = await GroupMembership.isModerator(group.id, req.user.id);
+    if (!isModerator) {
+      return res.status(403).json({
+        success: false,
+        error: 'Only moderators can restore posts'
+      });
+    }
+
+    // Check if the post exists and belongs to this group
+    const groupPost = await GroupPost.findByPostId(parseInt(postId));
+    if (!groupPost || groupPost.group_id !== group.id) {
+      return res.status(404).json({
+        success: false,
+        error: 'Post not found in this group'
+      });
+    }
+
+    // Approve the post (changes status from 'removed' to 'approved')
+    await GroupPost.approve(groupPost.id);
+
+    res.json({
+      success: true,
+      message: 'Post has been restored',
+      data: {
+        post_id: parseInt(postId)
+      }
+    });
+
+  } catch (error) {
+    console.error('Error restoring post:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to restore post'
+    });
+  }
+});
+
 module.exports = router;

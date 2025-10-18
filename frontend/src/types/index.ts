@@ -60,6 +60,11 @@ export interface Post extends BaseEntity {
   media?: Media[];
   comments?: Comment[];
   reaction_counts?: ReactionCount[];
+  // Soft delete fields
+  deleted_at?: string | null;
+  deleted_by?: number | null;
+  deletion_reason?: string | null;
+  is_deleted?: boolean;
 }
 
 // Comment related types

@@ -331,6 +331,40 @@ export const formatRelativeTime = (timestamp: string): string => {
   return 'just now';
 };
 
+/**
+ * Get all posts for moderation (including deleted)
+ */
+export const getAllPostsForModeration = async (
+  slug: string,
+  params?: { limit?: number; offset?: number }
+): Promise<ApiResponse<{ posts: any[]; pagination: any }>> => {
+  const response = await api.get(`/groups/${slug}/posts/moderate/all`, { params });
+  return response.data;
+};
+
+/**
+ * Moderate delete a post (soft delete)
+ */
+export const moderateDeletePost = async (
+  slug: string,
+  postId: number,
+  reason?: string
+): Promise<ApiResponse<{ message: string }>> => {
+  const response = await api.post(`/groups/${slug}/posts/${postId}/moderate/delete`, { reason });
+  return response.data;
+};
+
+/**
+ * Restore a deleted post
+ */
+export const restorePost = async (
+  slug: string,
+  postId: number
+): Promise<ApiResponse<{ message: string }>> => {
+  const response = await api.post(`/groups/${slug}/posts/${postId}/moderate/restore`);
+  return response.data;
+};
+
 export default {
   getGroupPosts,
   getTopPosts,
@@ -346,6 +380,9 @@ export default {
   toggleLockPost,
   removePost,
   approvePost,
+  getAllPostsForModeration,
+  moderateDeletePost,
+  restorePost,
   getPostAge,
   formatScore,
   getVoteState,

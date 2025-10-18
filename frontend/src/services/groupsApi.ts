@@ -42,7 +42,7 @@ export const getGroups = async (params?: {
 /**
  * Get a single group by slug
  */
-export const getGroup = async (slug: string): Promise<ApiResponse<{ group: Group }>> => {
+export const getGroup = async (slug: string): Promise<ApiResponse<Group>> => {
   const response = await api.get(`/groups/${slug}`);
   return response.data;
 };
@@ -158,7 +158,7 @@ export const getGroupMembers = async (
     role?: string;
     status?: string;
   }
-): Promise<ApiResponse<PaginatedResponse<GroupMember>>> => {
+): Promise<ApiResponse<{ members: GroupMember[]; total: number; limit: number; offset: number }>> => {
   const response = await api.get(`/groups/${slug}/members`, { params });
   return response.data;
 };

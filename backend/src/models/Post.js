@@ -192,6 +192,60 @@ class Post extends BaseModel {
   }
 
   /**
+   * Soft delete a post (admin/moderator only)
+   * @param {number} postId - Post ID
+   * @param {number} deletedBy - User ID of admin/moderator deleting the post
+   * @param {string} reason - Reason for deletion
+   * @returns {Object} Updated post
+   */
+  async softDelete(postId, deletedBy, reason = 'Removed by moderator') {
+    const result = await this.raw(
+      `UPDATE posts
+       SET deleted_at = NOW(),
+           deleted_by = $2,
+           deletion_reason = $3
+       WHERE id = $1 AND deleted_at IS NULL
+       RETURNING *`,
+      [postId, deletedBy, reason]
+    );
+
+    return result.rows[0];
+  }
+
+  /**
+   * Restore a soft-deleted post
+   * @param {number} postId - Post ID
+   * @returns {Object} Updated post
+   */
+  async restorePost(postId) {
+    const result = await this.raw(
+      `UPDATE posts
+       SET deleted_at = NULL,
+           deleted_by = NULL,
+           deletion_reason = NULL
+       WHERE id = $1 AND deleted_at IS NOT NULL
+       RETURNING *`,
+      [postId]
+    );
+
+    return result.rows[0];
+  }
+
+  /**
+   * Check if a post is deleted
+   * @param {number} postId - Post ID
+   * @returns {boolean} Whether the post is deleted
+   */
+  async isDeleted(postId) {
+    const result = await this.raw(
+      'SELECT deleted_at FROM posts WHERE id = $1',
+      [postId]
+    );
+
+    return result.rows[0]?.deleted_at !== null;
+  }
+
+  /**
    * Get post data with computed fields
    * @param {Object} post - Raw post data from database
    * @returns {Object} Post data with additional computed fields
@@ -217,6 +271,12 @@ class Post extends BaseModel {
       scheduled_for: normalizedPost.scheduled_for,
       created_at: normalizedPost.created_at,
       updated_at: normalizedPost.updated_at,
+
+      // Soft delete fields
+      deleted_at: normalizedPost.deleted_at || null,
+      deleted_by: normalizedPost.deleted_by || null,
+      deletion_reason: normalizedPost.deletion_reason || null,
+      is_deleted: normalizedPost.deleted_at !== null && normalizedPost.deleted_at !== undefined,
 
       // Author information (if joined)
       author: normalizedPost.username ? {

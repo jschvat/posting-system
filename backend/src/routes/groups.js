@@ -10,6 +10,7 @@ const Group = require('../models/Group');
 const GroupMembership = require('../models/GroupMembership');
 const User = require('../models/User');
 const { validateUserLocation } = require('../utils/geolocation');
+const db = require('../config/database');
 
 // Load environment variables for group uploads
 const GROUP_AVATAR_PATH = process.env.GROUP_AVATAR_PATH || '../uploads/groups/avatars';
@@ -128,10 +129,36 @@ router.get('/', optionalAuth, async (req, res) => {
       sort_order
     });
 
+    // If user is authenticated, add membership info
+    let transformedGroups = result.groups.map(transformGroupWithFullUrls);
+
+    if (req.user) {
+      const db = require('../config/database');
+      const membershipResult = await db.query(
+        'SELECT group_id, status, role FROM group_memberships WHERE user_id = $1',
+        [req.user.id]
+      );
+      const membershipMap = new Map();
+      membershipResult.rows.forEach(m => {
+        membershipMap.set(m.group_id, { status: m.status, role: m.role });
+      });
+
+      transformedGroups = transformedGroups.map(g => {
+        const membership = membershipMap.get(g.id);
+        if (membership) {
+          g.user_membership = {
+            status: membership.status,
+            role: membership.role
+          };
+        }
+        return g;
+      });
+    }
+
     // Transform groups with full URLs
     const transformedResult = {
       ...result,
-      groups: result.groups.map(transformGroupWithFullUrls)
+      groups: transformedGroups
     };
 
     res.json({
@@ -226,12 +253,12 @@ router.get('/filtered', authenticateToken, async (req, res) => {
     // Get user's memberships using direct query
     const db = require('../config/database');
     const membershipResult = await db.query(
-      'SELECT group_id, status FROM group_memberships WHERE user_id = $1',
+      'SELECT group_id, status, role FROM group_memberships WHERE user_id = $1',
       [userId]
     );
     const membershipMap = new Map();
     membershipResult.rows.forEach(m => {
-      membershipMap.set(m.group_id, m.status);
+      membershipMap.set(m.group_id, { status: m.status, role: m.role });
     });
 
     // Filter groups based on filter type
@@ -239,15 +266,21 @@ router.get('/filtered', authenticateToken, async (req, res) => {
 
     if (filter === 'joined') {
       // Only groups user is an active member of
-      filteredGroups = filteredGroups.filter(g => membershipMap.get(g.id) === 'active');
+      filteredGroups = filteredGroups.filter(g => {
+        const membership = membershipMap.get(g.id);
+        return membership?.status === 'active';
+      });
     } else if (filter === 'pending') {
       // Only groups with pending membership
-      filteredGroups = filteredGroups.filter(g => membershipMap.get(g.id) === 'pending');
+      filteredGroups = filteredGroups.filter(g => {
+        const membership = membershipMap.get(g.id);
+        return membership?.status === 'pending';
+      });
     } else if (filter === 'available') {
       // Groups user can join (not joined, not pending, location allows)
       filteredGroups = filteredGroups.filter(g => {
-        const status = membershipMap.get(g.id);
-        if (status === 'active' || status === 'pending') return false;
+        const membership = membershipMap.get(g.id);
+        if (membership?.status === 'active' || membership?.status === 'pending') return false;
 
         if (g.location_restricted) {
           const locationCheck = validateUserLocation(userLocation, g);
@@ -258,8 +291,8 @@ router.get('/filtered', authenticateToken, async (req, res) => {
     } else if (filter === 'unavailable') {
       // Groups user can't join due to location restrictions
       filteredGroups = filteredGroups.filter(g => {
-        const status = membershipMap.get(g.id);
-        if (status === 'active' || status === 'pending') return false;
+        const membership = membershipMap.get(g.id);
+        if (membership?.status === 'active' || membership?.status === 'pending') return false;
 
         if (g.location_restricted) {
           const locationCheck = validateUserLocation(userLocation, g);
@@ -277,8 +310,18 @@ router.get('/filtered', authenticateToken, async (req, res) => {
       parseInt(offset) + parseInt(limit)
     );
 
-    // Transform groups with full URLs
-    const transformedGroups = paginatedGroups.map(transformGroupWithFullUrls);
+    // Transform groups with full URLs and membership info
+    const transformedGroups = paginatedGroups.map(g => {
+      const transformed = transformGroupWithFullUrls(g);
+      const membership = membershipMap.get(g.id);
+      if (membership) {
+        transformed.user_membership = {
+          status: membership.status,
+          role: membership.role
+        };
+      }
+      return transformed;
+    });
 
     res.json({
       success: true,
@@ -745,6 +788,54 @@ router.get('/:slug/members', optionalAuth, async (req, res) => {
 });
 
 /**
+ * @route   GET /api/groups/:slug/membership
+ * @desc    Check current user's membership status in a group
+ * @access  Private
+ */
+router.get('/:slug/membership', authenticateToken, async (req, res) => {
+  try {
+    const { slug } = req.params;
+    const group = await Group.findBySlug(slug);
+
+    if (!group) {
+      return res.status(404).json({
+        success: false,
+        error: 'Group not found'
+      });
+    }
+
+    const membership = await GroupMembership.findByGroupAndUser(group.id, req.user.id);
+
+    if (!membership) {
+      return res.json({
+        success: true,
+        data: {
+          is_member: false
+        }
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        is_member: true,
+        membership: {
+          role: membership.role,
+          status: membership.status,
+          joined_at: membership.joined_at
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Error checking membership:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to check membership status'
+    });
+  }
+});
+
+/**
  * @route   POST /api/groups/:slug/join
  * @desc    Join a group
  * @access  Private
@@ -1039,16 +1130,11 @@ router.get('/:slug/members/pending', authenticateToken, async (req, res) => {
       });
     }
 
-    const result = await GroupMembership.list({
-      group_id: group.id,
-      status: 'pending',
-      limit: parseInt(limit),
-      offset: parseInt(offset)
-    });
+    const members = await GroupMembership.getPendingRequests(group.id);
 
     res.json({
       success: true,
-      data: result
+      data: { members }
     });
   } catch (error) {
     console.error('Error getting pending members:', error);
@@ -1170,34 +1256,28 @@ router.get('/:slug/activity', authenticateToken, async (req, res) => {
     }
 
     // Query activity log
-    const query = `
+    const queryText = `
       SELECT
         ga.*,
-        u.username as user_username,
+        u.username as moderator_username,
         u.first_name,
         u.last_name,
         t.username as target_username
       FROM group_activity_log ga
       LEFT JOIN users u ON ga.user_id = u.id
-      LEFT JOIN users t ON ga.target_user_id = t.id
+      LEFT JOIN users t ON ga.target_id = t.id AND ga.target_type = 'user'
       WHERE ga.group_id = $1
       ORDER BY ga.created_at DESC
       LIMIT $2 OFFSET $3
     `;
 
-    const result = await sequelize.query(query, {
-      bind: [group.id, parseInt(limit), parseInt(offset)],
-      type: sequelize.QueryTypes.SELECT
-    });
+    const result = await db.query(queryText, [group.id, parseInt(limit), parseInt(offset)]);
 
     res.json({
       success: true,
       data: {
-        activities: result,
-        pagination: {
-          limit: parseInt(limit),
-          offset: parseInt(offset)
-        }
+        activities: result.rows,
+        total: result.rowCount
       }
     });
   } catch (error) {
@@ -1236,16 +1316,11 @@ router.get('/:slug/members/banned', authenticateToken, async (req, res) => {
       });
     }
 
-    const result = await GroupMembership.list({
-      group_id: group.id,
-      status: 'banned',
-      limit: parseInt(limit),
-      offset: parseInt(offset)
-    });
+    const members = await GroupMembership.getBannedUsers(group.id);
 
     res.json({
       success: true,
-      data: result
+      data: { members }
     });
   } catch (error) {
     console.error('Error getting banned members:', error);
