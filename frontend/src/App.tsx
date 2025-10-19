@@ -14,6 +14,7 @@ import { config } from './config/app.config';
 
 // Import contexts
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { ToastProvider } from './components/Toast';
 
 // Import pages
 import LoginPage from './pages/LoginPage';
@@ -231,21 +232,23 @@ const App: React.FC = () => {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider theme={theme}>
         <GlobalStyle />
-        <Router>
-          <AuthProvider>
-            <Routes>
-              {/* Login page for unauthenticated users */}
-              <Route path="/login" element={<LoginPage />} />
+        <ToastProvider>
+          <Router>
+            <AuthProvider>
+              <Routes>
+                {/* Login page for unauthenticated users */}
+                <Route path="/login" element={<LoginPage />} />
 
-              {/* All other routes require authentication */}
-              <Route path="/*" element={
-                <ProtectedRoute>
-                  <AuthenticatedApp />
-                </ProtectedRoute>
-              } />
-            </Routes>
-          </AuthProvider>
-        </Router>
+                {/* All other routes require authentication */}
+                <Route path="/*" element={
+                  <ProtectedRoute>
+                    <AuthenticatedApp />
+                  </ProtectedRoute>
+                } />
+              </Routes>
+            </AuthProvider>
+          </Router>
+        </ToastProvider>
 
         {/* React Query DevTools (only in development) */}
         {config.isDevelopment && (

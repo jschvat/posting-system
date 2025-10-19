@@ -2,7 +2,7 @@
  * Home page component - displays the main post feed
  */
 
-import React from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import styled from 'styled-components';
 import { postsApi } from '../services/api';
@@ -109,9 +109,34 @@ const LoadMoreButton = styled.button`
   }
 `;
 
+const LoadingMore = styled.div`
+  text-align: center;
+  padding: ${({ theme }) => theme.spacing.xl};
+  color: ${({ theme }) => theme.colors.text.secondary};
+  font-size: 0.95rem;
+`;
+
+const EndOfFeed = styled.div`
+  text-align: center;
+  padding: ${({ theme }) => theme.spacing.xl};
+  color: ${({ theme }) => theme.colors.text.muted};
+  font-size: 0.9rem;
+  border-top: 1px solid ${({ theme }) => theme.colors.border};
+  margin-top: ${({ theme }) => theme.spacing.lg};
+`;
+
 const HomePage: React.FC = () => {
   const { state } = useAuth();
   const user = state.user;
+
+  // State for pagination
+  const [page, setPage] = useState(1);
+  const [allPosts, setAllPosts] = useState<Post[]>([]);
+  const [hasMore, setHasMore] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+
+  // Ref for infinite scroll observer
+  const observerTarget = useRef<HTMLDivElement>(null);
 
   // Fetch posts using React Query
   const {
@@ -120,16 +145,78 @@ const HomePage: React.FC = () => {
     error,
     refetch
   } = useQuery({
-    queryKey: ['posts', 'feed'],
+    queryKey: ['posts', 'feed', page],
     queryFn: () => postsApi.getPosts({
-      page: 1,
-      limit: 20,
+      page,
+      limit: 10,
       sort: 'newest'
     }),
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
-  if (isLoading) {
+  // Update posts when new data arrives
+  useEffect(() => {
+    if (postsResponse?.data?.posts) {
+      const newPosts = Array.isArray(postsResponse.data.posts) ? postsResponse.data.posts as Post[] : [];
+
+      if (page === 1) {
+        // First page - replace all posts
+        setAllPosts(newPosts);
+      } else {
+        // Subsequent pages - append new posts, avoiding duplicates
+        setAllPosts(prev => {
+          const existingIds = new Set(prev.map(p => p.id));
+          const uniqueNewPosts = newPosts.filter(p => !existingIds.has(p.id));
+          return [...prev, ...uniqueNewPosts];
+        });
+      }
+
+      // Check if there are more posts based on pagination info
+      const pagination = postsResponse.data.pagination;
+      if (pagination) {
+        setHasMore(pagination.has_next_page || false);
+      } else {
+        // Fallback: if we got fewer posts than limit, assume no more
+        setHasMore(newPosts.length >= 10);
+      }
+
+      setIsLoadingMore(false);
+    }
+  }, [postsResponse, page]);
+
+  // Infinite scroll with Intersection Observer
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      entries => {
+        if (entries[0].isIntersecting && hasMore && !isLoading && !isLoadingMore) {
+          setIsLoadingMore(true);
+          setPage(prev => prev + 1);
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    const currentTarget = observerTarget.current;
+    if (currentTarget) {
+      observer.observe(currentTarget);
+    }
+
+    return () => {
+      if (currentTarget) {
+        observer.unobserve(currentTarget);
+      }
+    };
+  }, [hasMore, isLoading, isLoadingMore]);
+
+  // Refresh function that resets to page 1
+  const handleRefresh = useCallback(() => {
+    setPage(1);
+    setAllPosts([]);
+    setHasMore(true);
+    refetch();
+  }, [refetch]);
+
+  if (isLoading && page === 1) {
     return (
       <Container>
         <LoadingSpinner size="large" />
@@ -137,21 +224,19 @@ const HomePage: React.FC = () => {
     );
   }
 
-  if (error) {
+  if (error && page === 1) {
     return (
       <Container>
         <ErrorState>
           <h3>Unable to load posts</h3>
           <p>Something went wrong while loading the feed. Please try again.</p>
-          <LoadMoreButton onClick={() => refetch()} style={{ marginTop: '16px' }}>
+          <LoadMoreButton onClick={handleRefresh} style={{ marginTop: '16px' }}>
             Retry
           </LoadMoreButton>
         </ErrorState>
       </Container>
     );
   }
-
-  const posts: Post[] = Array.isArray(postsResponse?.data?.posts) ? postsResponse!.data.posts as Post[] : [];
 
   return (
     <Container>
@@ -167,24 +252,44 @@ const HomePage: React.FC = () => {
       <FeedHeader>
         <FeedTitle>Latest Posts</FeedTitle>
         <FeedSubtitle>
-          {posts.length > 0
-            ? `${posts.length} post${posts.length === 1 ? '' : 's'} in your feed`
+          {allPosts.length > 0
+            ? `${allPosts.length} post${allPosts.length === 1 ? '' : 's'} in your feed`
             : 'No posts yet'
           }
         </FeedSubtitle>
       </FeedHeader>
 
       {/* Posts Feed */}
-      {posts.length > 0 ? (
-        <PostsContainer>
-          {posts.map((post) => (
-            <PostCard
-              key={post.id}
-              post={post}
-              onUpdate={() => refetch()}
-            />
-          ))}
-        </PostsContainer>
+      {allPosts.length > 0 ? (
+        <>
+          <PostsContainer>
+            {allPosts.map((post) => (
+              <PostCard
+                key={post.id}
+                post={post}
+                onUpdate={handleRefresh}
+              />
+            ))}
+          </PostsContainer>
+
+          {/* Infinite scroll trigger */}
+          <div ref={observerTarget} style={{ height: '20px' }} />
+
+          {/* Loading indicator */}
+          {isLoadingMore && (
+            <LoadingMore>
+              <LoadingSpinner size="small" />
+              <div style={{ marginTop: '8px' }}>Loading more posts...</div>
+            </LoadingMore>
+          )}
+
+          {/* End of feed indicator */}
+          {!hasMore && allPosts.length > 0 && (
+            <EndOfFeed>
+              You've reached the end of your feed
+            </EndOfFeed>
+          )}
+        </>
       ) : (
         <EmptyState>
           <h3>No posts to show</h3>
