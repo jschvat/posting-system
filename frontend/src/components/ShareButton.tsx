@@ -9,6 +9,7 @@ import styled from 'styled-components';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { sharesApi } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from './Toast';
 
 interface ShareButtonProps {
   postId: number;
@@ -165,6 +166,7 @@ const ShareButton: React.FC<ShareButtonProps> = ({
   const isAuthenticated = state.isAuthenticated;
   const isOwnPost = user?.id === postAuthorId;
   const queryClient = useQueryClient();
+  const { showError, showSuccess, showInfo } = useToast();
   const [showModal, setShowModal] = useState(false);
   const [shareComment, setShareComment] = useState('');
   const [shareCount, setShareCount] = useState(initialShareCount);
@@ -198,7 +200,7 @@ const ShareButton: React.FC<ShareButtonProps> = ({
     onError: (error: any) => {
       console.error('[ShareButton] Share failed:', error);
       const errorMessage = error?.response?.data?.error?.message || error?.message || 'Failed to share post';
-      alert(errorMessage);
+      showError(errorMessage);
     },
   });
 
@@ -216,7 +218,7 @@ const ShareButton: React.FC<ShareButtonProps> = ({
     onError: (error: any) => {
       console.error('[ShareButton] Unshare failed:', error);
       const errorMessage = error?.response?.data?.error?.message || error?.message || 'Failed to unshare post';
-      alert(errorMessage);
+      showError(errorMessage);
     },
   });
 
@@ -228,7 +230,7 @@ const ShareButton: React.FC<ShareButtonProps> = ({
 
     if (!user) {
       console.log('[ShareButton] No user logged in');
-      alert('Please login to share posts');
+      showInfo('Please login to share posts');
       return;
     }
 

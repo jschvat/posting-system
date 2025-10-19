@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../components/Toast';
 import groupsApi from '../services/groupsApi';
 import { CreateGroupData, GroupVisibility } from '../types/group';
 
@@ -16,6 +17,7 @@ const CreateGroupPage: React.FC = () => {
   const { state } = useAuth();
   const user = state.user;
   const navigate = useNavigate();
+  const { showError, showSuccess } = useToast();
   const [formData, setFormData] = useState<CreateGroupData>({
     name: '',
     display_name: '',
@@ -85,11 +87,11 @@ const CreateGroupPage: React.FC = () => {
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) {
-        alert('File size must be less than 5MB');
+        showError('File size must be less than 5MB');
         return;
       }
       if (!['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(file.type)) {
-        alert('Only JPEG, PNG, GIF, and WebP images are allowed');
+        showError('Only JPEG, PNG, GIF, and WebP images are allowed');
         return;
       }
       setAvatarFile(file);
@@ -105,11 +107,11 @@ const CreateGroupPage: React.FC = () => {
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 10 * 1024 * 1024) {
-        alert('File size must be less than 10MB');
+        showError('File size must be less than 10MB');
         return;
       }
       if (!['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(file.type)) {
-        alert('Only JPEG, PNG, GIF, and WebP images are allowed');
+        showError('Only JPEG, PNG, GIF, and WebP images are allowed');
         return;
       }
       setBannerFile(file);
@@ -162,7 +164,7 @@ const CreateGroupPage: React.FC = () => {
       if (errorMessage.includes('already exists')) {
         setErrors({ name: 'A group with this name already exists' });
       } else {
-        alert(errorMessage);
+        showError(errorMessage);
       }
     } finally {
       setSubmitting(false);
