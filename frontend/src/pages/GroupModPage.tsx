@@ -7,894 +7,6 @@ import groupsApi from '../services/groupsApi';
 import groupPostsApi from '../services/groupPostsApi';
 import { Group, GroupPost } from '../types/group';
 
-const getErrorMessage = (err: any): string => {
-  const error = err.response?.data?.error;
-  if (typeof error === 'string') return error;
-  if (error?.message) return error.message;
-  return err.message || 'An error occurred';
-};
-
-type TabType = 'pending-members' | 'pending-posts' | 'posts' | 'members' | 'banned' | 'activity';
-
-const GroupModPage: React.FC = () => {
-  const { slug } = useParams<{ slug: string }>();
-  const { state } = useAuth();
-  const user = state.user;
-  const navigate = useNavigate();
-  const { showError, showSuccess, showWarning, showInfo } = useToast();
-
-  const [group, setGroup] = useState<Group | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<TabType>('pending-members');
-  const [userRole, setUserRole] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!user) {
-      navigate('/login');
-      return;
-    }
-    loadGroupAndCheckRole();
-  }, [slug, user]);
-
-  const loadGroupAndCheckRole = async () => {
-    if (!slug || !user) return;
-
-    try {
-      setLoading(true);
-      console.log('[GroupModPage] Loading group:', slug);
-      const groupRes = await groupsApi.getGroup(slug);
-      console.log('[GroupModPage] Group response:', groupRes);
-
-      if (groupRes.success && groupRes.data) {
-        setGroup(groupRes.data);
-        console.log('[GroupModPage] Group set:', groupRes.data);
-
-        // Check membership and role
-        const membershipRes = await groupsApi.checkMembership(slug);
-        console.log('[GroupModPage] Membership response:', membershipRes);
-
-        if (membershipRes.success && membershipRes.data) {
-          const { is_member, membership } = membershipRes.data;
-
-          // Only admins and moderators can access this page
-          if (is_member && membership && (membership.role === 'admin' || membership.role === 'moderator')) {
-            setUserRole(membership.role);
-            console.log('[GroupModPage] User role set:', membership.role);
-          } else {
-            console.log('[GroupModPage] Access denied - not admin/moderator');
-            showError('You must be an admin or moderator to access this page');
-            navigate(`/g/${slug}`);
-            return;
-          }
-        } else {
-          console.log('[GroupModPage] Membership check failed');
-          showError('Failed to verify your permissions');
-          navigate(`/g/${slug}`);
-          return;
-        }
-      } else {
-        console.log('[GroupModPage] Group response not successful');
-      }
-    } catch (err: any) {
-      console.error('[GroupModPage] Error:', err);
-      showError(getErrorMessage(err));
-      navigate('/groups');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (loading) {
-    return <Container><LoadingMessage>Loading moderation console...</LoadingMessage></Container>;
-  }
-
-  if (!group) {
-    return <Container><ErrorMessage>Group not found</ErrorMessage></Container>;
-  }
-
-  if (!userRole) {
-    return <Container><ErrorMessage>Checking permissions...</ErrorMessage></Container>;
-  }
-
-  return (
-    <Container>
-      <Header>
-        <BackLink onClick={() => navigate(`/g/${slug}`)}>← Back to {group.display_name}</BackLink>
-        <Title>Moderation Console</Title>
-        <RoleBadge $isAdmin={userRole === 'admin'}>
-          {userRole === 'admin' ? 'Admin' : 'Moderator'}
-        </RoleBadge>
-      </Header>
-
-      <TabBar>
-        <Tab
-          $active={activeTab === 'pending-members'}
-          onClick={() => setActiveTab('pending-members')}
-        >
-          Pending Members
-        </Tab>
-        <Tab
-          $active={activeTab === 'pending-posts'}
-          onClick={() => setActiveTab('pending-posts')}
-        >
-          Pending Posts
-        </Tab>
-        <Tab
-          $active={activeTab === 'posts'}
-          onClick={() => setActiveTab('posts')}
-        >
-          All Posts
-        </Tab>
-        <Tab
-          $active={activeTab === 'members'}
-          onClick={() => setActiveTab('members')}
-        >
-          Members
-        </Tab>
-        <Tab
-          $active={activeTab === 'banned'}
-          onClick={() => setActiveTab('banned')}
-        >
-          Banned
-        </Tab>
-        <Tab
-          $active={activeTab === 'activity'}
-          onClick={() => setActiveTab('activity')}
-        >
-          Activity Log
-        </Tab>
-      </TabBar>
-
-      <ContentArea>
-        {activeTab === 'pending-members' && <PendingMembersTab slug={slug!} />}
-        {activeTab === 'pending-posts' && <PendingPostsTab slug={slug!} />}
-        {activeTab === 'posts' && <PostsTab slug={slug!} />}
-        {activeTab === 'members' && <MembersTab slug={slug!} userRole={userRole} />}
-        {activeTab === 'banned' && <BannedMembersTab slug={slug!} />}
-        {activeTab === 'activity' && <ActivityLogTab slug={slug!} />}
-      </ContentArea>
-    </Container>
-  );
-};
-
-// Tab Components
-const PendingMembersTab: React.FC<{ slug: string }> = ({ slug }) => {
-  const [members, setMembers] = useState<any[]>([]);
-  const { showError, showSuccess } = useToast();
-  const [filteredMembers, setFilteredMembers] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [actionLoading, setActionLoading] = useState<number | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-
-  useEffect(() => {
-    loadPendingMembers();
-  }, [slug]);
-
-  useEffect(() => {
-    if (searchQuery.trim() === '') {
-      setFilteredMembers(members);
-    } else {
-      const query = searchQuery.toLowerCase();
-      setFilteredMembers(members.filter(member =>
-        member.username?.toLowerCase().includes(query) ||
-        member.display_name?.toLowerCase().includes(query) ||
-        `${member.first_name} ${member.last_name}`.toLowerCase().includes(query)
-      ));
-    }
-  }, [searchQuery, members]);
-
-  const loadPendingMembers = async () => {
-    try {
-      setLoading(true);
-      const res = await groupsApi.getPendingMembers(slug);
-      if (res.success && res.data) {
-        setMembers(res.data.members);
-        setFilteredMembers(res.data.members);
-      }
-    } catch (err: any) {
-      showError(getErrorMessage(err));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleApprove = async (userId: number) => {
-    if (!window.confirm('Approve this membership request?')) return;
-
-    try {
-      setActionLoading(userId);
-      const res = await groupsApi.approveMember(slug, userId);
-      if (res.success) {
-        showSuccess('Member approved successfully');
-        loadPendingMembers();
-      }
-    } catch (err: any) {
-      showError(getErrorMessage(err));
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
-  const handleReject = async (userId: number) => {
-    if (!window.confirm('Reject this membership request? This action cannot be undone.')) return;
-
-    try {
-      setActionLoading(userId);
-      const res = await groupsApi.rejectMember(slug, userId);
-      if (res.success) {
-        showSuccess('Membership request rejected');
-        loadPendingMembers();
-      }
-    } catch (err: any) {
-      showError(getErrorMessage(err));
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
-  if (loading) {
-    return <LoadingMessage>Loading pending members...</LoadingMessage>;
-  }
-
-  if (members.length === 0) {
-    return <EmptyState>No pending membership requests</EmptyState>;
-  }
-
-  return (
-    <div>
-      <SearchHeader>
-        <SectionTitle>Pending Membership Requests ({filteredMembers.length} / {members.length})</SectionTitle>
-        <SearchInput
-          type="text"
-          placeholder="Search by username or name..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-        />
-      </SearchHeader>
-      {filteredMembers.length === 0 && searchQuery && (
-        <EmptyState>No members found matching "{searchQuery}"</EmptyState>
-      )}
-      {filteredMembers.map(member => (
-        <MemberCard key={member.user_id}>
-          <MemberInfo>
-            {member.avatar_url && <MemberAvatar src={member.avatar_url} alt={member.username} />}
-            {!member.avatar_url && <MemberAvatarPlaceholder>{member.username.charAt(0).toUpperCase()}</MemberAvatarPlaceholder>}
-            <MemberDetails>
-              <MemberName>{member.display_name || member.username}</MemberName>
-              <MemberUsername>@{member.username}</MemberUsername>
-              <MemberDate>Requested {new Date(member.joined_at).toLocaleDateString()}</MemberDate>
-            </MemberDetails>
-          </MemberInfo>
-          <MemberActions>
-            <ApproveButton
-              onClick={() => handleApprove(member.user_id)}
-              disabled={actionLoading === member.user_id}
-            >
-              {actionLoading === member.user_id ? 'Processing...' : 'Approve'}
-            </ApproveButton>
-            <RejectButton
-              onClick={() => handleReject(member.user_id)}
-              disabled={actionLoading === member.user_id}
-            >
-              Reject
-            </RejectButton>
-          </MemberActions>
-        </MemberCard>
-      ))}
-    </div>
-  );
-};
-
-const PendingPostsTab: React.FC<{ slug: string }> = ({ slug }) => {
-  const { showError, showSuccess } = useToast();
-  const [posts, setPosts] = useState<GroupPost[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [actionLoading, setActionLoading] = useState<number | null>(null);
-
-  useEffect(() => {
-    loadPendingPosts();
-  }, [slug]);
-
-  const loadPendingPosts = async () => {
-    try {
-      setLoading(true);
-      const res = await groupPostsApi.getPendingPosts(slug);
-      if (res.success && res.data) {
-        const data = res.data as any;
-        setPosts(data.posts || data.items || []);
-      }
-    } catch (err: any) {
-      showError(getErrorMessage(err));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleApprove = async (postId: number) => {
-    if (!window.confirm('Approve this post?')) return;
-
-    try {
-      setActionLoading(postId);
-      const res = await groupPostsApi.approvePost(slug, postId);
-      if (res.success) {
-        showSuccess('Post approved successfully');
-        loadPendingPosts();
-      }
-    } catch (err: any) {
-      showError(getErrorMessage(err));
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
-  const handleReject = async (postId: number) => {
-    const reason = prompt('Reject this post? Enter reason:');
-    if (!reason) return;
-
-    try {
-      setActionLoading(postId);
-      const res = await groupPostsApi.removePost(slug, postId, { removal_reason: reason });
-      if (res.success) {
-        showSuccess('Post rejected');
-        loadPendingPosts();
-      }
-    } catch (err: any) {
-      showError(getErrorMessage(err));
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
-  if (loading) {
-    return <LoadingMessage>Loading pending posts...</LoadingMessage>;
-  }
-
-  if (posts.length === 0) {
-    return <EmptyState>No pending posts</EmptyState>;
-  }
-
-  return (
-    <div>
-      <SectionTitle>Pending Posts ({posts.length})</SectionTitle>
-      {posts.map(post => (
-        <PostCard key={post.id}>
-          <PostHeader>
-            <PostAuthor>
-              {post.username && `@${post.username}`}
-              {!post.username && 'Unknown User'}
-            </PostAuthor>
-            <PostDate>{new Date(post.created_at).toLocaleString()}</PostDate>
-          </PostHeader>
-          <PostTitle>{post.title}</PostTitle>
-          {post.content && <PostContent>{post.content.substring(0, 200)}{post.content.length > 200 ? '...' : ''}</PostContent>}
-          {post.link_url && <PostUrl href={post.link_url} target="_blank" rel="noopener noreferrer">{post.link_url}</PostUrl>}
-          <PostActions>
-            <ApproveButton
-              onClick={() => handleApprove(post.id)}
-              disabled={actionLoading === post.id}
-            >
-              {actionLoading === post.id ? 'Processing...' : 'Approve'}
-            </ApproveButton>
-            <RejectButton
-              onClick={() => handleReject(post.id)}
-              disabled={actionLoading === post.id}
-            >
-              Reject
-            </RejectButton>
-          </PostActions>
-        </PostCard>
-      ))}
-    </div>
-  );
-};
-
-const PostsTab: React.FC<{ slug: string }> = ({ slug }) => {
-  const { showError, showSuccess } = useToast();
-  const [posts, setPosts] = useState<any[]>([]);
-  const [filteredPosts, setFilteredPosts] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [actionLoading, setActionLoading] = useState<number | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-
-  useEffect(() => {
-    loadPosts();
-  }, [slug]);
-
-  useEffect(() => {
-    if (searchQuery.trim() === '') {
-      setFilteredPosts(posts);
-    } else {
-      const query = searchQuery.toLowerCase();
-      setFilteredPosts(posts.filter(post =>
-        post.title?.toLowerCase().includes(query) ||
-        post.content?.toLowerCase().includes(query) ||
-        post.username?.toLowerCase().includes(query)
-      ));
-    }
-  }, [searchQuery, posts]);
-
-  const loadPosts = async () => {
-    try {
-      setLoading(true);
-      const res = await groupPostsApi.getAllPostsForModeration(slug, { limit: 50 });
-      if (res.success && res.data) {
-        setPosts(res.data.posts || []);
-        setFilteredPosts(res.data.posts || []);
-      } else {
-        setPosts([]);
-        setFilteredPosts([]);
-      }
-    } catch (err: any) {
-      console.error('Error loading posts:', err);
-      showError(getErrorMessage(err));
-      setPosts([]);
-      setFilteredPosts([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDelete = async (postId: number) => {
-    const reason = prompt('Enter reason for removing this post (optional):');
-    if (reason === null) return; // User cancelled
-
-    try {
-      setActionLoading(postId);
-      const res = await groupPostsApi.moderateDeletePost(slug, postId, reason);
-      if (res.success) {
-        showSuccess('Post has been removed');
-        loadPosts();
-      }
-    } catch (err: any) {
-      showError(getErrorMessage(err));
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
-  const handleRestore = async (postId: number) => {
-    if (!window.confirm('Restore this post?')) return;
-
-    try {
-      setActionLoading(postId);
-      const res = await groupPostsApi.restorePost(slug, postId);
-      if (res.success) {
-        showSuccess('Post has been restored');
-        loadPosts();
-      }
-    } catch (err: any) {
-      showError(getErrorMessage(err));
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
-  if (loading) {
-    return <LoadingMessage>Loading posts...</LoadingMessage>;
-  }
-
-  if (posts.length === 0) {
-    return <EmptyState>No posts found</EmptyState>;
-  }
-
-  return (
-    <div>
-      <SearchHeader>
-        <SectionTitle>All Posts ({filteredPosts.length} / {posts.length})</SectionTitle>
-        <SearchInput
-          type="text"
-          placeholder="Search by title, content, or author..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-        />
-      </SearchHeader>
-      {filteredPosts.length === 0 && searchQuery && (
-        <EmptyState>No posts found matching "{searchQuery}"</EmptyState>
-      )}
-      {filteredPosts.map(post => (
-        <PostCard key={post.id}>
-          <PostHeader>
-            <PostAuthor>
-              {post.username && `@${post.username}`}
-              {!post.username && 'Unknown User'}
-            </PostAuthor>
-            <PostDate>{new Date(post.created_at).toLocaleString()}</PostDate>
-            {post.status === 'removed' && (
-              <PostStatus $status="removed">REMOVED</PostStatus>
-            )}
-            {post.status === 'pending' && (
-              <PostStatus $status="pending">PENDING</PostStatus>
-            )}
-          </PostHeader>
-          {post.title && <PostTitle>{post.title}</PostTitle>}
-          {post.content && <PostContent>{post.content.substring(0, 200)}{post.content.length > 200 ? '...' : ''}</PostContent>}
-          {post.link_url && <PostUrl href={post.link_url} target="_blank" rel="noopener noreferrer">{post.link_url}</PostUrl>}
-          {post.removal_reason && (
-            <RemovalReason>Removal Reason: {post.removal_reason}</RemovalReason>
-          )}
-          <PostActions>
-            {post.status !== 'removed' && (
-              <RejectButton
-                onClick={() => handleDelete(post.id)}
-                disabled={actionLoading === post.id}
-              >
-                {actionLoading === post.id ? 'Processing...' : 'Remove'}
-              </RejectButton>
-            )}
-            {post.status === 'removed' && (
-              <ApproveButton
-                onClick={() => handleRestore(post.id)}
-                disabled={actionLoading === post.id}
-              >
-                {actionLoading === post.id ? 'Processing...' : 'Restore'}
-              </ApproveButton>
-            )}
-          </PostActions>
-        </PostCard>
-      ))}
-    </div>
-  );
-};
-
-const MembersTab: React.FC<{ slug: string; userRole: string }> = ({ slug, userRole }) => {
-  const { showError, showSuccess } = useToast();
-  const [members, setMembers] = useState<any[]>([]);
-  const [filteredMembers, setFilteredMembers] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [actionLoading, setActionLoading] = useState<number | null>(null);
-  const [roleFilter, setRoleFilter] = useState<string>('all');
-  const [searchQuery, setSearchQuery] = useState('');
-
-  useEffect(() => {
-    loadMembers();
-  }, [slug, roleFilter]);
-
-  useEffect(() => {
-    if (searchQuery.trim() === '') {
-      setFilteredMembers(members);
-    } else {
-      const query = searchQuery.toLowerCase();
-      setFilteredMembers(members.filter(member =>
-        member.username?.toLowerCase().includes(query) ||
-        member.display_name?.toLowerCase().includes(query) ||
-        `${member.first_name} ${member.last_name}`.toLowerCase().includes(query)
-      ));
-    }
-  }, [searchQuery, members]);
-
-  const loadMembers = async () => {
-    try {
-      setLoading(true);
-      const params: any = { status: 'active' };
-      if (roleFilter !== 'all') {
-        params.role = roleFilter;
-      }
-      const res = await groupsApi.getGroupMembers(slug, params);
-      if (res.success && res.data) {
-        setMembers(res.data.members || []);
-        setFilteredMembers(res.data.members || []);
-      } else {
-        setMembers([]);
-        setFilteredMembers([]);
-      }
-    } catch (err: any) {
-      console.error('Error loading members:', err);
-      showError(getErrorMessage(err));
-      setMembers([]);
-      setFilteredMembers([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleChangeRole = async (userId: number, newRole: string) => {
-    if (!window.confirm(`Change this member's role to ${newRole}?`)) return;
-
-    try {
-      setActionLoading(userId);
-      const res = await groupsApi.updateMemberRole(slug, userId, { role: newRole as any });
-      if (res.success) {
-        showSuccess('Role updated successfully');
-        loadMembers();
-      }
-    } catch (err: any) {
-      showError(getErrorMessage(err));
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
-  const handleBanMember = async (userId: number, username: string) => {
-    const reason = prompt(`Ban ${username}? Enter reason:`);
-    if (!reason) return;
-
-    try {
-      setActionLoading(userId);
-      const res = await groupsApi.banMember(slug, userId, { banned_reason: reason });
-      if (res.success) {
-        showSuccess('Member banned successfully');
-        loadMembers();
-      }
-    } catch (err: any) {
-      showError(getErrorMessage(err));
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
-  const handleRemoveMember = async (userId: number, username: string) => {
-    if (!window.confirm(`Remove ${username} from this group? This action cannot be undone.`)) return;
-
-    try {
-      setActionLoading(userId);
-      const res = await groupsApi.removeMember(slug, userId);
-      if (res.success) {
-        showSuccess('Member removed successfully');
-        loadMembers();
-      }
-    } catch (err: any) {
-      showError(getErrorMessage(err));
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
-  if (loading) {
-    return <LoadingMessage>Loading members...</LoadingMessage>;
-  }
-
-  return (
-    <div>
-      <SearchHeader>
-        <SectionTitle>Members ({filteredMembers.length} / {members.length})</SectionTitle>
-        <SearchInput
-          type="text"
-          placeholder="Search by username or name..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-        />
-      </SearchHeader>
-      <MemberManagementHeader>
-        <div></div>
-        <RoleFilterBar>
-          <RoleFilterButton $active={roleFilter === 'all'} onClick={() => setRoleFilter('all')}>All</RoleFilterButton>
-          <RoleFilterButton $active={roleFilter === 'admin'} onClick={() => setRoleFilter('admin')}>Admins</RoleFilterButton>
-          <RoleFilterButton $active={roleFilter === 'moderator'} onClick={() => setRoleFilter('moderator')}>Moderators</RoleFilterButton>
-          <RoleFilterButton $active={roleFilter === 'member'} onClick={() => setRoleFilter('member')}>Members</RoleFilterButton>
-        </RoleFilterBar>
-      </MemberManagementHeader>
-
-      {members.length === 0 && <EmptyState>No members found</EmptyState>}
-      {filteredMembers.length === 0 && searchQuery && (
-        <EmptyState>No members found matching "{searchQuery}"</EmptyState>
-      )}
-
-      {filteredMembers.map(member => (
-        <MemberCard key={member.user_id}>
-          <MemberInfo>
-            {member.avatar_url && <MemberAvatar src={member.avatar_url} alt={member.username} />}
-            {!member.avatar_url && <MemberAvatarPlaceholder>{member.username.charAt(0).toUpperCase()}</MemberAvatarPlaceholder>}
-            <MemberDetails>
-              <MemberName>{member.display_name || member.username}</MemberName>
-              <MemberUsername>@{member.username}</MemberUsername>
-              <MemberRoleBadge $role={member.role}>{member.role}</MemberRoleBadge>
-            </MemberDetails>
-          </MemberInfo>
-          {userRole === 'admin' && (
-            <MemberActions>
-              {member.role !== 'admin' && (
-                <RoleSelect
-                  value={member.role}
-                  onChange={(e) => handleChangeRole(member.user_id, e.target.value)}
-                  disabled={actionLoading === member.user_id}
-                >
-                  <option value="member">Member</option>
-                  <option value="moderator">Moderator</option>
-                  <option value="admin">Admin</option>
-                </RoleSelect>
-              )}
-              <BanButton
-                onClick={() => handleBanMember(member.user_id, member.username)}
-                disabled={actionLoading === member.user_id}
-              >
-                Ban
-              </BanButton>
-              {member.role !== 'admin' && (
-                <RemoveButton
-                  onClick={() => handleRemoveMember(member.user_id, member.username)}
-                  disabled={actionLoading === member.user_id}
-                >
-                  Remove
-                </RemoveButton>
-              )}
-            </MemberActions>
-          )}
-        </MemberCard>
-      ))}
-    </div>
-  );
-};
-
-const BannedMembersTab: React.FC<{ slug: string }> = ({ slug }) => {
-  const { showError, showSuccess } = useToast();
-  const [members, setMembers] = useState<any[]>([]);
-  const [filteredMembers, setFilteredMembers] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [actionLoading, setActionLoading] = useState<number | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-
-  useEffect(() => {
-    loadBannedMembers();
-  }, [slug]);
-
-  useEffect(() => {
-    if (searchQuery.trim() === '') {
-      setFilteredMembers(members);
-    } else {
-      const query = searchQuery.toLowerCase();
-      setFilteredMembers(members.filter(member =>
-        member.username?.toLowerCase().includes(query) ||
-        member.display_name?.toLowerCase().includes(query) ||
-        `${member.first_name} ${member.last_name}`.toLowerCase().includes(query)
-      ));
-    }
-  }, [searchQuery, members]);
-
-  const loadBannedMembers = async () => {
-    try {
-      setLoading(true);
-      const res = await groupsApi.getBannedMembers(slug);
-      if (res.success && res.data) {
-        setMembers(res.data.members);
-        setFilteredMembers(res.data.members);
-      }
-    } catch (err: any) {
-      showError(getErrorMessage(err));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleUnban = async (userId: number, username: string) => {
-    if (!window.confirm(`Unban ${username}?`)) return;
-
-    try {
-      setActionLoading(userId);
-      const res = await groupsApi.unbanMember(slug, userId);
-      if (res.success) {
-        showSuccess('Member unbanned successfully');
-        loadBannedMembers();
-      }
-    } catch (err: any) {
-      showError(getErrorMessage(err));
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
-  if (loading) {
-    return <LoadingMessage>Loading banned members...</LoadingMessage>;
-  }
-
-  if (members.length === 0) {
-    return <EmptyState>No banned members</EmptyState>;
-  }
-
-  return (
-    <div>
-      <SearchHeader>
-        <SectionTitle>Banned Members ({filteredMembers.length} / {members.length})</SectionTitle>
-        <SearchInput
-          type="text"
-          placeholder="Search by username or name..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-        />
-      </SearchHeader>
-      {filteredMembers.length === 0 && searchQuery && (
-        <EmptyState>No banned members found matching "{searchQuery}"</EmptyState>
-      )}
-      {filteredMembers.map(member => (
-        <MemberCard key={member.user_id}>
-          <MemberInfo>
-            {member.avatar_url && <MemberAvatar src={member.avatar_url} alt={member.username} />}
-            {!member.avatar_url && <MemberAvatarPlaceholder>{member.username.charAt(0).toUpperCase()}</MemberAvatarPlaceholder>}
-            <MemberDetails>
-              <MemberName>{member.display_name || member.username}</MemberName>
-              <MemberUsername>@{member.username}</MemberUsername>
-              <MemberDate>Banned {new Date(member.joined_at).toLocaleDateString()}</MemberDate>
-            </MemberDetails>
-          </MemberInfo>
-          <MemberActions>
-            <ApproveButton
-              onClick={() => handleUnban(member.user_id, member.username)}
-              disabled={actionLoading === member.user_id}
-            >
-              {actionLoading === member.user_id ? 'Processing...' : 'Unban'}
-            </ApproveButton>
-          </MemberActions>
-        </MemberCard>
-      ))}
-    </div>
-  );
-};
-
-const ActivityLogTab: React.FC<{ slug: string }> = ({ slug }) => {
-  const { showError } = useToast();
-  const [activities, setActivities] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [total, setTotal] = useState(0);
-
-  useEffect(() => {
-    loadActivityLog();
-  }, [slug]);
-
-  const loadActivityLog = async () => {
-    try {
-      setLoading(true);
-      const res = await groupsApi.getActivityLog(slug, { limit: 50 });
-      if (res.success && res.data) {
-        setActivities(res.data.activities);
-        setTotal(res.data.total);
-      }
-    } catch (err: any) {
-      showError(getErrorMessage(err));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const getActionLabel = (action: string): string => {
-    const labels: { [key: string]: string } = {
-      'member_approved': 'Approved member',
-      'member_rejected': 'Rejected member',
-      'member_banned': 'Banned member',
-      'member_unbanned': 'Unbanned member',
-      'member_removed': 'Removed member',
-      'role_changed': 'Changed role',
-      'post_approved': 'Approved post',
-      'post_removed': 'Removed post',
-      'comment_removed': 'Removed comment'
-    };
-    return labels[action] || action;
-  };
-
-  if (loading) {
-    return <LoadingMessage>Loading activity log...</LoadingMessage>;
-  }
-
-  if (activities.length === 0) {
-    return <EmptyState>No moderation activity yet</EmptyState>;
-  }
-
-  return (
-    <div>
-      <SectionTitle>Recent Activity ({total} total actions)</SectionTitle>
-      <ActivityList>
-        {activities.map((activity, index) => (
-          <ActivityItem key={index}>
-            <ActivityIcon>📋</ActivityIcon>
-            <ActivityContent>
-              <ActivityAction>
-                <strong>{activity.moderator_username}</strong> {getActionLabel(activity.action)}
-              </ActivityAction>
-              {activity.target_username && (
-                <ActivityTarget>Target: @{activity.target_username}</ActivityTarget>
-              )}
-              {activity.details && (
-                <ActivityDetails>{activity.details}</ActivityDetails>
-              )}
-              <ActivityTimestamp>
-                {new Date(activity.created_at).toLocaleString()}
-              </ActivityTimestamp>
-            </ActivityContent>
-          </ActivityItem>
-        ))}
-      </ActivityList>
-    </div>
-  );
-};
-
 // Styled Components
 const Container = styled.div`
   max-width: 1200px;
@@ -1385,5 +497,895 @@ const SearchInput = styled.input`
     min-width: 100%;
   }
 `;
+
+// Helper Functions
+const getErrorMessage = (err: any): string => {
+  const error = err.response?.data?.error;
+  if (typeof error === 'string') return error;
+  if (error?.message) return error.message;
+  return err.message || 'An error occurred';
+};
+
+type TabType = 'pending-members' | 'pending-posts' | 'posts' | 'members' | 'banned' | 'activity';
+
+// Tab Components
+const PendingMembersTab: React.FC<{ slug: string }> = ({ slug }) => {
+  const [members, setMembers] = useState<any[]>([]);
+  const { showError, showSuccess } = useToast();
+  const [filteredMembers, setFilteredMembers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState<number | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  useEffect(() => {
+    loadPendingMembers();
+  }, [slug]);
+
+  useEffect(() => {
+    if (searchQuery.trim() === '') {
+      setFilteredMembers(members);
+    } else {
+      const query = searchQuery.toLowerCase();
+      setFilteredMembers(members.filter(member =>
+        member.username?.toLowerCase().includes(query) ||
+        member.display_name?.toLowerCase().includes(query) ||
+        `${member.first_name} ${member.last_name}`.toLowerCase().includes(query)
+      ));
+    }
+  }, [searchQuery, members]);
+
+  const loadPendingMembers = async () => {
+    try {
+      setLoading(true);
+      const res = await groupsApi.getPendingMembers(slug);
+      if (res.success && res.data) {
+        setMembers(res.data.members);
+        setFilteredMembers(res.data.members);
+      }
+    } catch (err: any) {
+      showError(getErrorMessage(err));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleApprove = async (userId: number) => {
+    if (!window.confirm('Approve this membership request?')) return;
+
+    try {
+      setActionLoading(userId);
+      const res = await groupsApi.approveMember(slug, userId);
+      if (res.success) {
+        showSuccess('Member approved successfully');
+        loadPendingMembers();
+      }
+    } catch (err: any) {
+      showError(getErrorMessage(err));
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleReject = async (userId: number) => {
+    if (!window.confirm('Reject this membership request? This action cannot be undone.')) return;
+
+    try {
+      setActionLoading(userId);
+      const res = await groupsApi.rejectMember(slug, userId);
+      if (res.success) {
+        showSuccess('Membership request rejected');
+        loadPendingMembers();
+      }
+    } catch (err: any) {
+      showError(getErrorMessage(err));
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  if (loading) {
+    return <LoadingMessage>Loading pending members...</LoadingMessage>;
+  }
+
+  if (members.length === 0) {
+    return <EmptyState>No pending membership requests</EmptyState>;
+  }
+
+  return (
+    <div>
+      <SearchHeader>
+        <SectionTitle>Pending Membership Requests ({filteredMembers.length} / {members.length})</SectionTitle>
+        <SearchInput
+          type="text"
+          placeholder="Search by username or name..."
+          value={searchQuery}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
+        />
+      </SearchHeader>
+      {filteredMembers.length === 0 && searchQuery && (
+        <EmptyState>No members found matching "{searchQuery}"</EmptyState>
+      )}
+      {filteredMembers.map(member => (
+        <MemberCard key={member.user_id}>
+          <MemberInfo>
+            {member.avatar_url && <MemberAvatar src={member.avatar_url} alt={member.username} />}
+            {!member.avatar_url && <MemberAvatarPlaceholder>{member.username.charAt(0).toUpperCase()}</MemberAvatarPlaceholder>}
+            <MemberDetails>
+              <MemberName>{member.display_name || member.username}</MemberName>
+              <MemberUsername>@{member.username}</MemberUsername>
+              <MemberDate>Requested {new Date(member.joined_at).toLocaleDateString()}</MemberDate>
+            </MemberDetails>
+          </MemberInfo>
+          <MemberActions>
+            <ApproveButton
+              onClick={() => handleApprove(member.user_id)}
+              disabled={actionLoading === member.user_id}
+            >
+              {actionLoading === member.user_id ? 'Processing...' : 'Approve'}
+            </ApproveButton>
+            <RejectButton
+              onClick={() => handleReject(member.user_id)}
+              disabled={actionLoading === member.user_id}
+            >
+              Reject
+            </RejectButton>
+          </MemberActions>
+        </MemberCard>
+      ))}
+    </div>
+  );
+};
+
+const PendingPostsTab: React.FC<{ slug: string }> = ({ slug }) => {
+  const { showError, showSuccess } = useToast();
+  const [posts, setPosts] = useState<GroupPost[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState<number | null>(null);
+
+  useEffect(() => {
+    loadPendingPosts();
+  }, [slug]);
+
+  const loadPendingPosts = async () => {
+    try {
+      setLoading(true);
+      const res = await groupPostsApi.getPendingPosts(slug);
+      if (res.success && res.data) {
+        const data = res.data as any;
+        setPosts(data.posts || data.items || []);
+      }
+    } catch (err: any) {
+      showError(getErrorMessage(err));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleApprove = async (postId: number) => {
+    if (!window.confirm('Approve this post?')) return;
+
+    try {
+      setActionLoading(postId);
+      const res = await groupPostsApi.approvePost(slug, postId);
+      if (res.success) {
+        showSuccess('Post approved successfully');
+        loadPendingPosts();
+      }
+    } catch (err: any) {
+      showError(getErrorMessage(err));
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleReject = async (postId: number) => {
+    const reason = prompt('Reject this post? Enter reason:');
+    if (!reason) return;
+
+    try {
+      setActionLoading(postId);
+      const res = await groupPostsApi.removePost(slug, postId, { removal_reason: reason });
+      if (res.success) {
+        showSuccess('Post rejected');
+        loadPendingPosts();
+      }
+    } catch (err: any) {
+      showError(getErrorMessage(err));
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  if (loading) {
+    return <LoadingMessage>Loading pending posts...</LoadingMessage>;
+  }
+
+  if (posts.length === 0) {
+    return <EmptyState>No pending posts</EmptyState>;
+  }
+
+  return (
+    <div>
+      <SectionTitle>Pending Posts ({posts.length})</SectionTitle>
+      {posts.map(post => (
+        <PostCard key={post.id}>
+          <PostHeader>
+            <PostAuthor>
+              {post.username && `@${post.username}`}
+              {!post.username && 'Unknown User'}
+            </PostAuthor>
+            <PostDate>{new Date(post.created_at).toLocaleString()}</PostDate>
+          </PostHeader>
+          <PostTitle>{post.title}</PostTitle>
+          {post.content && <PostContent>{post.content.substring(0, 200)}{post.content.length > 200 ? '...' : ''}</PostContent>}
+          {post.link_url && <PostUrl href={post.link_url} target="_blank" rel="noopener noreferrer">{post.link_url}</PostUrl>}
+          <PostActions>
+            <ApproveButton
+              onClick={() => handleApprove(post.id)}
+              disabled={actionLoading === post.id}
+            >
+              {actionLoading === post.id ? 'Processing...' : 'Approve'}
+            </ApproveButton>
+            <RejectButton
+              onClick={() => handleReject(post.id)}
+              disabled={actionLoading === post.id}
+            >
+              Reject
+            </RejectButton>
+          </PostActions>
+        </PostCard>
+      ))}
+    </div>
+  );
+};
+
+const PostsTab: React.FC<{ slug: string }> = ({ slug }) => {
+  const { showError, showSuccess } = useToast();
+  const [posts, setPosts] = useState<any[]>([]);
+  const [filteredPosts, setFilteredPosts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState<number | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  useEffect(() => {
+    loadPosts();
+  }, [slug]);
+
+  useEffect(() => {
+    if (searchQuery.trim() === '') {
+      setFilteredPosts(posts);
+    } else {
+      const query = searchQuery.toLowerCase();
+      setFilteredPosts(posts.filter(post =>
+        post.title?.toLowerCase().includes(query) ||
+        post.content?.toLowerCase().includes(query) ||
+        post.username?.toLowerCase().includes(query)
+      ));
+    }
+  }, [searchQuery, posts]);
+
+  const loadPosts = async () => {
+    try {
+      setLoading(true);
+      const res = await groupPostsApi.getAllPostsForModeration(slug, { limit: 50 });
+      if (res.success && res.data) {
+        setPosts(res.data.posts || []);
+        setFilteredPosts(res.data.posts || []);
+      } else {
+        setPosts([]);
+        setFilteredPosts([]);
+      }
+    } catch (err: any) {
+      console.error('Error loading posts:', err);
+      showError(getErrorMessage(err));
+      setPosts([]);
+      setFilteredPosts([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDelete = async (postId: number) => {
+    const reason = prompt('Enter reason for removing this post (optional):');
+    if (reason === null) return; // User cancelled
+
+    try {
+      setActionLoading(postId);
+      const res = await groupPostsApi.moderateDeletePost(slug, postId, reason);
+      if (res.success) {
+        showSuccess('Post has been removed');
+        loadPosts();
+      }
+    } catch (err: any) {
+      showError(getErrorMessage(err));
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleRestore = async (postId: number) => {
+    if (!window.confirm('Restore this post?')) return;
+
+    try {
+      setActionLoading(postId);
+      const res = await groupPostsApi.restorePost(slug, postId);
+      if (res.success) {
+        showSuccess('Post has been restored');
+        loadPosts();
+      }
+    } catch (err: any) {
+      showError(getErrorMessage(err));
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  if (loading) {
+    return <LoadingMessage>Loading posts...</LoadingMessage>;
+  }
+
+  if (posts.length === 0) {
+    return <EmptyState>No posts found</EmptyState>;
+  }
+
+  return (
+    <div>
+      <SearchHeader>
+        <SectionTitle>All Posts ({filteredPosts.length} / {posts.length})</SectionTitle>
+        <SearchInput
+          type="text"
+          placeholder="Search by title, content, or author..."
+          value={searchQuery}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
+        />
+      </SearchHeader>
+      {filteredPosts.length === 0 && searchQuery && (
+        <EmptyState>No posts found matching "{searchQuery}"</EmptyState>
+      )}
+      {filteredPosts.map(post => (
+        <PostCard key={post.id}>
+          <PostHeader>
+            <PostAuthor>
+              {post.username && `@${post.username}`}
+              {!post.username && 'Unknown User'}
+            </PostAuthor>
+            <PostDate>{new Date(post.created_at).toLocaleString()}</PostDate>
+            {post.status === 'removed' && (
+              <PostStatus $status="removed">REMOVED</PostStatus>
+            )}
+            {post.status === 'pending' && (
+              <PostStatus $status="pending">PENDING</PostStatus>
+            )}
+          </PostHeader>
+          {post.title && <PostTitle>{post.title}</PostTitle>}
+          {post.content && <PostContent>{post.content.substring(0, 200)}{post.content.length > 200 ? '...' : ''}</PostContent>}
+          {post.link_url && <PostUrl href={post.link_url} target="_blank" rel="noopener noreferrer">{post.link_url}</PostUrl>}
+          {post.removal_reason && (
+            <RemovalReason>Removal Reason: {post.removal_reason}</RemovalReason>
+          )}
+          <PostActions>
+            {post.status !== 'removed' && (
+              <RejectButton
+                onClick={() => handleDelete(post.id)}
+                disabled={actionLoading === post.id}
+              >
+                {actionLoading === post.id ? 'Processing...' : 'Remove'}
+              </RejectButton>
+            )}
+            {post.status === 'removed' && (
+              <ApproveButton
+                onClick={() => handleRestore(post.id)}
+                disabled={actionLoading === post.id}
+              >
+                {actionLoading === post.id ? 'Processing...' : 'Restore'}
+              </ApproveButton>
+            )}
+          </PostActions>
+        </PostCard>
+      ))}
+    </div>
+  );
+};
+
+const MembersTab: React.FC<{ slug: string; userRole: string }> = ({ slug, userRole }) => {
+  const { showError, showSuccess } = useToast();
+  const [members, setMembers] = useState<any[]>([]);
+  const [filteredMembers, setFilteredMembers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState<number | null>(null);
+  const [roleFilter, setRoleFilter] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  useEffect(() => {
+    loadMembers();
+  }, [slug, roleFilter]);
+
+  useEffect(() => {
+    if (searchQuery.trim() === '') {
+      setFilteredMembers(members);
+    } else {
+      const query = searchQuery.toLowerCase();
+      setFilteredMembers(members.filter(member =>
+        member.username?.toLowerCase().includes(query) ||
+        member.display_name?.toLowerCase().includes(query) ||
+        `${member.first_name} ${member.last_name}`.toLowerCase().includes(query)
+      ));
+    }
+  }, [searchQuery, members]);
+
+  const loadMembers = async () => {
+    try {
+      setLoading(true);
+      const params: any = { status: 'active' };
+      if (roleFilter !== 'all') {
+        params.role = roleFilter;
+      }
+      const res = await groupsApi.getGroupMembers(slug, params);
+      if (res.success && res.data) {
+        setMembers(res.data.members || []);
+        setFilteredMembers(res.data.members || []);
+      } else {
+        setMembers([]);
+        setFilteredMembers([]);
+      }
+    } catch (err: any) {
+      console.error('Error loading members:', err);
+      showError(getErrorMessage(err));
+      setMembers([]);
+      setFilteredMembers([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleChangeRole = async (userId: number, newRole: string) => {
+    if (!window.confirm(`Change this member's role to ${newRole}?`)) return;
+
+    try {
+      setActionLoading(userId);
+      const res = await groupsApi.updateMemberRole(slug, userId, { role: newRole as any });
+      if (res.success) {
+        showSuccess('Role updated successfully');
+        loadMembers();
+      }
+    } catch (err: any) {
+      showError(getErrorMessage(err));
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleBanMember = async (userId: number, username: string) => {
+    const reason = prompt(`Ban ${username}? Enter reason:`);
+    if (!reason) return;
+
+    try {
+      setActionLoading(userId);
+      const res = await groupsApi.banMember(slug, userId, { banned_reason: reason });
+      if (res.success) {
+        showSuccess('Member banned successfully');
+        loadMembers();
+      }
+    } catch (err: any) {
+      showError(getErrorMessage(err));
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleRemoveMember = async (userId: number, username: string) => {
+    if (!window.confirm(`Remove ${username} from this group? This action cannot be undone.`)) return;
+
+    try {
+      setActionLoading(userId);
+      const res = await groupsApi.removeMember(slug, userId);
+      if (res.success) {
+        showSuccess('Member removed successfully');
+        loadMembers();
+      }
+    } catch (err: any) {
+      showError(getErrorMessage(err));
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  if (loading) {
+    return <LoadingMessage>Loading members...</LoadingMessage>;
+  }
+
+  return (
+    <div>
+      <SearchHeader>
+        <SectionTitle>Members ({filteredMembers.length} / {members.length})</SectionTitle>
+        <SearchInput
+          type="text"
+          placeholder="Search by username or name..."
+          value={searchQuery}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
+        />
+      </SearchHeader>
+      <MemberManagementHeader>
+        <div></div>
+        <RoleFilterBar>
+          <RoleFilterButton $active={roleFilter === 'all'} onClick={() => setRoleFilter('all')}>All</RoleFilterButton>
+          <RoleFilterButton $active={roleFilter === 'admin'} onClick={() => setRoleFilter('admin')}>Admins</RoleFilterButton>
+          <RoleFilterButton $active={roleFilter === 'moderator'} onClick={() => setRoleFilter('moderator')}>Moderators</RoleFilterButton>
+          <RoleFilterButton $active={roleFilter === 'member'} onClick={() => setRoleFilter('member')}>Members</RoleFilterButton>
+        </RoleFilterBar>
+      </MemberManagementHeader>
+
+      {members.length === 0 && <EmptyState>No members found</EmptyState>}
+      {filteredMembers.length === 0 && searchQuery && (
+        <EmptyState>No members found matching "{searchQuery}"</EmptyState>
+      )}
+
+      {filteredMembers.map(member => (
+        <MemberCard key={member.user_id}>
+          <MemberInfo>
+            {member.avatar_url && <MemberAvatar src={member.avatar_url} alt={member.username} />}
+            {!member.avatar_url && <MemberAvatarPlaceholder>{member.username.charAt(0).toUpperCase()}</MemberAvatarPlaceholder>}
+            <MemberDetails>
+              <MemberName>{member.display_name || member.username}</MemberName>
+              <MemberUsername>@{member.username}</MemberUsername>
+              <MemberRoleBadge $role={member.role}>{member.role}</MemberRoleBadge>
+            </MemberDetails>
+          </MemberInfo>
+          {userRole === 'admin' && (
+            <MemberActions>
+              {member.role !== 'admin' && (
+                <RoleSelect
+                  value={member.role}
+                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) => handleChangeRole(member.user_id, e.target.value)}
+                  disabled={actionLoading === member.user_id}
+                >
+                  <option value="member">Member</option>
+                  <option value="moderator">Moderator</option>
+                  <option value="admin">Admin</option>
+                </RoleSelect>
+              )}
+              <BanButton
+                onClick={() => handleBanMember(member.user_id, member.username)}
+                disabled={actionLoading === member.user_id}
+              >
+                Ban
+              </BanButton>
+              {member.role !== 'admin' && (
+                <RemoveButton
+                  onClick={() => handleRemoveMember(member.user_id, member.username)}
+                  disabled={actionLoading === member.user_id}
+                >
+                  Remove
+                </RemoveButton>
+              )}
+            </MemberActions>
+          )}
+        </MemberCard>
+      ))}
+    </div>
+  );
+};
+
+const BannedMembersTab: React.FC<{ slug: string }> = ({ slug }) => {
+  const { showError, showSuccess } = useToast();
+  const [members, setMembers] = useState<any[]>([]);
+  const [filteredMembers, setFilteredMembers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState<number | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  useEffect(() => {
+    loadBannedMembers();
+  }, [slug]);
+
+  useEffect(() => {
+    if (searchQuery.trim() === '') {
+      setFilteredMembers(members);
+    } else {
+      const query = searchQuery.toLowerCase();
+      setFilteredMembers(members.filter(member =>
+        member.username?.toLowerCase().includes(query) ||
+        member.display_name?.toLowerCase().includes(query) ||
+        `${member.first_name} ${member.last_name}`.toLowerCase().includes(query)
+      ));
+    }
+  }, [searchQuery, members]);
+
+  const loadBannedMembers = async () => {
+    try {
+      setLoading(true);
+      const res = await groupsApi.getBannedMembers(slug);
+      if (res.success && res.data) {
+        setMembers(res.data.members);
+        setFilteredMembers(res.data.members);
+      }
+    } catch (err: any) {
+      showError(getErrorMessage(err));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUnban = async (userId: number, username: string) => {
+    if (!window.confirm(`Unban ${username}?`)) return;
+
+    try {
+      setActionLoading(userId);
+      const res = await groupsApi.unbanMember(slug, userId);
+      if (res.success) {
+        showSuccess('Member unbanned successfully');
+        loadBannedMembers();
+      }
+    } catch (err: any) {
+      showError(getErrorMessage(err));
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  if (loading) {
+    return <LoadingMessage>Loading banned members...</LoadingMessage>;
+  }
+
+  if (members.length === 0) {
+    return <EmptyState>No banned members</EmptyState>;
+  }
+
+  return (
+    <div>
+      <SearchHeader>
+        <SectionTitle>Banned Members ({filteredMembers.length} / {members.length})</SectionTitle>
+        <SearchInput
+          type="text"
+          placeholder="Search by username or name..."
+          value={searchQuery}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
+        />
+      </SearchHeader>
+      {filteredMembers.length === 0 && searchQuery && (
+        <EmptyState>No banned members found matching "{searchQuery}"</EmptyState>
+      )}
+      {filteredMembers.map(member => (
+        <MemberCard key={member.user_id}>
+          <MemberInfo>
+            {member.avatar_url && <MemberAvatar src={member.avatar_url} alt={member.username} />}
+            {!member.avatar_url && <MemberAvatarPlaceholder>{member.username.charAt(0).toUpperCase()}</MemberAvatarPlaceholder>}
+            <MemberDetails>
+              <MemberName>{member.display_name || member.username}</MemberName>
+              <MemberUsername>@{member.username}</MemberUsername>
+              <MemberDate>Banned {new Date(member.joined_at).toLocaleDateString()}</MemberDate>
+            </MemberDetails>
+          </MemberInfo>
+          <MemberActions>
+            <ApproveButton
+              onClick={() => handleUnban(member.user_id, member.username)}
+              disabled={actionLoading === member.user_id}
+            >
+              {actionLoading === member.user_id ? 'Processing...' : 'Unban'}
+            </ApproveButton>
+          </MemberActions>
+        </MemberCard>
+      ))}
+    </div>
+  );
+};
+
+const ActivityLogTab: React.FC<{ slug: string }> = ({ slug }) => {
+  const { showError } = useToast();
+  const [activities, setActivities] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [total, setTotal] = useState(0);
+
+  useEffect(() => {
+    loadActivityLog();
+  }, [slug]);
+
+  const loadActivityLog = async () => {
+    try {
+      setLoading(true);
+      const res = await groupsApi.getActivityLog(slug, { limit: 50 });
+      if (res.success && res.data) {
+        setActivities(res.data.activities);
+        setTotal(res.data.total);
+      }
+    } catch (err: any) {
+      showError(getErrorMessage(err));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getActionLabel = (action: string): string => {
+    const labels: { [key: string]: string } = {
+      'member_approved': 'Approved member',
+      'member_rejected': 'Rejected member',
+      'member_banned': 'Banned member',
+      'member_unbanned': 'Unbanned member',
+      'member_removed': 'Removed member',
+      'role_changed': 'Changed role',
+      'post_approved': 'Approved post',
+      'post_removed': 'Removed post',
+      'comment_removed': 'Removed comment'
+    };
+    return labels[action] || action;
+  };
+
+  if (loading) {
+    return <LoadingMessage>Loading activity log...</LoadingMessage>;
+  }
+
+  if (activities.length === 0) {
+    return <EmptyState>No moderation activity yet</EmptyState>;
+  }
+
+  return (
+    <div>
+      <SectionTitle>Recent Activity ({total} total actions)</SectionTitle>
+      <ActivityList>
+        {activities.map((activity, index) => (
+          <ActivityItem key={index}>
+            <ActivityIcon>📋</ActivityIcon>
+            <ActivityContent>
+              <ActivityAction>
+                <strong>{activity.moderator_username}</strong> {getActionLabel(activity.action)}
+              </ActivityAction>
+              {activity.target_username && (
+                <ActivityTarget>Target: @{activity.target_username}</ActivityTarget>
+              )}
+              {activity.details && (
+                <ActivityDetails>{activity.details}</ActivityDetails>
+              )}
+              <ActivityTimestamp>
+                {new Date(activity.created_at).toLocaleString()}
+              </ActivityTimestamp>
+            </ActivityContent>
+          </ActivityItem>
+        ))}
+      </ActivityList>
+    </div>
+  );
+};
+
+// Main Component
+const GroupModPage: React.FC = () => {
+  const { slug } = useParams<{ slug: string }>();
+  const { state } = useAuth();
+  const user = state.user;
+  const navigate = useNavigate();
+  const { showError, showSuccess, showWarning, showInfo } = useToast();
+
+  const [group, setGroup] = useState<Group | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<TabType>('pending-members');
+  const [userRole, setUserRole] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+    loadGroupAndCheckRole();
+  }, [slug, user]);
+
+  const loadGroupAndCheckRole = async () => {
+    if (!slug || !user) return;
+
+    try {
+      setLoading(true);
+      console.log('[GroupModPage] Loading group:', slug);
+      const groupRes = await groupsApi.getGroup(slug);
+      console.log('[GroupModPage] Group response:', groupRes);
+
+      if (groupRes.success && groupRes.data) {
+        setGroup(groupRes.data);
+        console.log('[GroupModPage] Group set:', groupRes.data);
+
+        // Check membership and role
+        const membershipRes = await groupsApi.checkMembership(slug);
+        console.log('[GroupModPage] Membership response:', membershipRes);
+
+        if (membershipRes.success && membershipRes.data) {
+          const { is_member, membership } = membershipRes.data;
+
+          // Only admins and moderators can access this page
+          if (is_member && membership && (membership.role === 'admin' || membership.role === 'moderator')) {
+            setUserRole(membership.role);
+            console.log('[GroupModPage] User role set:', membership.role);
+          } else {
+            console.log('[GroupModPage] Access denied - not admin/moderator');
+            showError('You must be an admin or moderator to access this page');
+            navigate(`/g/${slug}`);
+            return;
+          }
+        } else {
+          console.log('[GroupModPage] Membership check failed');
+          showError('Failed to verify your permissions');
+          navigate(`/g/${slug}`);
+          return;
+        }
+      } else {
+        console.log('[GroupModPage] Group response not successful');
+      }
+    } catch (err: any) {
+      console.error('[GroupModPage] Error:', err);
+      showError(getErrorMessage(err));
+      navigate('/groups');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return <Container><LoadingMessage>Loading moderation console...</LoadingMessage></Container>;
+  }
+
+  if (!group) {
+    return <Container><ErrorMessage>Group not found</ErrorMessage></Container>;
+  }
+
+  if (!userRole) {
+    return <Container><ErrorMessage>Checking permissions...</ErrorMessage></Container>;
+  }
+
+  return (
+    <Container>
+      <Header>
+        <BackLink onClick={() => navigate(`/g/${slug}`)}>← Back to {group.display_name}</BackLink>
+        <Title>Moderation Console</Title>
+        <RoleBadge $isAdmin={userRole === 'admin'}>
+          {userRole === 'admin' ? 'Admin' : 'Moderator'}
+        </RoleBadge>
+      </Header>
+
+      <TabBar>
+        <Tab
+          $active={activeTab === 'pending-members'}
+          onClick={() => setActiveTab('pending-members')}
+        >
+          Pending Members
+        </Tab>
+        <Tab
+          $active={activeTab === 'pending-posts'}
+          onClick={() => setActiveTab('pending-posts')}
+        >
+          Pending Posts
+        </Tab>
+        <Tab
+          $active={activeTab === 'posts'}
+          onClick={() => setActiveTab('posts')}
+        >
+          All Posts
+        </Tab>
+        <Tab
+          $active={activeTab === 'members'}
+          onClick={() => setActiveTab('members')}
+        >
+          Members
+        </Tab>
+        <Tab
+          $active={activeTab === 'banned'}
+          onClick={() => setActiveTab('banned')}
+        >
+          Banned
+        </Tab>
+        <Tab
+          $active={activeTab === 'activity'}
+          onClick={() => setActiveTab('activity')}
+        >
+          Activity Log
+        </Tab>
+      </TabBar>
+
+      <ContentArea>
+        {activeTab === 'pending-members' && <PendingMembersTab slug={slug!} />}
+        {activeTab === 'pending-posts' && <PendingPostsTab slug={slug!} />}
+        {activeTab === 'posts' && <PostsTab slug={slug!} />}
+        {activeTab === 'members' && <MembersTab slug={slug!} userRole={userRole} />}
+        {activeTab === 'banned' && <BannedMembersTab slug={slug!} />}
+        {activeTab === 'activity' && <ActivityLogTab slug={slug!} />}
+      </ContentArea>
+    </Container>
+  );
+};
 
 export default GroupModPage;
