@@ -31,6 +31,13 @@ const GroupSettingsPage: React.FC = () => {
   const [postApprovalRequired, setPostApprovalRequired] = useState(false);
   const [rules, setRules] = useState('');
 
+  // Post type settings
+  const [allowTextPosts, setAllowTextPosts] = useState(true);
+  const [allowLinkPosts, setAllowLinkPosts] = useState(true);
+  const [allowImagePosts, setAllowImagePosts] = useState(true);
+  const [allowVideoPosts, setAllowVideoPosts] = useState(true);
+  const [allowPollPosts, setAllowPollPosts] = useState(true);
+
   useEffect(() => {
     if (!user) {
       navigate('/login');
@@ -55,6 +62,13 @@ const GroupSettingsPage: React.FC = () => {
         setVisibility(g.visibility);
         setPostApprovalRequired(g.post_approval_required);
         setRules(g.rules || '');
+
+        // Post type settings
+        setAllowTextPosts(g.allow_text_posts);
+        setAllowLinkPosts(g.allow_link_posts);
+        setAllowImagePosts(g.allow_image_posts);
+        setAllowVideoPosts(g.allow_video_posts);
+        setAllowPollPosts(g.allow_poll_posts);
 
         // Check if user is admin
         const membershipRes = await groupsApi.checkMembership(slug);
@@ -92,7 +106,12 @@ const GroupSettingsPage: React.FC = () => {
         description,
         visibility,
         post_approval_required: postApprovalRequired,
-        rules
+        rules,
+        allow_text_posts: allowTextPosts,
+        allow_link_posts: allowLinkPosts,
+        allow_image_posts: allowImagePosts,
+        allow_video_posts: allowVideoPosts,
+        allow_poll_posts: allowPollPosts
       });
 
       if (response.success) {
@@ -187,6 +206,66 @@ const GroupSettingsPage: React.FC = () => {
                 onChange={(e) => setPostApprovalRequired(e.target.checked)}
               />
               Require post approval before publishing
+            </CheckboxLabel>
+          </FormGroup>
+        </FormSection>
+
+        <FormSection>
+          <SectionTitle>Allowed Post Types</SectionTitle>
+          <Help>Control what types of content members can post in your group</Help>
+
+          <FormGroup>
+            <CheckboxLabel>
+              <Checkbox
+                type="checkbox"
+                checked={allowTextPosts}
+                onChange={(e) => setAllowTextPosts(e.target.checked)}
+              />
+              <strong>Text Posts</strong> - Allow members to post text-only content
+            </CheckboxLabel>
+          </FormGroup>
+
+          <FormGroup>
+            <CheckboxLabel>
+              <Checkbox
+                type="checkbox"
+                checked={allowLinkPosts}
+                onChange={(e) => setAllowLinkPosts(e.target.checked)}
+              />
+              <strong>Link Posts</strong> - Allow members to share URLs and links
+            </CheckboxLabel>
+          </FormGroup>
+
+          <FormGroup>
+            <CheckboxLabel>
+              <Checkbox
+                type="checkbox"
+                checked={allowImagePosts}
+                onChange={(e) => setAllowImagePosts(e.target.checked)}
+              />
+              <strong>Image Posts</strong> - Allow members to upload images (JPG, PNG, GIF, WebP)
+            </CheckboxLabel>
+          </FormGroup>
+
+          <FormGroup>
+            <CheckboxLabel>
+              <Checkbox
+                type="checkbox"
+                checked={allowVideoPosts}
+                onChange={(e) => setAllowVideoPosts(e.target.checked)}
+              />
+              <strong>Video Posts</strong> - Allow members to upload videos (MP4, WebM, OGG)
+            </CheckboxLabel>
+          </FormGroup>
+
+          <FormGroup>
+            <CheckboxLabel>
+              <Checkbox
+                type="checkbox"
+                checked={allowPollPosts}
+                onChange={(e) => setAllowPollPosts(e.target.checked)}
+              />
+              <strong>Poll Posts</strong> - Allow members to create polls (coming soon)
             </CheckboxLabel>
           </FormGroup>
         </FormSection>
@@ -362,6 +441,12 @@ const Checkbox = styled.input`
   width: 18px;
   height: 18px;
   cursor: pointer;
+`;
+
+const Help = styled.div`
+  color: ${props => props.theme.colors.text.secondary};
+  font-size: 14px;
+  margin-bottom: 16px;
 `;
 
 const ButtonGroup = styled.div`
