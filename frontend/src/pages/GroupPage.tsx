@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import styled from 'styled-components';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../components/Toast';
 import groupsApi from '../services/groupsApi';
 import groupPostsApi from '../services/groupPostsApi';
 import { Group, GroupPost, PostSortType, VoteType, CreatePostData } from '../types/group';
@@ -20,6 +21,7 @@ const GroupPage: React.FC = () => {
   const { state } = useAuth();
   const user = state.user;
   const navigate = useNavigate();
+  const { showError, showSuccess, showInfo } = useToast();
 
   const [group, setGroup] = useState<Group | null>(null);
   const [posts, setPosts] = useState<GroupPost[]>([]);
@@ -137,7 +139,7 @@ const GroupPage: React.FC = () => {
         }
       }
     } catch (err: any) {
-      alert(getErrorMessage(err) || 'Failed to join group');
+      showError(getErrorMessage(err) || 'Failed to join group');
     }
   };
 
@@ -156,7 +158,7 @@ const GroupPage: React.FC = () => {
         }
       }
     } catch (err: any) {
-      alert(getErrorMessage(err) || 'Failed to leave group');
+      showError(getErrorMessage(err) || 'Failed to leave group');
     }
   };
 
@@ -169,15 +171,15 @@ const GroupPage: React.FC = () => {
         setShowComposer(false);
         loadPosts(); // Reload posts
         if (group?.post_approval_required && userRole === 'member') {
-          alert('Your post has been submitted for approval by moderators.');
+          showInfo('Your post has been submitted for approval by moderators.');
         }
       }
     } catch (err: any) {
       const errorMsg = getErrorMessage(err);
       if (errorMsg.toLowerCase().includes('member')) {
-        alert('You must be a member of this group to create posts. Please join the group first.');
+        showError('You must be a member of this group to create posts. Please join the group first.');
       } else {
-        alert(errorMsg || 'Failed to create post');
+        showError(errorMsg || 'Failed to create post');
       }
     }
   };
@@ -208,9 +210,9 @@ const GroupPage: React.FC = () => {
     } catch (err: any) {
       const errorMsg = getErrorMessage(err);
       if (errorMsg.toLowerCase().includes('member')) {
-        alert('You must be a member of this group to vote on posts. Please join the group first.');
+        showError('You must be a member of this group to vote on posts. Please join the group first.');
       } else {
-        alert(errorMsg || 'Failed to vote');
+        showError(errorMsg || 'Failed to vote');
       }
     }
   };
@@ -222,7 +224,7 @@ const GroupPage: React.FC = () => {
       await groupPostsApi.togglePinPost(slug, postId);
       loadPosts();
     } catch (err: any) {
-      alert(getErrorMessage(err) || 'Failed to pin post');
+      showError(getErrorMessage(err) || 'Failed to pin post');
     }
   };
 
@@ -233,7 +235,7 @@ const GroupPage: React.FC = () => {
       await groupPostsApi.toggleLockPost(slug, postId);
       loadPosts();
     } catch (err: any) {
-      alert(getErrorMessage(err) || 'Failed to lock post');
+      showError(getErrorMessage(err) || 'Failed to lock post');
     }
   };
 
@@ -247,7 +249,7 @@ const GroupPage: React.FC = () => {
       await groupPostsApi.removePost(slug, postId, { removal_reason: reason });
       loadPosts();
     } catch (err: any) {
-      alert(getErrorMessage(err) || 'Failed to remove post');
+      showError(getErrorMessage(err) || 'Failed to remove post');
     }
   };
 

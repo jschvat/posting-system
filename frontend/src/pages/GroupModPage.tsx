@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../components/Toast';
 import groupsApi from '../services/groupsApi';
 import groupPostsApi from '../services/groupPostsApi';
 import { Group, GroupPost } from '../types/group';
@@ -20,6 +21,7 @@ const GroupModPage: React.FC = () => {
   const { state } = useAuth();
   const user = state.user;
   const navigate = useNavigate();
+  const { showError, showSuccess, showWarning, showInfo } = useToast();
 
   const [group, setGroup] = useState<Group | null>(null);
   const [loading, setLoading] = useState(true);
@@ -60,13 +62,13 @@ const GroupModPage: React.FC = () => {
             console.log('[GroupModPage] User role set:', membership.role);
           } else {
             console.log('[GroupModPage] Access denied - not admin/moderator');
-            alert('You must be an admin or moderator to access this page');
+            showError('You must be an admin or moderator to access this page');
             navigate(`/g/${slug}`);
             return;
           }
         } else {
           console.log('[GroupModPage] Membership check failed');
-          alert('Failed to verify your permissions');
+          showError('Failed to verify your permissions');
           navigate(`/g/${slug}`);
           return;
         }
@@ -75,7 +77,7 @@ const GroupModPage: React.FC = () => {
       }
     } catch (err: any) {
       console.error('[GroupModPage] Error:', err);
-      alert(getErrorMessage(err));
+      showError(getErrorMessage(err));
       navigate('/groups');
     } finally {
       setLoading(false);
@@ -189,7 +191,7 @@ const PendingMembersTab: React.FC<{ slug: string }> = ({ slug }) => {
         setFilteredMembers(res.data.members);
       }
     } catch (err: any) {
-      alert(getErrorMessage(err));
+      showError(getErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -202,11 +204,11 @@ const PendingMembersTab: React.FC<{ slug: string }> = ({ slug }) => {
       setActionLoading(userId);
       const res = await groupsApi.approveMember(slug, userId);
       if (res.success) {
-        alert('Member approved successfully');
+        showSuccess('Member approved successfully');
         loadPendingMembers();
       }
     } catch (err: any) {
-      alert(getErrorMessage(err));
+      showError(getErrorMessage(err));
     } finally {
       setActionLoading(null);
     }
@@ -219,11 +221,11 @@ const PendingMembersTab: React.FC<{ slug: string }> = ({ slug }) => {
       setActionLoading(userId);
       const res = await groupsApi.rejectMember(slug, userId);
       if (res.success) {
-        alert('Membership request rejected');
+        showSuccess('Membership request rejected');
         loadPendingMembers();
       }
     } catch (err: any) {
-      alert(getErrorMessage(err));
+      showError(getErrorMessage(err));
     } finally {
       setActionLoading(null);
     }
@@ -300,7 +302,7 @@ const PendingPostsTab: React.FC<{ slug: string }> = ({ slug }) => {
         setPosts(data.posts || data.items || []);
       }
     } catch (err: any) {
-      alert(getErrorMessage(err));
+      showError(getErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -313,11 +315,11 @@ const PendingPostsTab: React.FC<{ slug: string }> = ({ slug }) => {
       setActionLoading(postId);
       const res = await groupPostsApi.approvePost(slug, postId);
       if (res.success) {
-        alert('Post approved successfully');
+        showSuccess('Post approved successfully');
         loadPendingPosts();
       }
     } catch (err: any) {
-      alert(getErrorMessage(err));
+      showError(getErrorMessage(err));
     } finally {
       setActionLoading(null);
     }
@@ -331,11 +333,11 @@ const PendingPostsTab: React.FC<{ slug: string }> = ({ slug }) => {
       setActionLoading(postId);
       const res = await groupPostsApi.removePost(slug, postId, { removal_reason: reason });
       if (res.success) {
-        alert('Post rejected');
+        showSuccess('Post rejected');
         loadPendingPosts();
       }
     } catch (err: any) {
-      alert(getErrorMessage(err));
+      showError(getErrorMessage(err));
     } finally {
       setActionLoading(null);
     }
@@ -421,7 +423,7 @@ const PostsTab: React.FC<{ slug: string }> = ({ slug }) => {
       }
     } catch (err: any) {
       console.error('Error loading posts:', err);
-      alert(getErrorMessage(err));
+      showError(getErrorMessage(err));
       setPosts([]);
       setFilteredPosts([]);
     } finally {
@@ -437,11 +439,11 @@ const PostsTab: React.FC<{ slug: string }> = ({ slug }) => {
       setActionLoading(postId);
       const res = await groupPostsApi.moderateDeletePost(slug, postId, reason);
       if (res.success) {
-        alert('Post has been removed');
+        showSuccess('Post has been removed');
         loadPosts();
       }
     } catch (err: any) {
-      alert(getErrorMessage(err));
+      showError(getErrorMessage(err));
     } finally {
       setActionLoading(null);
     }
@@ -454,11 +456,11 @@ const PostsTab: React.FC<{ slug: string }> = ({ slug }) => {
       setActionLoading(postId);
       const res = await groupPostsApi.restorePost(slug, postId);
       if (res.success) {
-        alert('Post has been restored');
+        showSuccess('Post has been restored');
         loadPosts();
       }
     } catch (err: any) {
-      alert(getErrorMessage(err));
+      showError(getErrorMessage(err));
     } finally {
       setActionLoading(null);
     }
@@ -573,7 +575,7 @@ const MembersTab: React.FC<{ slug: string; userRole: string }> = ({ slug, userRo
       }
     } catch (err: any) {
       console.error('Error loading members:', err);
-      alert(getErrorMessage(err));
+      showError(getErrorMessage(err));
       setMembers([]);
       setFilteredMembers([]);
     } finally {
@@ -588,11 +590,11 @@ const MembersTab: React.FC<{ slug: string; userRole: string }> = ({ slug, userRo
       setActionLoading(userId);
       const res = await groupsApi.updateMemberRole(slug, userId, { role: newRole as any });
       if (res.success) {
-        alert('Role updated successfully');
+        showSuccess('Role updated successfully');
         loadMembers();
       }
     } catch (err: any) {
-      alert(getErrorMessage(err));
+      showError(getErrorMessage(err));
     } finally {
       setActionLoading(null);
     }
@@ -606,11 +608,11 @@ const MembersTab: React.FC<{ slug: string; userRole: string }> = ({ slug, userRo
       setActionLoading(userId);
       const res = await groupsApi.banMember(slug, userId, { banned_reason: reason });
       if (res.success) {
-        alert('Member banned successfully');
+        showSuccess('Member banned successfully');
         loadMembers();
       }
     } catch (err: any) {
-      alert(getErrorMessage(err));
+      showError(getErrorMessage(err));
     } finally {
       setActionLoading(null);
     }
@@ -623,11 +625,11 @@ const MembersTab: React.FC<{ slug: string; userRole: string }> = ({ slug, userRo
       setActionLoading(userId);
       const res = await groupsApi.removeMember(slug, userId);
       if (res.success) {
-        alert('Member removed successfully');
+        showSuccess('Member removed successfully');
         loadMembers();
       }
     } catch (err: any) {
-      alert(getErrorMessage(err));
+      showError(getErrorMessage(err));
     } finally {
       setActionLoading(null);
     }
@@ -742,7 +744,7 @@ const BannedMembersTab: React.FC<{ slug: string }> = ({ slug }) => {
         setFilteredMembers(res.data.members);
       }
     } catch (err: any) {
-      alert(getErrorMessage(err));
+      showError(getErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -755,11 +757,11 @@ const BannedMembersTab: React.FC<{ slug: string }> = ({ slug }) => {
       setActionLoading(userId);
       const res = await groupsApi.unbanMember(slug, userId);
       if (res.success) {
-        alert('Member unbanned successfully');
+        showSuccess('Member unbanned successfully');
         loadBannedMembers();
       }
     } catch (err: any) {
-      alert(getErrorMessage(err));
+      showError(getErrorMessage(err));
     } finally {
       setActionLoading(null);
     }
@@ -830,7 +832,7 @@ const ActivityLogTab: React.FC<{ slug: string }> = ({ slug }) => {
         setTotal(res.data.total);
       }
     } catch (err: any) {
-      alert(getErrorMessage(err));
+      showError(getErrorMessage(err));
     } finally {
       setLoading(false);
     }
