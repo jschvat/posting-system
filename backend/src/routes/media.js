@@ -432,6 +432,7 @@ router.get('/comment/:commentId',
  * Update media metadata (alt text, etc.)
  */
 router.put('/:id',
+  authenticate,
   [
     param('id').isInt({ min: 1 }).withMessage('Media ID must be a positive integer'),
     body('alt_text').optional().trim().isLength({ max: 500 }).withMessage('Alt text cannot exceed 500 characters')
@@ -455,8 +456,16 @@ router.put('/:id',
         });
       }
 
-      // Check if user can edit this media (TODO: Implement proper authentication)
-      // For now, assume any user can edit any media (will be fixed with authentication)
+      // Check if user owns this media
+      if (media.user_id !== req.user.id) {
+        return res.status(403).json({
+          success: false,
+          error: {
+            message: 'You do not have permission to edit this media',
+            type: 'permission_error'
+          }
+        });
+      }
 
       // Update media
       const updateData = {};
@@ -481,6 +490,7 @@ router.put('/:id',
  * Delete a media file
  */
 router.delete('/:id',
+  authenticate,
   [
     param('id').isInt({ min: 1 }).withMessage('Media ID must be a positive integer')
   ],
@@ -502,8 +512,16 @@ router.delete('/:id',
         });
       }
 
-      // Check if user can delete this media (TODO: Implement proper authentication)
-      // For now, assume any user can delete any media (will be fixed with authentication)
+      // Check if user owns this media
+      if (media.user_id !== req.user.id) {
+        return res.status(403).json({
+          success: false,
+          error: {
+            message: 'You do not have permission to delete this media',
+            type: 'permission_error'
+          }
+        });
+      }
 
       // Delete the physical file
       const filePath = path.join(__dirname, '../../../uploads', media.file_path);

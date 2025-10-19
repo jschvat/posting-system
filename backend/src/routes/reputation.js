@@ -7,6 +7,7 @@ const express = require('express');
 const router = express.Router();
 const Reputation = require('../models/Reputation');
 const { authenticate, optionalAuthenticate } = require('../middleware/auth');
+const { requireAdmin } = require('../middleware/adminCheck');
 
 /**
  * @route   GET /api/reputation/:userId
@@ -296,19 +297,8 @@ router.post('/recalculate', authenticate, async (req, res, next) => {
  * @desc    Recalculate all reputation scores (admin only)
  * @access  Private (Admin)
  */
-router.post('/recalculate-all', authenticate, async (req, res, next) => {
+router.post('/recalculate-all', authenticate, requireAdmin, async (req, res, next) => {
   try {
-    // TODO: Add admin check
-    if (req.user.id !== 1) {
-      return res.status(403).json({
-        success: false,
-        error: {
-          message: 'Admin access required',
-          type: 'permission_error'
-        }
-      });
-    }
-
     const count = await Reputation.recalculateAll();
 
     res.json({
