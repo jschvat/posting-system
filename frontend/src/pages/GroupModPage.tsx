@@ -160,6 +160,7 @@ const GroupModPage: React.FC = () => {
 // Tab Components
 const PendingMembersTab: React.FC<{ slug: string }> = ({ slug }) => {
   const [members, setMembers] = useState<any[]>([]);
+  const { showError, showSuccess } = useToast();
   const [filteredMembers, setFilteredMembers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<number | null>(null);
@@ -285,6 +286,7 @@ const PendingMembersTab: React.FC<{ slug: string }> = ({ slug }) => {
 };
 
 const PendingPostsTab: React.FC<{ slug: string }> = ({ slug }) => {
+  const { showError, showSuccess } = useToast();
   const [posts, setPosts] = useState<GroupPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<number | null>(null);
@@ -387,6 +389,7 @@ const PendingPostsTab: React.FC<{ slug: string }> = ({ slug }) => {
 };
 
 const PostsTab: React.FC<{ slug: string }> = ({ slug }) => {
+  const { showError, showSuccess } = useToast();
   const [posts, setPosts] = useState<any[]>([]);
   const [filteredPosts, setFilteredPosts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -534,6 +537,7 @@ const PostsTab: React.FC<{ slug: string }> = ({ slug }) => {
 };
 
 const MembersTab: React.FC<{ slug: string; userRole: string }> = ({ slug, userRole }) => {
+  const { showError, showSuccess } = useToast();
   const [members, setMembers] = useState<any[]>([]);
   const [filteredMembers, setFilteredMembers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -712,6 +716,7 @@ const MembersTab: React.FC<{ slug: string; userRole: string }> = ({ slug, userRo
 };
 
 const BannedMembersTab: React.FC<{ slug: string }> = ({ slug }) => {
+  const { showError, showSuccess } = useToast();
   const [members, setMembers] = useState<any[]>([]);
   const [filteredMembers, setFilteredMembers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -815,6 +820,7 @@ const BannedMembersTab: React.FC<{ slug: string }> = ({ slug }) => {
 };
 
 const ActivityLogTab: React.FC<{ slug: string }> = ({ slug }) => {
+  const { showError } = useToast();
   const [activities, setActivities] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
