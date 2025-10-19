@@ -6,9 +6,10 @@ import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { postsApi, commentsApi } from '../services/api';
+import { postsApi, commentsApi, getUserAvatarUrl } from '../services/api';
 import PostCard from '../components/PostCard';
 import CommentForm from '../components/CommentForm';
+import RatingBadge from '../components/RatingBadge';
 import { Post, Comment } from '../types';
 
 const Container = styled.div`
@@ -89,33 +90,157 @@ const BackButton = styled.button`
   }
 `;
 
-const CommentItem = styled.div`
+const CommentItem = styled.div<{ $depth?: number }>`
+  display: flex;
+  gap: ${({ theme }) => theme.spacing.sm};
   padding: ${({ theme }) => theme.spacing.md};
   border-bottom: 1px solid ${({ theme }) => theme.colors.border};
+  margin-left: ${({ $depth }) => $depth ? `${$depth * 32}px` : '0'};
 
   &:last-child {
     border-bottom: none;
   }
 `;
 
+const CommentAvatar = styled.div<{ $hasImage?: boolean }>`
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: ${({ theme, $hasImage }) => $hasImage ? 'transparent' : theme.colors.primary};
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: bold;
+  font-size: 0.85rem;
+  overflow: hidden;
+  flex-shrink: 0;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+`;
+
+const CommentBody = styled.div`
+  flex: 1;
+  min-width: 0;
+`;
+
 const CommentHeader = styled.div`
   display: flex;
-  gap: ${({ theme }) => theme.spacing.sm};
-  margin-bottom: ${({ theme }) => theme.spacing.sm};
-  font-size: 14px;
-  color: ${({ theme }) => theme.colors.text.secondary};
+  align-items: center;
+  gap: ${({ theme }) => theme.spacing.xs};
+  margin-bottom: ${({ theme }) => theme.spacing.xs};
+  flex-wrap: wrap;
 `;
 
 const CommentAuthor = styled.span`
   font-weight: 600;
   color: ${({ theme }) => theme.colors.text.primary};
+  font-size: 14px;
+`;
+
+const CommentTime = styled.span`
+  font-size: 12px;
+  color: ${({ theme }) => theme.colors.text.muted};
 `;
 
 const CommentContent = styled.p`
   color: ${({ theme }) => theme.colors.text.primary};
   margin: 0;
   line-height: 1.4;
+  font-size: 14px;
+  word-break: break-word;
 `;
+
+const ReplyIndicator = styled.div`
+  font-size: 12px;
+  color: ${({ theme }) => theme.colors.text.muted};
+  font-style: italic;
+  margin-bottom: ${({ theme }) => theme.spacing.xs};
+`;
+
+// Utility function for formatting time
+const formatTimeAgo = (dateString: string) => {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+  if (diffInSeconds < 60) return 'Just now';
+  if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
+  if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
+  if (diffInSeconds < 2592000) return `${Math.floor(diffInSeconds / 86400)}d ago`;
+
+  return date.toLocaleDateString();
+};
+
+// Recursive comment renderer
+const CommentRenderer: React.FC<{ comment: Comment; depth?: number; maxDepth?: number }> = ({
+  comment,
+  depth = 0,
+  maxDepth = 5
+}) => {
+  const avatarUrl = comment.author ? getUserAvatarUrl(comment.author) : '';
+  const actualDepth = Math.min(depth, maxDepth);
+
+  return (
+    <>
+      <CommentItem $depth={actualDepth}>
+        <CommentAvatar $hasImage={Boolean(avatarUrl)}>
+          {avatarUrl ? (
+            <img
+              src={avatarUrl}
+              alt={`${comment.author?.first_name} ${comment.author?.last_name}`}
+            />
+          ) : (
+            comment.author
+              ? `${comment.author.first_name[0]}${comment.author.last_name[0]}`
+              : 'U'
+          )}
+        </CommentAvatar>
+        <CommentBody>
+          <CommentHeader>
+            <CommentAuthor>
+              {comment.author
+                ? `${comment.author.first_name} ${comment.author.last_name}`
+                : 'Unknown User'}
+            </CommentAuthor>
+            {comment.author && (
+              <RatingBadge
+                score={comment.author.reputation_score || 0}
+                size="tiny"
+                inline
+                showScore={false}
+              />
+            )}
+            <span style={{ color: '#8e8e93' }}>•</span>
+            <CommentTime>{formatTimeAgo(comment.created_at)}</CommentTime>
+          </CommentHeader>
+          {depth > 0 && (
+            <ReplyIndicator>↳ Reply to comment</ReplyIndicator>
+          )}
+          <CommentContent>{comment.content}</CommentContent>
+        </CommentBody>
+      </CommentItem>
+
+      {/* Recursively render nested replies */}
+      {comment.replies && comment.replies.length > 0 && (
+        <>
+          {comment.replies.map((reply) => (
+            <CommentRenderer
+              key={reply.id}
+              comment={reply}
+              depth={depth + 1}
+              maxDepth={maxDepth}
+            />
+          ))}
+        </>
+      )}
+    </>
+  );
+};
 
 const PostPage: React.FC = () => {
   const { postId } = useParams<{ postId: string }>();
@@ -221,16 +346,7 @@ const PostPage: React.FC = () => {
               {commentCount === 1 ? '1 Comment' : `${commentCount} Comments`}
             </CommentsListTitle>
             {comments.map((comment: Comment) => (
-              <CommentItem key={comment.id}>
-                <CommentHeader>
-                  <CommentAuthor>
-                    @{comment.author?.username || 'Unknown'}
-                  </CommentAuthor>
-                  <span>•</span>
-                  <span>{new Date(comment.created_at).toLocaleString()}</span>
-                </CommentHeader>
-                <CommentContent>{comment.content}</CommentContent>
-              </CommentItem>
+              <CommentRenderer key={comment.id} comment={comment} depth={0} />
             ))}
           </>
         )}
