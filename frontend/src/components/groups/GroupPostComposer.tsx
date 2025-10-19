@@ -1,6 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import styled from 'styled-components';
 import { ContentType, CreatePostData } from '../../types/group';
+import { Media } from '../../types';
+import { mediaApi } from '../../services/api';
+import { useToast } from '../Toast';
 
 interface GroupPostComposerProps {
   onSubmit: (data: CreatePostData) => Promise<void>;
@@ -19,12 +22,79 @@ const GroupPostComposer: React.FC<GroupPostComposerProps> = ({
   allowedTypes,
   requiresApproval = false
 }) => {
+  const { showError, showSuccess } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const [contentType, setContentType] = useState<ContentType>('text');
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [linkUrl, setLinkUrl] = useState('');
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [uploadedMedia, setUploadedMedia] = useState<Media[]>([]);
+  const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    // Validate file types
+    const isImage = contentType === 'image';
+    const allowedTypes = isImage
+      ? ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
+      : ['video/mp4', 'video/webm', 'video/ogg'];
+
+    const invalidFiles = files.filter(f => !allowedTypes.includes(f.type));
+    if (invalidFiles.length > 0) {
+      showError(`Please select only ${isImage ? 'image' : 'video'} files`);
+      return;
+    }
+
+    // Validate file size (5MB max)
+    const maxSize = 5 * 1024 * 1024;
+    const oversizedFiles = files.filter(f => f.size > maxSize);
+    if (oversizedFiles.length > 0) {
+      showError('File size must be less than 5MB');
+      return;
+    }
+
+    setSelectedFiles(files);
+  };
+
+  const handleUploadFiles = async () => {
+    if (selectedFiles.length === 0) return;
+
+    try {
+      setUploading(true);
+      setError(null);
+
+      const response = await mediaApi.uploadFiles({
+        files: selectedFiles,
+        uploadedBy: 0, // Will be set by backend from auth token
+        context: 'post'
+      });
+
+      if (response.success && response.data) {
+        setUploadedMedia(response.data);
+        showSuccess(`${selectedFiles.length} file(s) uploaded successfully`);
+      }
+    } catch (err: any) {
+      const errorMsg = err.response?.data?.error?.message || 'Failed to upload files';
+      setError(errorMsg);
+      showError(errorMsg);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleRemoveFile = (index: number) => {
+    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleRemoveUploadedMedia = (mediaId: number) => {
+    setUploadedMedia(prev => prev.filter(m => m.id !== mediaId));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,12 +125,19 @@ const GroupPostComposer: React.FC<GroupPostComposerProps> = ({
         postData.link_url = linkUrl.trim();
       }
 
+      // Add uploaded media IDs
+      if (uploadedMedia.length > 0) {
+        postData.media_ids = uploadedMedia.map(m => m.id);
+      }
+
       await onSubmit(postData);
 
       // Reset form
       setTitle('');
       setContent('');
       setLinkUrl('');
+      setSelectedFiles([]);
+      setUploadedMedia([]);
       setContentType('text');
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to create post');
@@ -153,11 +230,65 @@ const GroupPostComposer: React.FC<GroupPostComposerProps> = ({
         )}
 
         {(contentType === 'image' || contentType === 'video') && (
-          <FormGroup>
-            <UploadNotice>
-              Media upload functionality coming soon. For now, use link posts to share images and videos.
-            </UploadNotice>
-          </FormGroup>
+          <>
+            <FormGroup>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept={contentType === 'image' ? 'image/*' : 'video/*'}
+                multiple
+                onChange={handleFileSelect}
+                style={{ display: 'none' }}
+              />
+              <UploadArea onClick={() => fileInputRef.current?.click()}>
+                <UploadIcon>📁</UploadIcon>
+                <UploadText>
+                  Click to select {contentType === 'image' ? 'images' : 'videos'}
+                </UploadText>
+                <UploadHint>
+                  Max 5MB per file • {contentType === 'image' ? 'JPG, PNG, GIF, WebP' : 'MP4, WebM, OGG'}
+                </UploadHint>
+              </UploadArea>
+            </FormGroup>
+
+            {selectedFiles.length > 0 && (
+              <FormGroup>
+                <FileList>
+                  {selectedFiles.map((file, index) => (
+                    <FileItem key={index}>
+                      <FileName>{file.name}</FileName>
+                      <FileSize>{(file.size / 1024).toFixed(1)} KB</FileSize>
+                      <RemoveFileButton onClick={() => handleRemoveFile(index)}>×</RemoveFileButton>
+                    </FileItem>
+                  ))}
+                </FileList>
+                {!uploading && uploadedMedia.length === 0 && (
+                  <UploadFilesButton type="button" onClick={handleUploadFiles}>
+                    Upload {selectedFiles.length} file(s)
+                  </UploadFilesButton>
+                )}
+                {uploading && <UploadingText>Uploading...</UploadingText>}
+              </FormGroup>
+            )}
+
+            {uploadedMedia.length > 0 && (
+              <FormGroup>
+                <UploadedMediaList>
+                  {uploadedMedia.map((media) => (
+                    <UploadedMediaItem key={media.id}>
+                      {media.media_type === 'image' && media.file_url && (
+                        <MediaThumbnail src={media.file_url} alt={media.alt_text || 'Uploaded image'} />
+                      )}
+                      {media.media_type === 'video' && (
+                        <MediaThumbnail as="div">🎥 {media.file_name}</MediaThumbnail>
+                      )}
+                      <RemoveMediaButton onClick={() => handleRemoveUploadedMedia(media.id)}>×</RemoveMediaButton>
+                    </UploadedMediaItem>
+                  ))}
+                </UploadedMediaList>
+              </FormGroup>
+            )}
+          </>
         )}
 
         {contentType === 'poll' && (
@@ -320,6 +451,153 @@ const SubmitButton = styled.button`
   &:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+  }
+`;
+
+const UploadArea = styled.div`
+  padding: 48px 32px;
+  background: ${props => props.theme.colors.background};
+  border: 2px dashed ${props => props.theme.colors.border};
+  border-radius: 8px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover {
+    border-color: ${props => props.theme.colors.primary};
+    background: ${props => props.theme.colors.surface};
+  }
+`;
+
+const UploadIcon = styled.div`
+  font-size: 48px;
+  margin-bottom: 16px;
+`;
+
+const UploadText = styled.div`
+  color: ${props => props.theme.colors.text};
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 8px;
+`;
+
+const UploadHint = styled.div`
+  color: ${props => props.theme.colors.text.secondary};
+  font-size: 14px;
+`;
+
+const FileList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+`;
+
+const FileItem = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: ${props => props.theme.colors.background};
+  border: 1px solid ${props => props.theme.colors.border};
+  border-radius: 8px;
+`;
+
+const FileName = styled.div`
+  flex: 1;
+  color: ${props => props.theme.colors.text};
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+`;
+
+const FileSize = styled.div`
+  color: ${props => props.theme.colors.text.secondary};
+  font-size: 12px;
+`;
+
+const RemoveFileButton = styled.button`
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: none;
+  background: ${props => props.theme.colors.error};
+  color: white;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &:hover {
+    background: #d32f2f;
+  }
+`;
+
+const UploadFilesButton = styled.button`
+  padding: 10px 24px;
+  border-radius: 8px;
+  border: none;
+  background: ${props => props.theme.colors.primary};
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease;
+
+  &:hover {
+    background: ${props => props.theme.colors.primary};
+    opacity: 0.9;
+  }
+`;
+
+const UploadingText = styled.div`
+  text-align: center;
+  color: ${props => props.theme.colors.primary};
+  font-weight: 600;
+  padding: 12px;
+`;
+
+const UploadedMediaList = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 12px;
+`;
+
+const UploadedMediaItem = styled.div`
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid ${props => props.theme.colors.border};
+`;
+
+const MediaThumbnail = styled.img`
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+`;
+
+const RemoveMediaButton = styled.button`
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(244, 67, 54, 0.9);
+  color: white;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &:hover {
+    background: #d32f2f;
   }
 `;
 
