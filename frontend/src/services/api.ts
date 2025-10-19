@@ -60,7 +60,7 @@ apiClient.interceptors.response.use(
     if (error.response?.status === 401) {
       // Unauthorized - clear auth token and redirect to login
       localStorage.removeItem('authToken');
-      // window.location.href = '/login'; // Uncomment when login is implemented
+      window.location.href = '/login';
     }
     return Promise.reject(error);
   }
