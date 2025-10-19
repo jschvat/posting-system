@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../components/Toast';
 import groupsApi from '../services/groupsApi';
 import { Group } from '../types/group';
 import GroupCard from '../components/groups/GroupCard';
@@ -19,6 +20,7 @@ const GroupListPage: React.FC = () => {
   const { state } = useAuth();
   const user = state.user;
   const navigate = useNavigate();
+  const { showError, showSuccess } = useToast();
   const [groups, setGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -121,7 +123,7 @@ const GroupListPage: React.FC = () => {
         ));
       }
     } catch (err: any) {
-      alert(getErrorMessage(err) || 'Failed to join group');
+      showError(getErrorMessage(err) || 'Failed to join group');
     }
   };
 
@@ -147,7 +149,7 @@ const GroupListPage: React.FC = () => {
         ));
       }
     } catch (err: any) {
-      alert(getErrorMessage(err) || 'Failed to leave group');
+      showError(getErrorMessage(err) || 'Failed to leave group');
     }
   };
 

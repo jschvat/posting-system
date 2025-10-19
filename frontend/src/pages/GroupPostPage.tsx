@@ -6,6 +6,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import styled from 'styled-components';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../components/Toast';
 import groupPostsApi from '../services/groupPostsApi';
 import groupCommentsApi from '../services/groupCommentsApi';
 import { GroupPost, GroupComment, VoteType } from '../types/group';
@@ -24,6 +25,7 @@ const GroupPostPage: React.FC = () => {
   const { state } = useAuth();
   const user = state.user;
   const navigate = useNavigate();
+  const { showError } = useToast();
 
   const [post, setPost] = useState<GroupPost | null>(null);
   const [comments, setComments] = useState<GroupComment[]>([]);
@@ -108,9 +110,9 @@ const GroupPostPage: React.FC = () => {
     } catch (err: any) {
       const errorMsg = getErrorMessage(err);
       if (errorMsg.toLowerCase().includes('member')) {
-        alert('You must be a member of this group to comment on posts. Please join the group first.');
+        showError('You must be a member of this group to comment on posts. Please join the group first.');
       } else {
-        alert(errorMsg || 'Failed to post comment');
+        showError(errorMsg || 'Failed to post comment');
       }
     } finally {
       setSubmitting(false);
@@ -129,9 +131,9 @@ const GroupPostPage: React.FC = () => {
     } catch (err: any) {
       const errorMsg = getErrorMessage(err);
       if (errorMsg.toLowerCase().includes('member')) {
-        alert('You must be a member of this group to vote on comments. Please join the group first.');
+        showError('You must be a member of this group to vote on comments. Please join the group first.');
       } else {
-        alert(errorMsg || 'Failed to vote on comment');
+        showError(errorMsg || 'Failed to vote on comment');
       }
     }
   };
@@ -183,7 +185,7 @@ const GroupPostPage: React.FC = () => {
         await loadPostAndComments();
       }
     } catch (err: any) {
-      alert(getErrorMessage(err) || 'Failed to delete comment');
+      showError(getErrorMessage(err) || 'Failed to delete comment');
     }
   };
 
