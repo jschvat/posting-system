@@ -260,6 +260,20 @@ export const usersApi = {
 
     return apiRequest<any>('GET', `/users/${userId}/posts?${searchParams}`);
   },
+
+  /**
+   * Upload user avatar
+   */
+  uploadAvatar: async (userId: number, file: File): Promise<ApiResponse<{ user: User; avatar_url: string }>> => {
+    const formData = new FormData();
+    formData.append('avatar', file);
+
+    return apiRequest<ApiResponse<{ user: User; avatar_url: string }>>('POST', `/users/${userId}/avatar`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+  },
 };
 
 // Media API

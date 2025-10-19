@@ -124,6 +124,26 @@ GROUP_IMAGES_PATH=../uploads/groups/images
 
 **Status**: Foundation complete with placeholder tabs
 
+### 8. Group Banner Upload System ✅
+- **Backend**: Added `POST /api/groups/:slug/banner` endpoint for banner uploads
+- **Multer Configuration**: 10MB file size limit (larger than avatars), JPEG/PNG/GIF/WebP support
+- **Sharp Integration**: Auto-resize to 1200x400px (3:1 aspect ratio), convert to JPEG @ 85% quality
+- **Storage**: Created `uploads/groups/banners/` directory
+- **Frontend**: Banner upload in CreateGroupPage with preview (600x200px preview)
+
+**Files Modified**:
+- `backend/.env` - Added GROUP_BANNER_PATH configuration
+- `backend/src/routes/groups.js` - Upload endpoint with multer/sharp (lines 71-102, 582-648)
+- `frontend/src/services/groupsApi.ts` - uploadGroupBanner() API function
+- `frontend/src/pages/CreateGroupPage.tsx` - File input, preview UI, and upload logic
+
+**Features**:
+- Wider aspect ratio than avatars (1200x400 vs 400x400)
+- Larger file size limit (10MB vs 5MB) for higher quality banners
+- Client-side preview before upload
+- Upload happens after group creation (graceful error handling)
+- Same compression quality (85% JPEG) for consistency
+
 ---
 
 ## Database Changes
@@ -146,8 +166,9 @@ No schema changes in this session. All features worked with existing database st
 10. `f0d003a` - Add state abbreviation normalization for location restrictions
 11. `3f5bb24` - Fix location restriction bug - construct location object from individual columns
 12. `9fd0d18` - Add admin/moderator console page with tab navigation
+13. `7308ead` - Add group banner upload functionality
 
-**Total**: 12 commits on `group-system` branch
+**Total**: 13 commits on `group-system` branch
 
 ---
 
@@ -157,6 +178,7 @@ No schema changes in this session. All features worked with existing database st
 ```bash
 # Group Upload Configuration
 GROUP_AVATAR_PATH=../uploads/groups/avatars
+GROUP_BANNER_PATH=../uploads/groups/banners
 GROUP_MEDIA_PATH=../uploads/groups/media
 GROUP_IMAGES_PATH=../uploads/groups/images
 ```
@@ -190,9 +212,8 @@ PORT=3000
 8. **Test moderation console** - Verify role-based access control
 
 ### Low Priority
-9. **Add group banner upload** - Similar to avatar system
-10. **Add group settings page** - Edit description, rules, settings
-11. **Improve error handling** - Better user feedback on failures
+9. **Add group settings page** - Edit description, rules, settings
+10. **Improve error handling** - Better user feedback on failures
 
 ---
 
@@ -206,6 +227,7 @@ None currently. All features working as expected.
 
 ### Groups
 - `POST /api/groups/:slug/avatar` - Upload group avatar (admin only)
+- `POST /api/groups/:slug/banner` - Upload group banner (admin only)
 - `GET /api/groups/filtered` - Get filtered groups by membership/location
 
 ### Backend Routes

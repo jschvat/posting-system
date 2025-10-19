@@ -26,7 +26,6 @@ const GroupListPage: React.FC = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [membershipMap, setMembershipMap] = useState<Map<string, boolean>>(new Map());
   const [filter, setFilter] = useState<FilterType>('all');
 
   useEffect(() => {
@@ -107,11 +106,17 @@ const GroupListPage: React.FC = () => {
     try {
       const response = await groupsApi.joinGroup(groupSlug);
       if (response.success) {
-        setMembershipMap(new Map(membershipMap).set(groupSlug, true));
-        // Update member count
+        // Update group with membership info
         setGroups(groups.map(g =>
           g.slug === groupSlug
-            ? { ...g, member_count: g.member_count + 1 }
+            ? {
+                ...g,
+                member_count: g.member_count + 1,
+                user_membership: {
+                  status: 'active' as const,
+                  role: 'member' as const
+                }
+              }
             : g
         ));
       }
@@ -130,11 +135,14 @@ const GroupListPage: React.FC = () => {
     try {
       const response = await groupsApi.leaveGroup(groupSlug);
       if (response.success) {
-        setMembershipMap(new Map(membershipMap).set(groupSlug, false));
-        // Update member count
+        // Remove membership info
         setGroups(groups.map(g =>
           g.slug === groupSlug
-            ? { ...g, member_count: Math.max(0, g.member_count - 1) }
+            ? {
+                ...g,
+                member_count: Math.max(0, g.member_count - 1),
+                user_membership: undefined
+              }
             : g
         ));
       }
@@ -209,7 +217,6 @@ const GroupListPage: React.FC = () => {
                 key={group.id}
                 group={group}
                 showJoinButton={!!user}
-                isMember={membershipMap.get(group.slug) || false}
                 onJoin={handleJoin}
                 onLeave={handleLeave}
               />

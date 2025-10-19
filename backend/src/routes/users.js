@@ -7,6 +7,11 @@
 const express = require('express');
 const { body, param, query, validationResult } = require('express-validator');
 const { authenticate, requireModifyPermission } = require('../middleware/auth');
+const multer = require('multer');
+const sharp = require('sharp');
+const path = require('path');
+const fs = require('fs').promises;
+const { v4: uuidv4 } = require('uuid');
 
 // Import PostgreSQL models
 const User = require('../models/User');
@@ -15,6 +20,41 @@ const Comment = require('../models/Comment');
 const Reaction = require('../models/Reaction');
 
 const router = express.Router();
+
+// Avatar upload configuration
+const USER_AVATAR_PATH = process.env.USER_AVATAR_PATH || '../uploads/users/avatars';
+
+const avatarStorage = multer.diskStorage({
+  destination: async (req, file, cb) => {
+    const uploadDir = path.join(__dirname, USER_AVATAR_PATH);
+    try {
+      await fs.mkdir(uploadDir, { recursive: true });
+      cb(null, uploadDir);
+    } catch (error) {
+      cb(error);
+    }
+  },
+  filename: (req, file, cb) => {
+    const uniqueId = uuidv4();
+    const ext = path.extname(file.originalname);
+    cb(null, `user-avatar-${uniqueId}${ext}`);
+  }
+});
+
+const avatarUpload = multer({
+  storage: avatarStorage,
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type. Only JPEG, PNG, GIF, and WebP are allowed.'));
+    }
+  }
+});
 
 /**
  * Validation middleware to check for validation errors
@@ -529,6 +569,84 @@ router.get('/:id/posts',
       });
 
     } catch (error) {
+      next(error);
+    }
+  }
+);
+
+/**
+ * POST /api/users/:id/avatar
+ * Upload user avatar
+ */
+router.post('/:id/avatar',
+  authenticate,
+  param('id').isInt({ min: 1 }).withMessage('User ID must be a positive integer'),
+  handleValidationErrors,
+  avatarUpload.single('avatar'),
+  async (req, res, next) => {
+    try {
+      const userId = parseInt(req.params.id);
+
+      // Check if user is modifying their own profile
+      if (req.user.id !== userId) {
+        return res.status(403).json({
+          success: false,
+          error: {
+            message: 'You can only upload your own avatar',
+            type: 'permission_error'
+          }
+        });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({
+          success: false,
+          error: {
+            message: 'No file uploaded',
+            type: 'validation_error'
+          }
+        });
+      }
+
+      // Resize and optimize image
+      const resizedFilename = `resized-${req.file.filename}`;
+      const resizedPath = path.join(path.dirname(req.file.path), resizedFilename);
+
+      await sharp(req.file.path)
+        .resize(200, 200, {
+          fit: 'cover',
+          position: 'center'
+        })
+        .jpeg({ quality: 85 })
+        .toFile(resizedPath);
+
+      // Delete original file
+      await fs.unlink(req.file.path);
+
+      // Update user avatar URL
+      const avatar_url = `/uploads/users/avatars/${resizedFilename}`;
+      const updatedUser = await User.update(userId, { avatar_url });
+
+      if (!updatedUser) {
+        return res.status(404).json({
+          success: false,
+          error: {
+            message: 'User not found',
+            type: 'not_found'
+          }
+        });
+      }
+
+      res.json({
+        success: true,
+        data: {
+          user: User.getPublicData(updatedUser),
+          avatar_url
+        },
+        message: 'Avatar uploaded successfully'
+      });
+    } catch (error) {
+      console.error('Error uploading user avatar:', error);
       next(error);
     }
   }

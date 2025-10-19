@@ -9,7 +9,7 @@ interface GroupCardProps {
   showJoinButton?: boolean;
   onJoin?: (groupSlug: string) => void;
   onLeave?: (groupSlug: string) => void;
-  isMember?: boolean;
+  isMember?: boolean; // Deprecated: use group.user_membership instead
 }
 
 const GroupCard: React.FC<GroupCardProps> = ({
@@ -19,11 +19,15 @@ const GroupCard: React.FC<GroupCardProps> = ({
   onLeave,
   isMember = false
 }) => {
+  // Use group.user_membership if available, otherwise fall back to isMember prop
+  const isActiveMember = group.user_membership?.status === 'active' || isMember;
+  const userRole = group.user_membership?.role;
+
   const handleJoinClick = (e: React.MouseEvent) => {
     e.preventDefault();
-    if (isMember && onLeave) {
+    if (isActiveMember && onLeave) {
       onLeave(group.slug);
-    } else if (!isMember && onJoin) {
+    } else if (!isActiveMember && onJoin) {
       onJoin(group.slug);
     }
   };
@@ -51,15 +55,22 @@ const GroupCard: React.FC<GroupCardProps> = ({
         {group.avatar_url && <GroupIcon src={getFullImageUrl(group.avatar_url)} alt={group.display_name} />}
         {!group.avatar_url && <DefaultIcon>{group.name.charAt(0).toUpperCase()}</DefaultIcon>}
         <GroupInfo>
-          <GroupName>{group.display_name}</GroupName>
+          <GroupNameRow>
+            <GroupName>{group.display_name}</GroupName>
+            {userRole && (
+              <RoleBadge $role={userRole}>
+                {userRole === 'admin' ? '👑 Admin' : '🛡️ Mod'}
+              </RoleBadge>
+            )}
+          </GroupNameRow>
           <GroupSlug>g/{group.name}</GroupSlug>
         </GroupInfo>
-        {showJoinButton && (onJoin || onLeave) && (
+        {showJoinButton && (onJoin || onLeave) && !isActiveMember && (
           <JoinButton
             onClick={handleJoinClick}
-            $isMember={isMember}
+            $isMember={isActiveMember}
           >
-            {isMember ? 'Leave' : 'Join'}
+            Join
           </JoinButton>
         )}
       </CardHeader>
@@ -135,6 +146,12 @@ const GroupInfo = styled.div`
   min-width: 0;
 `;
 
+const GroupNameRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+`;
+
 const GroupName = styled.h3`
   margin: 0;
   font-size: 18px;
@@ -143,6 +160,20 @@ const GroupName = styled.h3`
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+`;
+
+const RoleBadge = styled.span<{ $role: 'admin' | 'moderator' | 'member' }>`
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  display: ${props => props.$role === 'member' ? 'none' : 'inline-block'};
+  background: ${props => props.$role === 'admin'
+    ? 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)'
+    : 'linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%)'};
+  color: white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 `;
 
 const GroupSlug = styled.div`

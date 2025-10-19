@@ -676,15 +676,40 @@ const EditProfilePage: React.FC = () => {
             <Input
               type="file"
               accept="image/*"
-              onChange={(e) => {
+              onChange={async (e) => {
                 const file = e.target.files?.[0];
-                if (file) {
-                  // TODO: Handle file upload
-                  console.log('Avatar file selected:', file);
+                if (file && user) {
+                  setLoading(true);
+                  setError('');
+                  setSuccess('');
+
+                  try {
+                    const response = await usersApi.uploadAvatar(user.id, file);
+                    if (response.success && response.data) {
+                      // Update local state with new avatar URL
+                      setProfileData({
+                        ...profileData,
+                        avatar_url: response.data.avatar_url
+                      });
+
+                      // Update localStorage
+                      const updatedUser = { ...user, avatar_url: response.data.avatar_url };
+                      localStorage.setItem('userData', JSON.stringify(updatedUser));
+
+                      setSuccess('Avatar uploaded successfully! Refresh to see changes.');
+                      setTimeout(() => setSuccess(''), 3000);
+                    }
+                  } catch (err: any) {
+                    console.error('Avatar upload error:', err);
+                    const errorMsg = err.response?.data?.error?.message || err.message || 'Failed to upload avatar';
+                    setError(errorMsg);
+                  } finally {
+                    setLoading(false);
+                  }
                 }
               }}
             />
-            <HelpText>Upload a profile picture (JPG, PNG, GIF)</HelpText>
+            <HelpText>Upload a profile picture (JPG, PNG, GIF, WebP, max 5MB)</HelpText>
             {user && profileData.avatar_url && (
               <div style={{ marginTop: '8px' }}>
                 <img src={getUserAvatarUrl(user)} alt="Current avatar" style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover' }} />

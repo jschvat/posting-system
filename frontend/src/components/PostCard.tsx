@@ -112,6 +112,20 @@ const PostText = styled.p`
   word-break: break-word;
 `;
 
+const ViewPostLink = styled(Link)`
+  color: ${({ theme }) => theme.colors.text.secondary};
+  text-decoration: none;
+  font-size: 0.85rem;
+  font-weight: 500;
+  display: inline-block;
+  margin-top: ${({ theme }) => theme.spacing.sm};
+
+  &:hover {
+    color: ${({ theme }) => theme.colors.primary};
+    text-decoration: underline;
+  }
+`;
+
 const MediaGrid = styled.div<{ $count: number }>`
   display: grid;
   gap: ${({ theme }) => theme.spacing.sm};
@@ -762,6 +776,9 @@ const PostCard: React.FC<PostCardProps> = ({ post, onUpdate }) => {
       {/* Post Content */}
       <PostContent>
         <PostText>{post.content}</PostText>
+        <ViewPostLink to={`/post/${post.id}`}>
+          View full post and comments →
+        </ViewPostLink>
 
         {/* Media Gallery */}
         {post.media && post.media.length > 0 && (

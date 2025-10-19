@@ -1,0 +1,2049 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Database Schema Documentation - Posting System</title>
+    <style>
+        @page {
+            size: A4 landscape;
+            margin: 15mm;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-size: 10pt;
+            line-height: 1.4;
+            color: #333;
+            background: #f5f5f5;
+        }
+
+        .page {
+            background: white;
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            page-break-after: always;
+        }
+
+        h1 {
+            color: #2c3e50;
+            font-size: 28pt;
+            margin-bottom: 10px;
+            border-bottom: 4px solid #3498db;
+            padding-bottom: 10px;
+        }
+
+        h2 {
+            color: #2980b9;
+            font-size: 18pt;
+            margin: 25px 0 15px 0;
+            border-bottom: 2px solid #ecf0f1;
+            padding-bottom: 5px;
+            page-break-after: avoid;
+        }
+
+        h3 {
+            color: #34495e;
+            font-size: 14pt;
+            margin: 20px 0 10px 0;
+            page-break-after: avoid;
+        }
+
+        .metadata {
+            background: #ecf0f1;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+
+        .metadata-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .metadata-label {
+            font-weight: bold;
+            color: #7f8c8d;
+            font-size: 9pt;
+            text-transform: uppercase;
+        }
+
+        .metadata-value {
+            color: #2c3e50;
+            font-size: 11pt;
+        }
+
+        .table-container {
+            margin: 20px 0;
+            background: white;
+            border: 1px solid #bdc3c7;
+            border-radius: 8px;
+            overflow: hidden;
+            page-break-inside: avoid;
+        }
+
+        .table-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 15px;
+            font-weight: bold;
+            font-size: 12pt;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .table-badge {
+            background: rgba(255,255,255,0.2);
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 9pt;
+        }
+
+        .table-content {
+            padding: 15px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+        }
+
+        th {
+            background: #34495e;
+            color: white;
+            padding: 10px;
+            text-align: left;
+            font-size: 10pt;
+            font-weight: 600;
+        }
+
+        td {
+            padding: 8px 10px;
+            border-bottom: 1px solid #ecf0f1;
+            font-size: 9pt;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover {
+            background: #f8f9fa;
+        }
+
+        .type {
+            color: #e74c3c;
+            font-weight: 600;
+            font-family: 'Courier New', monospace;
+        }
+
+        .constraint {
+            background: #3498db;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 8pt;
+            margin-right: 4px;
+            display: inline-block;
+        }
+
+        .constraint.pk { background: #e74c3c; }
+        .constraint.fk { background: #f39c12; }
+        .constraint.unique { background: #9b59b6; }
+        .constraint.check { background: #1abc9c; }
+
+        .code-block {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: 9pt;
+            line-height: 1.6;
+            overflow-x: auto;
+            margin: 10px 0;
+            page-break-inside: avoid;
+        }
+
+        .keyword { color: #3498db; }
+        .string { color: #2ecc71; }
+        .comment { color: #95a5a6; font-style: italic; }
+        .function { color: #e74c3c; }
+
+        .index-list {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin: 10px 0;
+        }
+
+        .index-item {
+            background: #ecf0f1;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 9pt;
+            border-left: 3px solid #3498db;
+        }
+
+        .index-name {
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        .index-columns {
+            color: #7f8c8d;
+            font-family: 'Courier New', monospace;
+            font-size: 8pt;
+        }
+
+        .relationship-diagram {
+            margin: 20px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+        }
+
+        .function-container {
+            margin: 15px 0;
+            border: 1px solid #bdc3c7;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+
+        .function-header {
+            background: #16a085;
+            color: white;
+            padding: 10px 15px;
+            font-weight: bold;
+            font-size: 11pt;
+        }
+
+        .function-body {
+            padding: 15px;
+            background: white;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 32pt;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 10pt;
+            opacity: 0.9;
+        }
+
+        .toc {
+            background: #ecf0f1;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+
+        .toc-title {
+            font-size: 16pt;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 15px;
+        }
+
+        .toc-item {
+            padding: 8px 0;
+            border-bottom: 1px dotted #bdc3c7;
+        }
+
+        .toc-item:last-child {
+            border-bottom: none;
+        }
+
+        .toc-link {
+            color: #3498db;
+            text-decoration: none;
+            font-size: 11pt;
+        }
+
+        .toc-link:hover {
+            text-decoration: underline;
+        }
+
+        @media print {
+            body {
+                background: white;
+            }
+
+            .page {
+                box-shadow: none;
+                margin: 0;
+                max-width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<!-- COVER PAGE -->
+<div class="page">
+    <h1>Database Schema Documentation</h1>
+    <div style="text-align: center; margin: 50px 0;">
+        <svg width="200" height="200" viewBox="0 0 200 200">
+            <circle cx="100" cy="100" r="90" fill="none" stroke="#3498db" stroke-width="8"/>
+            <rect x="50" y="40" width="100" height="30" fill="#3498db" rx="5"/>
+            <rect x="50" y="85" width="100" height="30" fill="#2ecc71" rx="5"/>
+            <rect x="50" y="130" width="100" height="30" fill="#e74c3c" rx="5"/>
+            <line x1="100" y1="70" x2="100" y2="85" stroke="#95a5a6" stroke-width="3"/>
+            <line x1="100" y1="115" x2="100" y2="130" stroke="#95a5a6" stroke-width="3"/>
+        </svg>
+    </div>
+
+    <div class="metadata">
+        <div class="metadata-item">
+            <span class="metadata-label">Project</span>
+            <span class="metadata-value">Social Media Posting System</span>
+        </div>
+        <div class="metadata-item">
+            <span class="metadata-label">Database</span>
+            <span class="metadata-value">PostgreSQL 15</span>
+        </div>
+        <div class="metadata-item">
+            <span class="metadata-label">Generated</span>
+            <span class="metadata-value" id="generation-date"></span>
+        </div>
+        <div class="metadata-item">
+            <span class="metadata-label">Total Tables</span>
+            <span class="metadata-value">25</span>
+        </div>
+        <div class="metadata-item">
+            <span class="metadata-label">Extensions</span>
+            <span class="metadata-value">uuid-ossp, ltree</span>
+        </div>
+        <div class="metadata-item">
+            <span class="metadata-label">Version</span>
+            <span class="metadata-value">1.0</span>
+        </div>
+    </div>
+
+    <div class="toc">
+        <div class="toc-title">Table of Contents</div>
+        <div class="toc-item"><a href="#overview" class="toc-link">1. Schema Overview</a></div>
+        <div class="toc-item"><a href="#core" class="toc-link">2. Core Tables (Users, Posts, Comments, Media, Reactions)</a></div>
+        <div class="toc-item"><a href="#social" class="toc-link">3. Social Features (Follows, Shares, User Stats, Timeline)</a></div>
+        <div class="toc-item"><a href="#interactions" class="toc-link">4. Interaction Tracking (Comment Interactions, Metrics)</a></div>
+        <div class="toc-item"><a href="#reputation" class="toc-link">5. Rating & Reputation System</a></div>
+        <div class="toc-item"><a href="#geolocation" class="toc-link">6. Geolocation System</a></div>
+        <div class="toc-item"><a href="#groups" class="toc-link">7. Group System (Reddit-style Communities)</a></div>
+        <div class="toc-item"><a href="#functions" class="toc-link">8. Stored Functions & Procedures</a></div>
+        <div class="toc-item"><a href="#triggers" class="toc-link">9. Triggers & Automation</a></div>
+        <div class="toc-item"><a href="#indexes" class="toc-link">10. Indexes & Performance</a></div>
+    </div>
+</div>
+
+<!-- SCHEMA OVERVIEW -->
+<div class="page" id="overview">
+    <h2>1. Schema Overview</h2>
+
+    <div class="stats-grid">
+        <div class="stat-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+            <div class="stat-value">25</div>
+            <div class="stat-label">Tables</div>
+        </div>
+        <div class="stat-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+            <div class="stat-value">32</div>
+            <div class="stat-label">Functions</div>
+        </div>
+        <div class="stat-card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+            <div class="stat-value">18</div>
+            <div class="stat-label">Triggers</div>
+        </div>
+        <div class="stat-card" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
+            <div class="stat-value">85+</div>
+            <div class="stat-label">Indexes</div>
+        </div>
+    </div>
+
+    <h3>System Architecture</h3>
+    <p style="margin: 10px 0; line-height: 1.6;">
+        The database schema is organized into seven major subsystems that work together to provide a comprehensive
+        social media platform with advanced features including user interactions, reputation tracking, geolocation
+        services, and Reddit-style group communities.
+    </p>
+
+    <div style="margin: 20px 0;">
+        <h3>Extensions Used</h3>
+        <table>
+            <tr>
+                <th>Extension</th>
+                <th>Purpose</th>
+                <th>Usage</th>
+            </tr>
+            <tr>
+                <td><span class="type">uuid-ossp</span></td>
+                <td>UUID generation</td>
+                <td>Generating unique identifiers for resources</td>
+            </tr>
+            <tr>
+                <td><span class="type">ltree</span></td>
+                <td>Hierarchical data</td>
+                <td>Efficient nested comment threading in groups</td>
+            </tr>
+        </table>
+    </div>
+</div>
+
+<!-- CORE TABLES -->
+<div class="page" id="core">
+    <h2>2. Core Tables</h2>
+
+    <!-- USERS TABLE -->
+    <div class="table-container">
+        <div class="table-header">
+            <span>users</span>
+            <span class="table-badge">Core Table</span>
+        </div>
+        <div class="table-content">
+            <p><strong>Description:</strong> Main user accounts and authentication</p>
+
+            <table>
+                <tr>
+                    <th>Column</th>
+                    <th>Type</th>
+                    <th>Constraints</th>
+                    <th>Description</th>
+                </tr>
+                <tr>
+                    <td>id</td>
+                    <td><span class="type">SERIAL</span></td>
+                    <td><span class="constraint pk">PRIMARY KEY</span></td>
+                    <td>Unique identifier</td>
+                </tr>
+                <tr>
+                    <td>username</td>
+                    <td><span class="type">VARCHAR(50)</span></td>
+                    <td><span class="constraint unique">UNIQUE</span> NOT NULL</td>
+                    <td>Unique username</td>
+                </tr>
+                <tr>
+                    <td>email</td>
+                    <td><span class="type">VARCHAR(255)</span></td>
+                    <td><span class="constraint unique">UNIQUE</span> NOT NULL</td>
+                    <td>Email address</td>
+                </tr>
+                <tr>
+                    <td>password_hash</td>
+                    <td><span class="type">VARCHAR(255)</span></td>
+                    <td>NOT NULL</td>
+                    <td>Hashed password</td>
+                </tr>
+                <tr>
+                    <td>first_name</td>
+                    <td><span class="type">VARCHAR(100)</span></td>
+                    <td>NOT NULL</td>
+                    <td>First name</td>
+                </tr>
+                <tr>
+                    <td>last_name</td>
+                    <td><span class="type">VARCHAR(100)</span></td>
+                    <td>NOT NULL</td>
+                    <td>Last name</td>
+                </tr>
+                <tr>
+                    <td>bio</td>
+                    <td><span class="type">TEXT</span></td>
+                    <td></td>
+                    <td>User biography</td>
+                </tr>
+                <tr>
+                    <td>avatar_url</td>
+                    <td><span class="type">VARCHAR(500)</span></td>
+                    <td></td>
+                    <td>Profile picture URL</td>
+                </tr>
+                <tr>
+                    <td>is_active</td>
+                    <td><span class="type">BOOLEAN</span></td>
+                    <td>DEFAULT TRUE</td>
+                    <td>Account status</td>
+                </tr>
+                <tr>
+                    <td>email_verified</td>
+                    <td><span class="type">BOOLEAN</span></td>
+                    <td>DEFAULT FALSE</td>
+                    <td>Email verification status</td>
+                </tr>
+                <tr>
+                    <td>location_latitude</td>
+                    <td><span class="type">DECIMAL(10,7)</span></td>
+                    <td></td>
+                    <td>Latitude coordinate</td>
+                </tr>
+                <tr>
+                    <td>location_longitude</td>
+                    <td><span class="type">DECIMAL(10,7)</span></td>
+                    <td></td>
+                    <td>Longitude coordinate</td>
+                </tr>
+                <tr>
+                    <td>location_city</td>
+                    <td><span class="type">VARCHAR(100)</span></td>
+                    <td></td>
+                    <td>City name</td>
+                </tr>
+                <tr>
+                    <td>location_state</td>
+                    <td><span class="type">VARCHAR(100)</span></td>
+                    <td></td>
+                    <td>State/province</td>
+                </tr>
+                <tr>
+                    <td>location_sharing</td>
+                    <td><span class="type">VARCHAR(20)</span></td>
+                    <td><span class="constraint check">CHECK</span> DEFAULT 'off'</td>
+                    <td>Privacy: exact, city, off</td>
+                </tr>
+                <tr>
+                    <td>created_at</td>
+                    <td><span class="type">TIMESTAMP</span></td>
+                    <td>DEFAULT CURRENT_TIMESTAMP</td>
+                    <td>Creation timestamp</td>
+                </tr>
+                <tr>
+                    <td>updated_at</td>
+                    <td><span class="type">TIMESTAMP</span></td>
+                    <td>DEFAULT CURRENT_TIMESTAMP</td>
+                    <td>Last update timestamp</td>
+                </tr>
+            </table>
+
+            <h4 style="margin: 15px 0 10px 0;">Indexes</h4>
+            <div class="index-list">
+                <div class="index-item">
+                    <div class="index-name">idx_users_username</div>
+                    <div class="index-columns">(username)</div>
+                </div>
+                <div class="index-item">
+                    <div class="index-name">idx_users_email</div>
+                    <div class="index-columns">(email)</div>
+                </div>
+                <div class="index-item">
+                    <div class="index-name">idx_users_active</div>
+                    <div class="index-columns">(is_active)</div>
+                </div>
+                <div class="index-item">
+                    <div class="index-name">idx_users_location_coords</div>
+                    <div class="index-columns">(location_latitude, location_longitude)</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- POSTS TABLE -->
+    <div class="table-container">
+        <div class="table-header">
+            <span>posts</span>
+            <span class="table-badge">Core Table</span>
+        </div>
+        <div class="table-content">
+            <p><strong>Description:</strong> User posts and content</p>
+
+            <table>
+                <tr>
+                    <th>Column</th>
+                    <th>Type</th>
+                    <th>Constraints</th>
+                    <th>Description</th>
+                </tr>
+                <tr>
+                    <td>id</td>
+                    <td><span class="type">SERIAL</span></td>
+                    <td><span class="constraint pk">PRIMARY KEY</span></td>
+                    <td>Unique identifier</td>
+                </tr>
+                <tr>
+                    <td>user_id</td>
+                    <td><span class="type">INTEGER</span></td>
+                    <td><span class="constraint fk">FK</span> users(id) CASCADE</td>
+                    <td>Post author</td>
+                </tr>
+                <tr>
+                    <td>content</td>
+                    <td><span class="type">TEXT</span></td>
+                    <td>NOT NULL</td>
+                    <td>Post content/text</td>
+                </tr>
+                <tr>
+                    <td>privacy_level</td>
+                    <td><span class="type">VARCHAR(20)</span></td>
+                    <td><span class="constraint check">CHECK</span> DEFAULT 'public'</td>
+                    <td>public, friends, private</td>
+                </tr>
+                <tr>
+                    <td>is_published</td>
+                    <td><span class="type">BOOLEAN</span></td>
+                    <td>DEFAULT TRUE</td>
+                    <td>Publication status</td>
+                </tr>
+                <tr>
+                    <td>is_archived</td>
+                    <td><span class="type">BOOLEAN</span></td>
+                    <td>DEFAULT FALSE</td>
+                    <td>Archive status</td>
+                </tr>
+                <tr>
+                    <td>views_count</td>
+                    <td><span class="type">INTEGER</span></td>
+                    <td>DEFAULT 0</td>
+                    <td>Number of views</td>
+                </tr>
+                <tr>
+                    <td>created_at</td>
+                    <td><span class="type">TIMESTAMP</span></td>
+                    <td>DEFAULT CURRENT_TIMESTAMP</td>
+                    <td>Creation timestamp</td>
+                </tr>
+            </table>
+
+            <h4 style="margin: 15px 0 10px 0;">Indexes</h4>
+            <div class="index-list">
+                <div class="index-item">
+                    <div class="index-name">idx_posts_user_id</div>
+                    <div class="index-columns">(user_id)</div>
+                </div>
+                <div class="index-item">
+                    <div class="index-name">idx_posts_privacy_level</div>
+                    <div class="index-columns">(privacy_level)</div>
+                </div>
+                <div class="index-item">
+                    <div class="index-name">idx_posts_created_at</div>
+                    <div class="index-columns">(created_at)</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- COMMENTS TABLE -->
+    <div class="table-container">
+        <div class="table-header">
+            <span>comments</span>
+            <span class="table-badge">Core Table</span>
+        </div>
+        <div class="table-content">
+            <p><strong>Description:</strong> Nested comments on posts</p>
+
+            <table>
+                <tr>
+                    <th>Column</th>
+                    <th>Type</th>
+                    <th>Constraints</th>
+                    <th>Description</th>
+                </tr>
+                <tr>
+                    <td>id</td>
+                    <td><span class="type">SERIAL</span></td>
+                    <td><span class="constraint pk">PRIMARY KEY</span></td>
+                    <td>Unique identifier</td>
+                </tr>
+                <tr>
+                    <td>user_id</td>
+                    <td><span class="type">INTEGER</span></td>
+                    <td><span class="constraint fk">FK</span> users(id) CASCADE</td>
+                    <td>Comment author</td>
+                </tr>
+                <tr>
+                    <td>post_id</td>
+                    <td><span class="type">INTEGER</span></td>
+                    <td><span class="constraint fk">FK</span> posts(id) CASCADE</td>
+                    <td>Parent post</td>
+                </tr>
+                <tr>
+                    <td>parent_id</td>
+                    <td><span class="type">INTEGER</span></td>
+                    <td><span class="constraint fk">FK</span> comments(id) CASCADE</td>
+                    <td>Parent comment (for nesting)</td>
+                </tr>
+                <tr>
+                    <td>content</td>
+                    <td><span class="type">TEXT</span></td>
+                    <td>NOT NULL</td>
+                    <td>Comment text</td>
+                </tr>
+                <tr>
+                    <td>depth</td>
+                    <td><span class="type">INTEGER</span></td>
+                    <td>DEFAULT 0</td>
+                    <td>Nesting level</td>
+                </tr>
+                <tr>
+                    <td>created_at</td>
+                    <td><span class="type">TIMESTAMP</span></td>
+                    <td>DEFAULT CURRENT_TIMESTAMP</td>
+                    <td>Creation timestamp</td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    <!-- MEDIA TABLE -->
+    <div class="table-container">
+        <div class="table-header">
+            <span>media</span>
+            <span class="table-badge">Core Table</span>
+        </div>
+        <div class="table-content">
+            <p><strong>Description:</strong> Media attachments for posts and comments</p>
+
+            <table>
+                <tr>
+                    <th>Column</th>
+                    <th>Type</th>
+                    <th>Constraints</th>
+                    <th>Description</th>
+                </tr>
+                <tr>
+                    <td>id</td>
+                    <td><span class="type">SERIAL</span></td>
+                    <td><span class="constraint pk">PRIMARY KEY</span></td>
+                    <td>Unique identifier</td>
+                </tr>
+                <tr>
+                    <td>user_id</td>
+                    <td><span class="type">INTEGER</span></td>
+                    <td><span class="constraint fk">FK</span> users(id) CASCADE</td>
+                    <td>Uploader</td>
+                </tr>
+                <tr>
+                    <td>post_id</td>
+                    <td><span class="type">INTEGER</span></td>
+                    <td><span class="constraint fk">FK</span> posts(id) CASCADE</td>
+                    <td>Associated post</td>
+                </tr>
+                <tr>
+                    <td>comment_id</td>
+                    <td><span class="type">INTEGER</span></td>
+                    <td><span class="constraint fk">FK</span> comments(id) CASCADE</td>
+                    <td>Associated comment</td>
+                </tr>
+                <tr>
+                    <td>file_url</td>
+                    <td><span class="type">VARCHAR(500)</span></td>
+                    <td>NOT NULL</td>
+                    <td>Public URL</td>
+                </tr>
+                <tr>
+                    <td>mime_type</td>
+                    <td><span class="type">VARCHAR(100)</span></td>
+                    <td>NOT NULL</td>
+                    <td>File MIME type</td>
+                </tr>
+                <tr>
+                    <td>media_type</td>
+                    <td><span class="type">VARCHAR(20)</span></td>
+                    <td><span class="constraint check">CHECK</span></td>
+                    <td>image, video, audio, document</td>
+                </tr>
+                <tr>
+                    <td>width</td>
+                    <td><span class="type">INTEGER</span></td>
+                    <td></td>
+                    <td>Image/video width</td>
+                </tr>
+                <tr>
+                    <td>height</td>
+                    <td><span class="type">INTEGER</span></td>
+                    <td></td>
+                    <td>Image/video height</td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    <!-- REACTIONS TABLE -->
+    <div class="table-container">
+        <div class="table-header">
+            <span>reactions</span>
+            <span class="table-badge">Core Table</span>
+        </div>
+        <div class="table-content">
+            <p><strong>Description:</strong> Emoji reactions on posts and comments</p>
+
+            <table>
+                <tr>
+                    <th>Column</th>
+                    <th>Type</th>
+                    <th>Constraints</th>
+                    <th>Description</th>
+                </tr>
+                <tr>
+                    <td>id</td>
+                    <td><span class="type">SERIAL</span></td>
+                    <td><span class="constraint pk">PRIMARY KEY</span></td>
+                    <td>Unique identifier</td>
+                </tr>
+                <tr>
+                    <td>user_id</td>
+                    <td><span class="type">INTEGER</span></td>
+                    <td><span class="constraint fk">FK</span> users(id) CASCADE</td>
+                    <td>User who reacted</td>
+                </tr>
+                <tr>
+                    <td>post_id / comment_id</td>
+                    <td><span class="type">INTEGER</span></td>
+                    <td><span class="constraint fk">FK</span></td>
+                    <td>Target content</td>
+                </tr>
+                <tr>
+                    <td>emoji_name</td>
+                    <td><span class="type">VARCHAR(50)</span></td>
+                    <td>NOT NULL</td>
+                    <td>Emoji shortcode</td>
+                </tr>
+                <tr>
+                    <td>emoji_unicode</td>
+                    <td><span class="type">VARCHAR(20)</span></td>
+                    <td>NOT NULL</td>
+                    <td>Unicode emoji</td>
+                </tr>
+            </table>
+
+            <p style="margin-top: 10px;"><strong>Unique Constraints:</strong></p>
+            <ul style="margin-left: 20px;">
+                <li>One reaction per user per post per emoji</li>
+                <li>One reaction per user per comment per emoji</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- SOCIAL FEATURES -->
+<div class="page" id="social">
+    <h2>3. Social Features</h2>
+
+    <!-- FOLLOWS TABLE -->
+    <div class="table-container">
+        <div class="table-header">
+            <span>follows</span>
+            <span class="table-badge">Social</span>
+        </div>
+        <div class="table-content">
+            <p><strong>Description:</strong> User follow relationships with status tracking</p>
+
+            <table>
+                <tr>
+                    <th>Column</th>
+                    <th>Type</th>
+                    <th>Constraints</th>
+                    <th>Description</th>
+                </tr>
+                <tr>
+                    <td>id</td>
+                    <td><span class="type">SERIAL</span></td>
+                    <td><span class="constraint pk">PRIMARY KEY</span></td>
+                    <td>Unique identifier</td>
+                </tr>
+                <tr>
+                    <td>follower_id</td>
+                    <td><span class="type">INTEGER</span></td>
+                    <td><span class="constraint fk">FK</span> users(id) CASCADE</td>
+                    <td>User who follows</td>
+                </tr>
+                <tr>
+                    <td>following_id</td>
+                    <td><span class="type">INTEGER</span></td>
+                    <td><span class="constraint fk">FK</span> users(id) CASCADE</td>
+                    <td>User being followed</td>
+                </tr>
+                <tr>
+                    <td>status</td>
+                    <td><span class="type">VARCHAR(20)</span></td>
+                    <td><span class="constraint check">CHECK</span> DEFAULT 'active'</td>
+                    <td>active, muted, blocked</td>
+                </tr>
+                <tr>
+                    <td>notifications_enabled</td>
+                    <td><span class="type">BOOLEAN</span></td>
+                    <td>DEFAULT TRUE</td>
+                    <td>Notification preferences</td>
+                </tr>
+            </table>
+
+            <p style="margin-top: 10px;"><strong>Constraints:</strong></p>
+            <ul style="margin-left: 20px;">
+                <li><span class="constraint unique">UNIQUE</span> (follower_id, following_id)</li>
+                <li><span class="constraint check">CHECK</span> follower_id != following_id (no self-follow)</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- SHARES TABLE -->
+    <div class="table-container">
+        <div class="table-header">
+            <span>shares</span>
+            <span class="table-badge">Social</span>
+        </div>
+        <div class="table-content">
+            <p><strong>Description:</strong> Post shares and reposts</p>
+
+            <table>
+                <tr>
+                    <th>Column</th>
+                    <th>Type</th>
+                    <th>Constraints</th>
+                    <th>Description</th>
+                </tr>
+                <tr>
+                    <td>id</td>
+                    <td><span class="type">SERIAL</span></td>
+                    <td><span class="constraint pk">PRIMARY KEY</span></td>
+                    <td>Unique identifier</td>
+                </tr>
+                <tr>
+                    <td>user_id</td>
+                    <td><span class="type">INTEGER</span></td>
+                    <td><span class="constraint fk">FK</span> users(id) CASCADE</td>
+                    <td>User who shared</td>
+                </tr>
+                <tr>
+                    <td>post_id</td>
+                    <td><span class="type">INTEGER</span></td>
+                    <td><span class="constraint fk">FK</span> posts(id) CASCADE</td>
+                    <td>Shared post</td>
+                </tr>
+                <tr>
+                    <td>share_type</td>
+                    <td><span class="type">VARCHAR(20)</span></td>
+                    <td><span class="constraint check">CHECK</span> DEFAULT 'repost'</td>
+                    <td>repost, quote, external</td>
+                </tr>
+                <tr>
+                    <td>share_comment</td>
+                    <td><span class="type">TEXT</span></td>
+                    <td></td>
+                    <td>Optional comment on share</td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    <!-- USER_STATS TABLE -->
+    <div class="table-container">
+        <div class="table-header">
+            <span>user_stats</span>
+            <span class="table-badge">Denormalized</span>
+        </div>
+        <div class="table-content">
+            <p><strong>Description:</strong> Aggregated user statistics for performance</p>
+
+            <table>
+                <tr>
+                    <th>Column</th>
+                    <th>Type</th>
+                    <th>Description</th>
+                </tr>
+                <tr>
+                    <td>user_id</td>
+                    <td><span class="type">INTEGER</span></td>
+                    <td><span class="constraint pk">PRIMARY KEY</span></td>
+                </tr>
+                <tr>
+                    <td>follower_count</td>
+                    <td><span class="type">INTEGER</span></td>
+                    <td>Number of followers</td>
+                </tr>
+                <tr>
+                    <td>following_count</td>
+                    <td><span class="type">INTEGER</span></td>
+                    <td>Number following</td>
+                </tr>
+                <tr>
+                    <td>post_count</td>
+                    <td><span class="type">INTEGER</span></td>
+                    <td>Total posts</td>
+                </tr>
+                <tr>
+                    <td>total_reactions_received</td>
+                    <td><span class="type">INTEGER</span></td>
+                    <td>Reactions on user's content</td>
+                </tr>
+                <tr>
+                    <td>total_shares_received</td>
+                    <td><span class="type">INTEGER</span></td>
+                    <td>Shares of user's posts</td>
+                </tr>
+                <tr>
+                    <td>engagement_score</td>
+                    <td><span class="type">DECIMAL(10,2)</span></td>
+                    <td>Calculated engagement metric</td>
+                </tr>
+            </table>
+
+            <p style="margin-top: 10px;"><strong>Note:</strong> Auto-updated by triggers on follows and shares tables</p>
+        </div>
+    </div>
+
+    <!-- TIMELINE_CACHE TABLE -->
+    <div class="table-container">
+        <div class="table-header">
+            <span>timeline_cache</span>
+            <span class="table-badge">Cache</span>
+        </div>
+        <div class="table-content">
+            <p><strong>Description:</strong> Pre-computed timeline with scoring algorithm</p>
+
+            <table>
+                <tr>
+                    <th>Column</th>
+                    <th>Type</th>
+                    <th>Description</th>
+                </tr>
+                <tr>
+                    <td>user_id</td>
+                    <td><span class="type">INTEGER</span></td>
+                    <td>Timeline owner</td>
+                </tr>
+                <tr>
+                    <td>post_id</td>
+                    <td><span class="type">INTEGER</span></td>
+                    <td>Post in timeline</td>
+                </tr>
+                <tr>
+                    <td>score</td>
+                    <td><span class="type">DECIMAL(10,2)</span></td>
+                    <td>Relevance score (0-100)</td>
+                </tr>
+                <tr>
+                    <td>reason</td>
+                    <td><span class="type">VARCHAR(50)</span></td>
+                    <td>following, popular, shared, suggested</td>
+                </tr>
+                <tr>
+                    <td>expires_at</td>
+                    <td><span class="type">TIMESTAMP</span></td>
+                    <td>Cache expiration (7 days)</td>
+                </tr>
+            </table>
+
+            <h4 style="margin: 15px 0 10px 0;">Scoring Algorithm (0-100 points)</h4>
+            <ul style="margin-left: 20px; line-height: 1.8;">
+                <li><strong>Relationship (40pts):</strong> Following > mutual > suggested</li>
+                <li><strong>Recency (25pts):</strong> Newer posts score higher</li>
+                <li><strong>Engagement (20pts):</strong> Reactions + comments + shares</li>
+                <li><strong>Content Type (10pts):</strong> Media posts bonus</li>
+                <li><strong>User Activity (5pts):</strong> Active users bonus</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- GROUPS SYSTEM -->
+<div class="page" id="groups">
+    <h2>7. Group System (Reddit-style Communities)</h2>
+
+    <!-- GROUPS TABLE -->
+    <div class="table-container">
+        <div class="table-header">
+            <span>groups</span>
+            <span class="table-badge">Communities</span>
+        </div>
+        <div class="table-content">
+            <p><strong>Description:</strong> Reddit-style community groups with moderation</p>
+
+            <table>
+                <tr>
+                    <th>Column</th>
+                    <th>Type</th>
+                    <th>Constraints</th>
+                    <th>Description</th>
+                </tr>
+                <tr>
+                    <td>id</td>
+                    <td><span class="type">SERIAL</span></td>
+                    <td><span class="constraint pk">PRIMARY KEY</span></td>
+                    <td>Unique identifier</td>
+                </tr>
+                <tr>
+                    <td>name</td>
+                    <td><span class="type">VARCHAR(100)</span></td>
+                    <td><span class="constraint unique">UNIQUE</span> NOT NULL</td>
+                    <td>Internal name</td>
+                </tr>
+                <tr>
+                    <td>slug</td>
+                    <td><span class="type">VARCHAR(100)</span></td>
+                    <td><span class="constraint unique">UNIQUE</span> NOT NULL</td>
+                    <td>URL-friendly identifier</td>
+                </tr>
+                <tr>
+                    <td>display_name</td>
+                    <td><span class="type">VARCHAR(255)</span></td>
+                    <td>NOT NULL</td>
+                    <td>Public display name</td>
+                </tr>
+                <tr>
+                    <td>description</td>
+                    <td><span class="type">TEXT</span></td>
+                    <td></td>
+                    <td>Group description</td>
+                </tr>
+                <tr>
+                    <td>avatar_url</td>
+                    <td><span class="type">VARCHAR(500)</span></td>
+                    <td></td>
+                    <td>Group icon (400x400px)</td>
+                </tr>
+                <tr>
+                    <td>banner_url</td>
+                    <td><span class="type">VARCHAR(500)</span></td>
+                    <td></td>
+                    <td>Group banner (1200x400px)</td>
+                </tr>
+                <tr>
+                    <td>visibility</td>
+                    <td><span class="type">VARCHAR(20)</span></td>
+                    <td><span class="constraint check">CHECK</span> DEFAULT 'public'</td>
+                    <td>public, private, invite_only</td>
+                </tr>
+                <tr>
+                    <td>require_approval</td>
+                    <td><span class="type">BOOLEAN</span></td>
+                    <td>DEFAULT FALSE</td>
+                    <td>Membership approval required</td>
+                </tr>
+                <tr>
+                    <td>post_approval_required</td>
+                    <td><span class="type">BOOLEAN</span></td>
+                    <td>DEFAULT FALSE</td>
+                    <td>Post moderation required</td>
+                </tr>
+                <tr>
+                    <td>location_restricted</td>
+                    <td><span class="type">BOOLEAN</span></td>
+                    <td>DEFAULT FALSE</td>
+                    <td>Geographic restrictions enabled</td>
+                </tr>
+                <tr>
+                    <td>location_type</td>
+                    <td><span class="type">VARCHAR(20)</span></td>
+                    <td><span class="constraint check">CHECK</span></td>
+                    <td>radius, country, state, city, polygon</td>
+                </tr>
+                <tr>
+                    <td>member_count</td>
+                    <td><span class="type">INTEGER</span></td>
+                    <td>DEFAULT 0</td>
+                    <td>Total active members</td>
+                </tr>
+                <tr>
+                    <td>creator_id</td>
+                    <td><span class="type">INTEGER</span></td>
+                    <td><span class="constraint fk">FK</span> users(id) RESTRICT</td>
+                    <td>Group creator</td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    <!-- GROUP_MEMBERSHIPS TABLE -->
+    <div class="table-container">
+        <div class="table-header">
+            <span>group_memberships</span>
+            <span class="table-badge">Communities</span>
+        </div>
+        <div class="table-content">
+            <p><strong>Description:</strong> User memberships in groups with roles</p>
+
+            <table>
+                <tr>
+                    <th>Column</th>
+                    <th>Type</th>
+                    <th>Constraints</th>
+                    <th>Description</th>
+                </tr>
+                <tr>
+                    <td>group_id</td>
+                    <td><span class="type">INTEGER</span></td>
+                    <td><span class="constraint fk">FK</span> groups(id) CASCADE</td>
+                    <td>Group reference</td>
+                </tr>
+                <tr>
+                    <td>user_id</td>
+                    <td><span class="type">INTEGER</span></td>
+                    <td><span class="constraint fk">FK</span> users(id) CASCADE</td>
+                    <td>Member reference</td>
+                </tr>
+                <tr>
+                    <td>role</td>
+                    <td><span class="type">VARCHAR(20)</span></td>
+                    <td><span class="constraint check">CHECK</span> DEFAULT 'member'</td>
+                    <td>admin, moderator, member</td>
+                </tr>
+                <tr>
+                    <td>status</td>
+                    <td><span class="type">VARCHAR(20)</span></td>
+                    <td><span class="constraint check">CHECK</span> DEFAULT 'active'</td>
+                    <td>active, banned, pending, invited</td>
+                </tr>
+                <tr>
+                    <td>banned_by</td>
+                    <td><span class="type">INTEGER</span></td>
+                    <td><span class="constraint fk">FK</span> users(id)</td>
+                    <td>Moderator who banned</td>
+                </tr>
+                <tr>
+                    <td>banned_reason</td>
+                    <td><span class="type">TEXT</span></td>
+                    <td></td>
+                    <td>Ban reason</td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    <!-- GROUP_POSTS TABLE -->
+    <div class="table-container">
+        <div class="table-header">
+            <span>group_posts</span>
+            <span class="table-badge">Communities</span>
+        </div>
+        <div class="table-content">
+            <p><strong>Description:</strong> Posts within groups with voting system</p>
+
+            <table>
+                <tr>
+                    <th>Column</th>
+                    <th>Type</th>
+                    <th>Description</th>
+                </tr>
+                <tr>
+                    <td>id</td>
+                    <td><span class="type">SERIAL</span></td>
+                    <td><span class="constraint pk">PRIMARY KEY</span></td>
+                </tr>
+                <tr>
+                    <td>group_id</td>
+                    <td><span class="type">INTEGER</span></td>
+                    <td><span class="constraint fk">FK</span> groups(id) CASCADE</td>
+                </tr>
+                <tr>
+                    <td>user_id</td>
+                    <td><span class="type">INTEGER</span></td>
+                    <td><span class="constraint fk">FK</span> users(id) CASCADE</td>
+                </tr>
+                <tr>
+                    <td>title</td>
+                    <td><span class="type">VARCHAR(300)</span></td>
+                    <td>Post title</td>
+                </tr>
+                <tr>
+                    <td>content</td>
+                    <td><span class="type">TEXT</span></td>
+                    <td>Post content</td>
+                </tr>
+                <tr>
+                    <td>post_type</td>
+                    <td><span class="type">VARCHAR(20)</span></td>
+                    <td>text, link, media, poll</td>
+                </tr>
+                <tr>
+                    <td>status</td>
+                    <td><span class="type">VARCHAR(20)</span></td>
+                    <td>draft, pending, published, removed</td>
+                </tr>
+                <tr>
+                    <td>upvotes</td>
+                    <td><span class="type">INTEGER</span></td>
+                    <td>Upvote count (auto-updated)</td>
+                </tr>
+                <tr>
+                    <td>downvotes</td>
+                    <td><span class="type">INTEGER</span></td>
+                    <td>Downvote count (auto-updated)</td>
+                </tr>
+                <tr>
+                    <td>score</td>
+                    <td><span class="type">INTEGER</span></td>
+                    <td>upvotes - downvotes (auto-updated)</td>
+                </tr>
+                <tr>
+                    <td>is_pinned</td>
+                    <td><span class="type">BOOLEAN</span></td>
+                    <td>Pinned to top of group</td>
+                </tr>
+                <tr>
+                    <td>is_locked</td>
+                    <td><span class="type">BOOLEAN</span></td>
+                    <td>Comments disabled</td>
+                </tr>
+            </table>
+        </div>
+    </div>
+
+    <!-- GROUP_COMMENTS TABLE -->
+    <div class="table-container">
+        <div class="table-header">
+            <span>group_comments</span>
+            <span class="table-badge">Communities</span>
+        </div>
+        <div class="table-content">
+            <p><strong>Description:</strong> Nested comments using ltree for efficient threading</p>
+
+            <table>
+                <tr>
+                    <th>Column</th>
+                    <th>Type</th>
+                    <th>Description</th>
+                </tr>
+                <tr>
+                    <td>id</td>
+                    <td><span class="type">SERIAL</span></td>
+                    <td><span class="constraint pk">PRIMARY KEY</span></td>
+                </tr>
+                <tr>
+                    <td>post_id</td>
+                    <td><span class="type">INTEGER</span></td>
+                    <td><span class="constraint fk">FK</span> group_posts(id) CASCADE</td>
+                </tr>
+                <tr>
+                    <td>parent_id</td>
+                    <td><span class="type">INTEGER</span></td>
+                    <td><span class="constraint fk">FK</span> group_comments(id) CASCADE</td>
+                </tr>
+                <tr>
+                    <td>content</td>
+                    <td><span class="type">TEXT</span></td>
+                    <td>Comment text</td>
+                </tr>
+                <tr>
+                    <td>path</td>
+                    <td><span class="type">LTREE</span></td>
+                    <td>Hierarchical path (e.g., "1.3.7")</td>
+                </tr>
+                <tr>
+                    <td>depth</td>
+                    <td><span class="type">INTEGER</span></td>
+                    <td>Nesting depth (0 = top-level)</td>
+                </tr>
+                <tr>
+                    <td>upvotes</td>
+                    <td><span class="type">INTEGER</span></td>
+                    <td>Upvote count</td>
+                </tr>
+                <tr>
+                    <td>downvotes</td>
+                    <td><span class="type">INTEGER</span></td>
+                    <td>Downvote count</td>
+                </tr>
+                <tr>
+                    <td>score</td>
+                    <td><span class="type">INTEGER</span></td>
+                    <td>upvotes - downvotes</td>
+                </tr>
+            </table>
+
+            <p style="margin-top: 10px;"><strong>ltree Extension:</strong> Enables efficient queries like "get all children of comment X" or "get full comment tree"</p>
+        </div>
+    </div>
+
+    <!-- GROUP_VOTES TABLE -->
+    <div class="table-container">
+        <div class="table-header">
+            <span>group_votes</span>
+            <span class="table-badge">Communities</span>
+        </div>
+        <div class="table-content">
+            <p><strong>Description:</strong> Upvote/downvote system for posts and comments</p>
+
+            <table>
+                <tr>
+                    <th>Column</th>
+                    <th>Type</th>
+                    <th>Description</th>
+                </tr>
+                <tr>
+                    <td>user_id</td>
+                    <td><span class="type">INTEGER</span></td>
+                    <td>User who voted</td>
+                </tr>
+                <tr>
+                    <td>post_id</td>
+                    <td><span class="type">INTEGER</span></td>
+                    <td>Voted post (null if comment)</td>
+                </tr>
+                <tr>
+                    <td>comment_id</td>
+                    <td><span class="type">INTEGER</span></td>
+                    <td>Voted comment (null if post)</td>
+                </tr>
+                <tr>
+                    <td>vote_type</td>
+                    <td><span class="type">VARCHAR(10)</span></td>
+                    <td>upvote or downvote</td>
+                </tr>
+            </table>
+
+            <p style="margin-top: 10px;"><strong>Triggers:</strong> Auto-updates upvotes, downvotes, and score columns on group_posts and group_comments</p>
+        </div>
+    </div>
+</div>
+
+<!-- FUNCTIONS -->
+<div class="page" id="functions">
+    <h2>8. Stored Functions & Procedures</h2>
+
+    <div class="function-container">
+        <div class="function-header">update_updated_at_column()</div>
+        <div class="function-body">
+            <p><strong>Purpose:</strong> Universal trigger function to update the updated_at timestamp</p>
+            <p><strong>Returns:</strong> TRIGGER</p>
+            <p><strong>Used by:</strong> 15+ tables</p>
+            <div class="code-block">
+<span class="keyword">CREATE OR REPLACE FUNCTION</span> <span class="function">update_updated_at_column</span>()
+<span class="keyword">RETURNS TRIGGER AS</span> $$
+<span class="keyword">BEGIN</span>
+    NEW.updated_at = CURRENT_TIMESTAMP;
+    <span class="keyword">RETURN</span> NEW;
+<span class="keyword">END</span>;
+$$ <span class="keyword">language</span> <span class="string">'plpgsql'</span>;
+            </div>
+        </div>
+    </div>
+
+    <div class="function-container">
+        <div class="function-header">update_follow_counts()</div>
+        <div class="function-body">
+            <p><strong>Purpose:</strong> Automatically update follower/following counts in user_stats</p>
+            <p><strong>Returns:</strong> TRIGGER</p>
+            <p><strong>Trigger:</strong> AFTER INSERT OR DELETE ON follows</p>
+            <div class="code-block">
+<span class="comment">-- Increments following_count for follower</span>
+<span class="comment">-- Increments follower_count for following</span>
+<span class="comment">-- Uses UPSERT (ON CONFLICT) for atomic updates</span>
+<span class="comment">-- Ensures counts never go below 0 with GREATEST(0, count - 1)</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="function-container">
+        <div class="function-header">calculate_distance_miles(lat1, lon1, lat2, lon2)</div>
+        <div class="function-body">
+            <p><strong>Purpose:</strong> Calculate distance between two coordinates using Haversine formula</p>
+            <p><strong>Returns:</strong> DECIMAL(10,2) - Distance in miles</p>
+            <p><strong>Parameters:</strong> 4 DECIMAL values (latitude and longitude pairs)</p>
+            <div class="code-block">
+<span class="comment">-- Haversine formula for great-circle distance</span>
+<span class="comment">-- Accurate up to a few hundred miles</span>
+<span class="comment">-- Earth radius: 3959 miles</span>
+<span class="keyword">RETURN</span> (R * c)::<span class="type">DECIMAL</span>(<span class="string">10</span>, <span class="string">2</span>);
+            </div>
+        </div>
+    </div>
+
+    <div class="function-container">
+        <div class="function-header">find_nearby_users(user_id, lat, lon, radius_miles, limit, offset)</div>
+        <div class="function-body">
+            <p><strong>Purpose:</strong> Find users within specified radius sorted by distance</p>
+            <p><strong>Returns:</strong> TABLE with user details and distances</p>
+            <p><strong>Performance:</strong> Uses bounding box filter before exact distance calculation</p>
+            <div class="code-block">
+<span class="comment">-- Step 1: Rough bounding box filter (fast)</span>
+<span class="comment">-- Step 2: Exact distance calculation (Haversine)</span>
+<span class="comment">-- Step 3: Filter by location_sharing != 'off'</span>
+<span class="comment">-- Returns: user details + distance_miles</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="function-container">
+        <div class="function-header">update_group_member_count()</div>
+        <div class="function-body">
+            <p><strong>Purpose:</strong> Auto-update member_count on groups table</p>
+            <p><strong>Returns:</strong> TRIGGER</p>
+            <p><strong>Trigger:</strong> AFTER INSERT OR UPDATE OR DELETE ON group_memberships</p>
+            <div class="code-block">
+<span class="comment">-- Tracks status changes: active ↔ banned/pending</span>
+<span class="comment">-- Only counts 'active' members</span>
+<span class="comment">-- Handles INSERT, UPDATE, DELETE operations</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="function-container">
+        <div class="function-header">update_group_post_votes()</div>
+        <div class="function-body">
+            <p><strong>Purpose:</strong> Recalculate upvotes, downvotes, and score for group posts</p>
+            <p><strong>Returns:</strong> TRIGGER</p>
+            <p><strong>Trigger:</strong> AFTER INSERT OR UPDATE OR DELETE ON group_votes</p>
+            <div class="code-block">
+<span class="comment">-- Counts upvote/downvote using FILTER WHERE</span>
+<span class="comment">-- Calculates score = upvotes - downvotes</span>
+<span class="comment">-- Updates group_posts table atomically</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="function-container">
+        <div class="function-header">set_group_comment_path()</div>
+        <div class="function-body">
+            <p><strong>Purpose:</strong> Set ltree path for nested comments</p>
+            <p><strong>Returns:</strong> TRIGGER</p>
+            <p><strong>Trigger:</strong> BEFORE INSERT ON group_comments</p>
+            <div class="code-block">
+<span class="comment">-- Top-level: path = id (e.g., "42")</span>
+<span class="comment">-- Nested: path = parent_path.id (e.g., "42.137.245")</span>
+<span class="comment">-- Also calculates depth for nesting level</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="function-container">
+        <div class="function-header">calculate_reputation_score(user_id)</div>
+        <div class="function-body">
+            <p><strong>Purpose:</strong> Calculate user reputation score (0-1000) and level</p>
+            <p><strong>Returns:</strong> INTEGER</p>
+            <p><strong>Algorithm:</strong></p>
+            <ul style="margin-left: 20px; margin-top: 10px;">
+                <li>Base score from average rating (max 500)</li>
+                <li>Volume bonus from total ratings (max 100)</li>
+                <li>Quality content bonus (max 250)</li>
+                <li>Helpful bonus (max 100)</li>
+                <li>Verified bonus (max 50)</li>
+                <li>Penalties for reports (-10 per report)</li>
+            </ul>
+            <p style="margin-top: 10px;"><strong>Levels:</strong> newcomer (0-99), member (100-299), contributor (300-499), veteran (500-699), expert (700-849), legend (850-1000)</p>
+        </div>
+    </div>
+
+    <div class="function-container">
+        <div class="function-header">update_user_reputation()</div>
+        <div class="function-body">
+            <p><strong>Purpose:</strong> Update user_reputation table when ratings change</p>
+            <p><strong>Returns:</strong> TRIGGER</p>
+            <p><strong>Trigger:</strong> AFTER INSERT OR UPDATE OR DELETE ON user_ratings</p>
+            <div class="code-block">
+<span class="comment">-- Recalculates all aggregates:</span>
+<span class="comment">-- - Average rating across all categories</span>
+<span class="comment">-- - Rating distribution (1-5 stars)</span>
+<span class="comment">-- - Positive/neutral/negative counts</span>
+<span class="comment">-- - Category-specific averages</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="function-container">
+        <div class="function-header">is_group_member(user_id, group_id)</div>
+        <div class="function-body">
+            <p><strong>Purpose:</strong> Check if user is an active member of group</p>
+            <p><strong>Returns:</strong> BOOLEAN</p>
+            <p><strong>Usage:</strong> Permission checks in application code</p>
+        </div>
+    </div>
+
+    <div class="function-container">
+        <div class="function-header">is_group_moderator(user_id, group_id)</div>
+        <div class="function-body">
+            <p><strong>Purpose:</strong> Check if user is moderator or admin of group</p>
+            <p><strong>Returns:</strong> BOOLEAN</p>
+            <p><strong>Usage:</strong> Moderation permission checks</p>
+        </div>
+    </div>
+
+    <div class="function-container">
+        <div class="function-header">is_group_admin(user_id, group_id)</div>
+        <div class="function-body">
+            <p><strong>Purpose:</strong> Check if user is admin of group</p>
+            <p><strong>Returns:</strong> BOOLEAN</p>
+            <p><strong>Usage:</strong> Admin-only operations (settings, role changes)</p>
+        </div>
+    </div>
+</div>
+
+<!-- TRIGGERS -->
+<div class="page" id="triggers">
+    <h2>9. Triggers & Automation</h2>
+
+    <h3>Timestamp Triggers</h3>
+    <table>
+        <tr>
+            <th>Trigger Name</th>
+            <th>Table</th>
+            <th>Timing</th>
+            <th>Function</th>
+        </tr>
+        <tr>
+            <td>update_users_updated_at</td>
+            <td>users</td>
+            <td>BEFORE UPDATE</td>
+            <td>update_updated_at_column()</td>
+        </tr>
+        <tr>
+            <td>update_posts_updated_at</td>
+            <td>posts</td>
+            <td>BEFORE UPDATE</td>
+            <td>update_updated_at_column()</td>
+        </tr>
+        <tr>
+            <td>update_comments_updated_at</td>
+            <td>comments</td>
+            <td>BEFORE UPDATE</td>
+            <td>update_updated_at_column()</td>
+        </tr>
+        <tr>
+            <td>update_groups_updated_at</td>
+            <td>groups</td>
+            <td>BEFORE UPDATE</td>
+            <td>update_updated_at_column()</td>
+        </tr>
+    </table>
+
+    <h3>Denormalization Triggers</h3>
+    <table>
+        <tr>
+            <th>Trigger Name</th>
+            <th>Table</th>
+            <th>Timing</th>
+            <th>Function</th>
+            <th>Purpose</th>
+        </tr>
+        <tr>
+            <td>trigger_update_follow_counts</td>
+            <td>follows</td>
+            <td>AFTER INSERT/DELETE</td>
+            <td>update_follow_counts()</td>
+            <td>Update follower/following counts</td>
+        </tr>
+        <tr>
+            <td>trigger_update_share_counts</td>
+            <td>shares</td>
+            <td>AFTER INSERT/DELETE</td>
+            <td>update_share_counts()</td>
+            <td>Update share received counts</td>
+        </tr>
+        <tr>
+            <td>trigger_update_group_member_count</td>
+            <td>group_memberships</td>
+            <td>AFTER INSERT/UPDATE/DELETE</td>
+            <td>update_group_member_count()</td>
+            <td>Update group member counts</td>
+        </tr>
+        <tr>
+            <td>trigger_update_group_post_count</td>
+            <td>group_posts</td>
+            <td>AFTER INSERT/UPDATE/DELETE</td>
+            <td>update_group_post_count()</td>
+            <td>Update group post counts</td>
+        </tr>
+    </table>
+
+    <h3>Voting System Triggers</h3>
+    <table>
+        <tr>
+            <th>Trigger Name</th>
+            <th>Table</th>
+            <th>Function</th>
+            <th>Updates</th>
+        </tr>
+        <tr>
+            <td>trigger_update_group_post_votes</td>
+            <td>group_votes</td>
+            <td>update_group_post_votes()</td>
+            <td>group_posts.upvotes, downvotes, score</td>
+        </tr>
+        <tr>
+            <td>trigger_update_group_comment_votes</td>
+            <td>group_votes</td>
+            <td>update_group_comment_votes()</td>
+            <td>group_comments.upvotes, downvotes, score</td>
+        </tr>
+        <tr>
+            <td>trigger_update_group_post_comment_count</td>
+            <td>group_comments</td>
+            <td>update_group_post_comment_count()</td>
+            <td>group_posts.comment_count</td>
+        </tr>
+    </table>
+
+    <h3>Comment Path Triggers</h3>
+    <table>
+        <tr>
+            <th>Trigger Name</th>
+            <th>Table</th>
+            <th>Timing</th>
+            <th>Purpose</th>
+        </tr>
+        <tr>
+            <td>trigger_set_group_comment_path</td>
+            <td>group_comments</td>
+            <td>BEFORE INSERT</td>
+            <td>Set ltree path and depth for nested comments</td>
+        </tr>
+    </table>
+
+    <h3>Reputation Triggers</h3>
+    <table>
+        <tr>
+            <th>Trigger Name</th>
+            <th>Table</th>
+            <th>Timing</th>
+            <th>Function</th>
+        </tr>
+        <tr>
+            <td>trigger_update_user_reputation</td>
+            <td>user_ratings</td>
+            <td>AFTER INSERT/UPDATE/DELETE</td>
+            <td>update_user_reputation()</td>
+        </tr>
+        <tr>
+            <td>trigger_update_helpful_count</td>
+            <td>helpful_marks</td>
+            <td>AFTER INSERT</td>
+            <td>update_helpful_count()</td>
+        </tr>
+    </table>
+
+    <h3>Comment Metrics Triggers</h3>
+    <table>
+        <tr>
+            <th>Trigger Name</th>
+            <th>Table</th>
+            <th>Function</th>
+            <th>Purpose</th>
+        </tr>
+        <tr>
+            <td>comment_interaction_metrics_trigger</td>
+            <td>comment_interactions</td>
+            <td>update_comment_metrics()</td>
+            <td>Update aggregated metrics on new interactions</td>
+        </tr>
+    </table>
+
+    <h3>Data Retention Triggers</h3>
+    <table>
+        <tr>
+            <th>Trigger Name</th>
+            <th>Table</th>
+            <th>Function</th>
+            <th>Purpose</th>
+        </tr>
+        <tr>
+            <td>trigger_limit_location_history</td>
+            <td>location_history</td>
+            <td>limit_location_history()</td>
+            <td>Keep only last 100 location entries per user</td>
+        </tr>
+    </table>
+</div>
+
+<!-- INDEXES -->
+<div class="page" id="indexes">
+    <h2>10. Indexes & Performance Optimization</h2>
+
+    <h3>Primary Tables Indexes</h3>
+
+    <h4>users table</h4>
+    <div class="index-list">
+        <div class="index-item">
+            <div class="index-name">idx_users_username</div>
+            <div class="index-columns">(username) - Login lookups</div>
+        </div>
+        <div class="index-item">
+            <div class="index-name">idx_users_email</div>
+            <div class="index-columns">(email) - Email lookups</div>
+        </div>
+        <div class="index-item">
+            <div class="index-name">idx_users_location_coords</div>
+            <div class="index-columns">(location_latitude, location_longitude) - Geo queries</div>
+        </div>
+        <div class="index-item">
+            <div class="index-name">idx_users_location_sharing</div>
+            <div class="index-columns">(location_sharing) - Privacy filtering</div>
+        </div>
+    </div>
+
+    <h4>posts table</h4>
+    <div class="index-list">
+        <div class="index-item">
+            <div class="index-name">idx_posts_user_id</div>
+            <div class="index-columns">(user_id) - User's posts</div>
+        </div>
+        <div class="index-item">
+            <div class="index-name">idx_posts_created_at</div>
+            <div class="index-columns">(created_at) - Timeline sorting</div>
+        </div>
+        <div class="index-item">
+            <div class="index-name">idx_posts_published</div>
+            <div class="index-columns">(is_published) - Filter drafts</div>
+        </div>
+    </div>
+
+    <h4>comments table</h4>
+    <div class="index-list">
+        <div class="index-item">
+            <div class="index-name">idx_comments_post_id</div>
+            <div class="index-columns">(post_id) - Get post comments</div>
+        </div>
+        <div class="index-item">
+            <div class="index-name">idx_comments_parent_id</div>
+            <div class="index-columns">(parent_id) - Get child comments</div>
+        </div>
+        <div class="index-item">
+            <div class="index-name">idx_comments_user_id</div>
+            <div class="index-columns">(user_id) - User's comments</div>
+        </div>
+    </div>
+
+    <h3>Social Features Indexes</h3>
+
+    <h4>follows table</h4>
+    <div class="index-list">
+        <div class="index-item">
+            <div class="index-name">idx_follows_follower_id</div>
+            <div class="index-columns">(follower_id) - Who user follows</div>
+        </div>
+        <div class="index-item">
+            <div class="index-name">idx_follows_following_id</div>
+            <div class="index-columns">(following_id) - User's followers</div>
+        </div>
+        <div class="index-item">
+            <div class="index-name">idx_follows_composite</div>
+            <div class="index-columns">(follower_id, following_id, status) - Check follow status</div>
+        </div>
+    </div>
+
+    <h4>timeline_cache table</h4>
+    <div class="index-list">
+        <div class="index-item">
+            <div class="index-name">idx_timeline_user_score</div>
+            <div class="index-columns">(user_id, score DESC) - Get user timeline</div>
+        </div>
+        <div class="index-item">
+            <div class="index-name">idx_timeline_expires_at</div>
+            <div class="index-columns">(expires_at) - Cleanup old entries</div>
+        </div>
+    </div>
+
+    <h3>Group System Indexes</h3>
+
+    <h4>groups table</h4>
+    <div class="index-list">
+        <div class="index-item">
+            <div class="index-name">idx_groups_slug</div>
+            <div class="index-columns">(slug) - URL lookups</div>
+        </div>
+        <div class="index-item">
+            <div class="index-name">idx_groups_visibility</div>
+            <div class="index-columns">(visibility) - Filter by visibility</div>
+        </div>
+        <div class="index-item">
+            <div class="index-name">idx_groups_name_search</div>
+            <div class="index-columns">GIN (to_tsvector) - Full-text search</div>
+        </div>
+        <div class="index-item">
+            <div class="index-name">idx_groups_location_restricted</div>
+            <div class="index-columns">(location_restricted) WHERE TRUE - Geo groups</div>
+        </div>
+    </div>
+
+    <h4>group_posts table</h4>
+    <div class="index-list">
+        <div class="index-item">
+            <div class="index-name">idx_group_posts_group</div>
+            <div class="index-columns">(group_id) - Group's posts</div>
+        </div>
+        <div class="index-item">
+            <div class="index-name">idx_group_posts_created</div>
+            <div class="index-columns">(group_id, created_at DESC) - Sort by new</div>
+        </div>
+        <div class="index-item">
+            <div class="index-name">idx_group_posts_score</div>
+            <div class="index-columns">(group_id, score DESC) - Sort by hot</div>
+        </div>
+        <div class="index-item">
+            <div class="index-name">idx_group_posts_pinned</div>
+            <div class="index-columns">(group_id, is_pinned, created_at DESC) - Pinned posts first</div>
+        </div>
+    </div>
+
+    <h4>group_comments table</h4>
+    <div class="index-list">
+        <div class="index-item">
+            <div class="index-name">idx_group_comments_path</div>
+            <div class="index-columns">GIST (path) - ltree queries</div>
+        </div>
+        <div class="index-item">
+            <div class="index-name">idx_group_comments_post</div>
+            <div class="index-columns">(post_id) - Post's comments</div>
+        </div>
+        <div class="index-item">
+            <div class="index-name">idx_group_comments_score</div>
+            <div class="index-columns">(post_id, score DESC) - Sort by best</div>
+        </div>
+    </div>
+
+    <h3>Reputation System Indexes</h3>
+
+    <h4>user_ratings table</h4>
+    <div class="index-list">
+        <div class="index-item">
+            <div class="index-name">idx_user_ratings_rated_user</div>
+            <div class="index-columns">(rated_user_id) - User's ratings</div>
+        </div>
+        <div class="index-item">
+            <div class="index-name">idx_user_ratings_context</div>
+            <div class="index-columns">(context_type, context_id) - Rating context</div>
+        </div>
+    </div>
+
+    <h4>user_reputation table</h4>
+    <div class="index-list">
+        <div class="index-item">
+            <div class="index-name">idx_user_reputation_score</div>
+            <div class="index-columns">(reputation_score DESC) - Leaderboards</div>
+        </div>
+        <div class="index-item">
+            <div class="index-name">idx_user_reputation_level</div>
+            <div class="index-columns">(reputation_level) - Filter by level</div>
+        </div>
+    </div>
+
+    <h3>Performance Optimization Notes</h3>
+    <ul style="margin: 20px; line-height: 2;">
+        <li><strong>Composite Indexes:</strong> Used for multi-column queries (e.g., filtering + sorting)</li>
+        <li><strong>Partial Indexes:</strong> indexes with WHERE clauses for specific subsets (e.g., active users only)</li>
+        <li><strong>GIN Indexes:</strong> For full-text search and ltree path queries</li>
+        <li><strong>GIST Indexes:</strong> For geometric and ltree data types</li>
+        <li><strong>Foreign Key Indexes:</strong> All FK columns are indexed for join performance</li>
+        <li><strong>Timestamp Indexes:</strong> DESC order for timeline queries (newest first)</li>
+    </ul>
+</div>
+
+<!-- FINAL PAGE -->
+<div class="page">
+    <h2>Summary Statistics</h2>
+
+    <div class="stats-grid">
+        <div class="stat-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+            <div class="stat-value">25</div>
+            <div class="stat-label">Total Tables</div>
+        </div>
+        <div class="stat-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+            <div class="stat-value">32</div>
+            <div class="stat-label">Functions</div>
+        </div>
+        <div class="stat-card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+            <div class="stat-value">18</div>
+            <div class="stat-label">Triggers</div>
+        </div>
+        <div class="stat-card" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
+            <div class="stat-value">85+</div>
+            <div class="stat-label">Indexes</div>
+        </div>
+    </div>
+
+    <h3>Table Categories</h3>
+    <table>
+        <tr>
+            <th>Category</th>
+            <th>Tables</th>
+            <th>Count</th>
+        </tr>
+        <tr>
+            <td><strong>Core System</strong></td>
+            <td>users, posts, comments, media, reactions</td>
+            <td>5</td>
+        </tr>
+        <tr>
+            <td><strong>Social Features</strong></td>
+            <td>follows, shares, user_stats, timeline_cache</td>
+            <td>4</td>
+        </tr>
+        <tr>
+            <td><strong>Interaction Tracking</strong></td>
+            <td>comment_interactions, comment_metrics</td>
+            <td>2</td>
+        </tr>
+        <tr>
+            <td><strong>Reputation System</strong></td>
+            <td>user_ratings, user_reputation, rating_reports, helpful_marks</td>
+            <td>4</td>
+        </tr>
+        <tr>
+            <td><strong>Geolocation</strong></td>
+            <td>location_history, nearby_search_cache (+ columns in users)</td>
+            <td>2</td>
+        </tr>
+        <tr>
+            <td><strong>Group System</strong></td>
+            <td>groups, group_memberships, group_posts, group_comments, group_votes, group_post_media, group_comment_media, group_invitations, group_activity_log</td>
+            <td>9</td>
+        </tr>
+    </table>
+
+    <h3>Key Features</h3>
+    <ul style="margin: 20px; line-height: 2;">
+        <li><strong>Automatic Denormalization:</strong> Triggers maintain counts and scores</li>
+        <li><strong>Full-Text Search:</strong> GIN indexes on text fields for fast searching</li>
+        <li><strong>Nested Comments:</strong> Support for both traditional parent_id and ltree paths</li>
+        <li><strong>Geolocation:</strong> Haversine distance calculations without PostGIS</li>
+        <li><strong>Privacy Controls:</strong> Granular location sharing settings</li>
+        <li><strong>Reddit-style Voting:</strong> Upvote/downvote system with auto-calculated scores</li>
+        <li><strong>Moderation System:</strong> Activity logs and role-based permissions</li>
+        <li><strong>Reputation Tracking:</strong> Multi-factor reputation scoring (0-1000)</li>
+        <li><strong>Timeline Algorithm:</strong> Scored cache system for personalized feeds</li>
+    </ul>
+
+    <div style="margin-top: 40px; padding: 20px; background: #ecf0f1; border-radius: 8px; text-align: center;">
+        <p style="font-size: 14pt; color: #2c3e50; margin-bottom: 10px;">
+            <strong>Database Schema Documentation</strong>
+        </p>
+        <p style="font-size: 10pt; color: #7f8c8d;">
+            Social Media Posting System • PostgreSQL 15 • Version 1.0
+        </p>
+        <p style="font-size: 9pt; color: #95a5a6; margin-top: 10px;" id="footer-date">
+            Generated: <span id="footer-date-value"></span>
+        </p>
+    </div>
+</div>
+
+<script>
+    // Set generation date
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+    document.getElementById('generation-date').textContent = dateStr;
+    document.getElementById('footer-date-value').textContent = dateStr;
+</script>
+
+</body>
+</html>

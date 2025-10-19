@@ -42,6 +42,10 @@ export interface Group {
   rules?: string;
   created_at: string;
   updated_at: string;
+  user_membership?: {
+    status: MemberStatus;
+    role: MemberRole;
+  };
 }
 
 export interface GroupMembership {
