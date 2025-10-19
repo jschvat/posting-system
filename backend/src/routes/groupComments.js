@@ -8,6 +8,30 @@ const GroupMembership = require('../models/GroupMembership');
 const GroupVote = require('../models/GroupVote');
 
 /**
+ * Helper function to check if user has permission for a moderation action
+ * Admins always have permission, moderators depend on group settings
+ */
+async function canModerate(group, userId, permission) {
+  const membership = await GroupMembership.findByGroupAndUser(group.id, userId);
+
+  if (!membership || membership.status !== 'active') {
+    return false;
+  }
+
+  // Admins can always perform any action
+  if (membership.role === 'admin') {
+    return true;
+  }
+
+  // Check if user is moderator and if group allows this permission
+  if (membership.role === 'moderator') {
+    return group[permission] === true;
+  }
+
+  return false;
+}
+
+/**
  * @route   GET /api/groups/:slug/posts/:postId/comments
  * @desc    Get comments for a post
  * @access  Public (for public groups) / Members only (for private groups)
@@ -544,11 +568,11 @@ router.post('/:slug/comments/:commentId/remove', authenticateToken, async (req, 
       });
     }
 
-    const isModerator = await GroupMembership.isModerator(group.id, req.user.id);
-    if (!isModerator) {
+    const hasPermission = await canModerate(group, req.user.id, 'moderator_can_remove_comments');
+    if (!hasPermission) {
       return res.status(403).json({
         success: false,
-        error: 'Only moderators can remove comments'
+        error: 'You do not have permission to remove comments'
       });
     }
 

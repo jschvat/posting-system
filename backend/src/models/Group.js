@@ -77,7 +77,10 @@ class Group {
     const allowedFields = [
       'display_name', 'description', 'avatar_url', 'banner_url',
       'visibility', 'require_approval', 'allow_posts', 'post_approval_required',
-      'allow_multimedia', 'allowed_media_types', 'max_file_size_mb', 'settings'
+      'allow_multimedia', 'allowed_media_types', 'max_file_size_mb', 'settings',
+      'allow_text_posts', 'allow_link_posts', 'allow_image_posts', 'allow_video_posts', 'allow_poll_posts',
+      'moderator_can_remove_posts', 'moderator_can_remove_comments', 'moderator_can_ban_members',
+      'moderator_can_approve_posts', 'moderator_can_approve_members', 'moderator_can_pin_posts', 'moderator_can_lock_posts'
     ];
 
     const fields = [];

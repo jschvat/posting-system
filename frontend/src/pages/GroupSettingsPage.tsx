@@ -38,6 +38,15 @@ const GroupSettingsPage: React.FC = () => {
   const [allowVideoPosts, setAllowVideoPosts] = useState(true);
   const [allowPollPosts, setAllowPollPosts] = useState(true);
 
+  // Moderator permission settings
+  const [moderatorCanRemovePosts, setModeratorCanRemovePosts] = useState(true);
+  const [moderatorCanRemoveComments, setModeratorCanRemoveComments] = useState(true);
+  const [moderatorCanBanMembers, setModeratorCanBanMembers] = useState(true);
+  const [moderatorCanApprovePosts, setModeratorCanApprovePosts] = useState(true);
+  const [moderatorCanApproveMembers, setModeratorCanApproveMembers] = useState(true);
+  const [moderatorCanPinPosts, setModeratorCanPinPosts] = useState(true);
+  const [moderatorCanLockPosts, setModeratorCanLockPosts] = useState(true);
+
   useEffect(() => {
     if (!user) {
       navigate('/login');
@@ -69,6 +78,15 @@ const GroupSettingsPage: React.FC = () => {
         setAllowImagePosts(g.allow_image_posts);
         setAllowVideoPosts(g.allow_video_posts);
         setAllowPollPosts(g.allow_poll_posts);
+
+        // Moderator permissions
+        setModeratorCanRemovePosts(g.moderator_can_remove_posts);
+        setModeratorCanRemoveComments(g.moderator_can_remove_comments);
+        setModeratorCanBanMembers(g.moderator_can_ban_members);
+        setModeratorCanApprovePosts(g.moderator_can_approve_posts);
+        setModeratorCanApproveMembers(g.moderator_can_approve_members);
+        setModeratorCanPinPosts(g.moderator_can_pin_posts);
+        setModeratorCanLockPosts(g.moderator_can_lock_posts);
 
         // Check if user is admin
         const membershipRes = await groupsApi.checkMembership(slug);
@@ -111,7 +129,14 @@ const GroupSettingsPage: React.FC = () => {
         allow_link_posts: allowLinkPosts,
         allow_image_posts: allowImagePosts,
         allow_video_posts: allowVideoPosts,
-        allow_poll_posts: allowPollPosts
+        allow_poll_posts: allowPollPosts,
+        moderator_can_remove_posts: moderatorCanRemovePosts,
+        moderator_can_remove_comments: moderatorCanRemoveComments,
+        moderator_can_ban_members: moderatorCanBanMembers,
+        moderator_can_approve_posts: moderatorCanApprovePosts,
+        moderator_can_approve_members: moderatorCanApproveMembers,
+        moderator_can_pin_posts: moderatorCanPinPosts,
+        moderator_can_lock_posts: moderatorCanLockPosts
       });
 
       if (response.success) {
@@ -266,6 +291,88 @@ const GroupSettingsPage: React.FC = () => {
                 onChange={(e) => setAllowPollPosts(e.target.checked)}
               />
               <strong>Poll Posts</strong> - Allow members to create polls (coming soon)
+            </CheckboxLabel>
+          </FormGroup>
+        </FormSection>
+
+        <FormSection>
+          <SectionTitle>Moderator Permissions</SectionTitle>
+          <Help>Control what actions moderators can perform (admins can always perform all actions)</Help>
+
+          <FormGroup>
+            <CheckboxLabel>
+              <Checkbox
+                type="checkbox"
+                checked={moderatorCanRemovePosts}
+                onChange={(e) => setModeratorCanRemovePosts(e.target.checked)}
+              />
+              <strong>Remove Posts</strong> - Allow moderators to remove posts with a reason
+            </CheckboxLabel>
+          </FormGroup>
+
+          <FormGroup>
+            <CheckboxLabel>
+              <Checkbox
+                type="checkbox"
+                checked={moderatorCanRemoveComments}
+                onChange={(e) => setModeratorCanRemoveComments(e.target.checked)}
+              />
+              <strong>Remove Comments</strong> - Allow moderators to remove comments with a reason
+            </CheckboxLabel>
+          </FormGroup>
+
+          <FormGroup>
+            <CheckboxLabel>
+              <Checkbox
+                type="checkbox"
+                checked={moderatorCanBanMembers}
+                onChange={(e) => setModeratorCanBanMembers(e.target.checked)}
+              />
+              <strong>Ban Members</strong> - Allow moderators to ban and unban members
+            </CheckboxLabel>
+          </FormGroup>
+
+          <FormGroup>
+            <CheckboxLabel>
+              <Checkbox
+                type="checkbox"
+                checked={moderatorCanApprovePosts}
+                onChange={(e) => setModeratorCanApprovePosts(e.target.checked)}
+              />
+              <strong>Approve Posts</strong> - Allow moderators to approve pending posts
+            </CheckboxLabel>
+          </FormGroup>
+
+          <FormGroup>
+            <CheckboxLabel>
+              <Checkbox
+                type="checkbox"
+                checked={moderatorCanApproveMembers}
+                onChange={(e) => setModeratorCanApproveMembers(e.target.checked)}
+              />
+              <strong>Approve Members</strong> - Allow moderators to approve membership requests
+            </CheckboxLabel>
+          </FormGroup>
+
+          <FormGroup>
+            <CheckboxLabel>
+              <Checkbox
+                type="checkbox"
+                checked={moderatorCanPinPosts}
+                onChange={(e) => setModeratorCanPinPosts(e.target.checked)}
+              />
+              <strong>Pin Posts</strong> - Allow moderators to pin/unpin posts
+            </CheckboxLabel>
+          </FormGroup>
+
+          <FormGroup>
+            <CheckboxLabel>
+              <Checkbox
+                type="checkbox"
+                checked={moderatorCanLockPosts}
+                onChange={(e) => setModeratorCanLockPosts(e.target.checked)}
+              />
+              <strong>Lock Posts</strong> - Allow moderators to lock/unlock posts (prevents comments)
             </CheckboxLabel>
           </FormGroup>
         </FormSection>

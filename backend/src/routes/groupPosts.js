@@ -9,6 +9,30 @@ const User = require('../models/User');
 const { validateUserLocation } = require('../utils/geolocation');
 
 /**
+ * Helper function to check if user has permission for a moderation action
+ * Admins always have permission, moderators depend on group settings
+ */
+async function canModerate(group, userId, permission) {
+  const membership = await GroupMembership.findByGroupAndUser(group.id, userId);
+
+  if (!membership || membership.status !== 'active') {
+    return false;
+  }
+
+  // Admins can always perform any action
+  if (membership.role === 'admin') {
+    return true;
+  }
+
+  // Check if user is moderator and if group allows this permission
+  if (membership.role === 'moderator') {
+    return group[permission] === true;
+  }
+
+  return false;
+}
+
+/**
  * @route   GET /api/groups/:slug/posts
  * @desc    Get posts in a group
  * @access  Public (for public groups) / Members only (for private groups)
@@ -559,11 +583,11 @@ router.post('/:slug/posts/:postId/pin', authenticateToken, async (req, res) => {
       });
     }
 
-    const isModerator = await GroupMembership.isModerator(group.id, req.user.id);
-    if (!isModerator) {
+    const hasPermission = await canModerate(group, req.user.id, 'moderator_can_pin_posts');
+    if (!hasPermission) {
       return res.status(403).json({
         success: false,
-        error: 'Only moderators can pin posts'
+        error: 'You do not have permission to pin posts'
       });
     }
 
@@ -589,7 +613,7 @@ router.post('/:slug/posts/:postId/pin', authenticateToken, async (req, res) => {
  */
 router.post('/:slug/posts/:postId/lock', authenticateToken, async (req, res) => {
   try {
-    const { slug, postId } = req.params;
+    const { slug, postId} = req.params;
 
     const group = await Group.findBySlug(slug);
     if (!group) {
@@ -599,11 +623,11 @@ router.post('/:slug/posts/:postId/lock', authenticateToken, async (req, res) => 
       });
     }
 
-    const isModerator = await GroupMembership.isModerator(group.id, req.user.id);
-    if (!isModerator) {
+    const hasPermission = await canModerate(group, req.user.id, 'moderator_can_lock_posts');
+    if (!hasPermission) {
       return res.status(403).json({
         success: false,
-        error: 'Only moderators can lock posts'
+        error: 'You do not have permission to lock posts'
       });
     }
 
@@ -647,11 +671,11 @@ router.post('/:slug/posts/:postId/remove', authenticateToken, async (req, res) =
       });
     }
 
-    const isModerator = await GroupMembership.isModerator(group.id, req.user.id);
-    if (!isModerator) {
+    const hasPermission = await canModerate(group, req.user.id, 'moderator_can_remove_posts');
+    if (!hasPermission) {
       return res.status(403).json({
         success: false,
-        error: 'Only moderators can remove posts'
+        error: 'You do not have permission to remove posts'
       });
     }
 
@@ -687,11 +711,11 @@ router.post('/:slug/posts/:postId/approve', authenticateToken, async (req, res) 
       });
     }
 
-    const isModerator = await GroupMembership.isModerator(group.id, req.user.id);
-    if (!isModerator) {
+    const hasPermission = await canModerate(group, req.user.id, 'moderator_can_approve_posts');
+    if (!hasPermission) {
       return res.status(403).json({
         success: false,
-        error: 'Only moderators can approve posts'
+        error: 'You do not have permission to approve posts'
       });
     }
 

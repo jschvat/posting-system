@@ -12,6 +12,30 @@ const User = require('../models/User');
 const { validateUserLocation } = require('../utils/geolocation');
 const db = require('../config/database');
 
+/**
+ * Helper function to check if user has permission for a moderation action
+ * Admins always have permission, moderators depend on group settings
+ */
+async function canModerate(group, userId, permission) {
+  const membership = await GroupMembership.findByGroupAndUser(group.id, userId);
+
+  if (!membership || membership.status !== 'active') {
+    return false;
+  }
+
+  // Admins can always perform any action
+  if (membership.role === 'admin') {
+    return true;
+  }
+
+  // Check if user is moderator and if group allows this permission
+  if (membership.role === 'moderator') {
+    return group[permission] === true;
+  }
+
+  return false;
+}
+
 // Load environment variables for group uploads
 const GROUP_AVATAR_PATH = process.env.GROUP_AVATAR_PATH || '../uploads/groups/avatars';
 const GROUP_BANNER_PATH = process.env.GROUP_BANNER_PATH || '../uploads/groups/banners';
@@ -1033,12 +1057,12 @@ router.post('/:slug/members/:userId/ban', authenticateToken, async (req, res) =>
       });
     }
 
-    // Check if user is moderator or admin
-    const isModerator = await GroupMembership.isModerator(group.id, req.user.id);
-    if (!isModerator) {
+    // Check if user has permission to ban members
+    const hasPermission = await canModerate(group, req.user.id, 'moderator_can_ban_members');
+    if (!hasPermission) {
       return res.status(403).json({
         success: false,
-        error: 'Only moderators and admins can ban members'
+        error: 'You do not have permission to ban members'
       });
     }
 
@@ -1079,12 +1103,12 @@ router.post('/:slug/members/:userId/unban', authenticateToken, async (req, res) 
       });
     }
 
-    // Check if user is moderator or admin
-    const isModerator = await GroupMembership.isModerator(group.id, req.user.id);
-    if (!isModerator) {
+    // Check if user has permission to ban/unban members
+    const hasPermission = await canModerate(group, req.user.id, 'moderator_can_ban_members');
+    if (!hasPermission) {
       return res.status(403).json({
         success: false,
-        error: 'Only moderators and admins can unban members'
+        error: 'You do not have permission to unban members'
       });
     }
 
@@ -1162,12 +1186,12 @@ router.post('/:slug/members/:userId/approve', authenticateToken, async (req, res
       });
     }
 
-    // Check if user is moderator or admin
-    const isModerator = await GroupMembership.isModerator(group.id, req.user.id);
-    if (!isModerator) {
+    // Check if user has permission to approve members
+    const hasPermission = await canModerate(group, req.user.id, 'moderator_can_approve_members');
+    if (!hasPermission) {
       return res.status(403).json({
         success: false,
-        error: 'Only moderators and admins can approve membership requests'
+        error: 'You do not have permission to approve membership requests'
       });
     }
 
