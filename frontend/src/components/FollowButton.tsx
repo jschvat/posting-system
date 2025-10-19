@@ -8,6 +8,7 @@ import styled from 'styled-components';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { followsApi } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from './Toast';
 
 interface FollowButtonProps {
   userId: number;
@@ -76,6 +77,7 @@ const FollowButton: React.FC<FollowButtonProps> = ({
   const { state } = useAuth();
   const user = state.user;
   const queryClient = useQueryClient();
+  const { showError, showInfo } = useToast();
 
   // ALL HOOKS MUST COME BEFORE ANY EARLY RETURNS
 
@@ -116,7 +118,7 @@ const FollowButton: React.FC<FollowButtonProps> = ({
       console.error('[FollowButton] Follow error:', error);
       // Revert optimistic update on error
       queryClient.invalidateQueries({ queryKey: ['followStatus', userId] });
-      alert(error.response?.data?.error?.message || 'Failed to follow user. Please try again.');
+      showError(error.response?.data?.error?.message || 'Failed to follow user. Please try again.');
     },
   });
 
@@ -148,7 +150,7 @@ const FollowButton: React.FC<FollowButtonProps> = ({
       console.error('[FollowButton] Unfollow error:', error);
       // Revert optimistic update on error
       queryClient.invalidateQueries({ queryKey: ['followStatus', userId] });
-      alert(error.response?.data?.error?.message || 'Failed to unfollow user. Please try again.');
+      showError(error.response?.data?.error?.message || 'Failed to unfollow user. Please try again.');
     },
   });
 
@@ -161,7 +163,7 @@ const FollowButton: React.FC<FollowButtonProps> = ({
     if (!user) {
       // Redirect to login or show login modal
       console.log('[FollowButton] No user logged in');
-      alert('Please login to follow users');
+      showInfo('Please login to follow users');
       return;
     }
 
