@@ -70,9 +70,7 @@ const GroupPostComposer: React.FC<GroupPostComposerProps> = ({
       setError(null);
 
       const response = await mediaApi.uploadFiles({
-        files: selectedFiles,
-        uploadedBy: 0, // Will be set by backend from auth token
-        context: 'post'
+        files: selectedFiles
       });
 
       if (response.success && response.data) {
@@ -280,7 +278,7 @@ const GroupPostComposer: React.FC<GroupPostComposerProps> = ({
                         <MediaThumbnail src={media.file_url} alt={media.alt_text || 'Uploaded image'} />
                       )}
                       {media.media_type === 'video' && (
-                        <MediaThumbnail as="div">🎥 {media.file_name}</MediaThumbnail>
+                        <MediaThumbnail as="div">🎥 {media.filename}</MediaThumbnail>
                       )}
                       <RemoveMediaButton onClick={() => handleRemoveUploadedMedia(media.id)}>×</RemoveMediaButton>
                     </UploadedMediaItem>

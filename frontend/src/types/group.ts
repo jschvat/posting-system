@@ -130,6 +130,7 @@ export interface CreatePostData {
   content?: string;
   content_type: ContentType;
   link_url?: string;
+  media_ids?: number[];
 }
 
 export interface UpdatePostData {
