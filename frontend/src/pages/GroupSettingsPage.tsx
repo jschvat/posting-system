@@ -73,20 +73,20 @@ const GroupSettingsPage: React.FC = () => {
         setRules(g.rules || '');
 
         // Post type settings
-        setAllowTextPosts(g.allow_text_posts);
-        setAllowLinkPosts(g.allow_link_posts);
-        setAllowImagePosts(g.allow_image_posts);
-        setAllowVideoPosts(g.allow_video_posts);
-        setAllowPollPosts(g.allow_poll_posts);
+        setAllowTextPosts(g.allow_text_posts ?? true);
+        setAllowLinkPosts(g.allow_link_posts ?? true);
+        setAllowImagePosts(g.allow_image_posts ?? true);
+        setAllowVideoPosts(g.allow_video_posts ?? true);
+        setAllowPollPosts(g.allow_poll_posts ?? true);
 
         // Moderator permissions
-        setModeratorCanRemovePosts(g.moderator_can_remove_posts);
-        setModeratorCanRemoveComments(g.moderator_can_remove_comments);
-        setModeratorCanBanMembers(g.moderator_can_ban_members);
-        setModeratorCanApprovePosts(g.moderator_can_approve_posts);
-        setModeratorCanApproveMembers(g.moderator_can_approve_members);
-        setModeratorCanPinPosts(g.moderator_can_pin_posts);
-        setModeratorCanLockPosts(g.moderator_can_lock_posts);
+        setModeratorCanRemovePosts(g.moderator_can_remove_posts ?? true);
+        setModeratorCanRemoveComments(g.moderator_can_remove_comments ?? true);
+        setModeratorCanBanMembers(g.moderator_can_ban_members ?? true);
+        setModeratorCanApprovePosts(g.moderator_can_approve_posts ?? true);
+        setModeratorCanApproveMembers(g.moderator_can_approve_members ?? true);
+        setModeratorCanPinPosts(g.moderator_can_pin_posts ?? true);
+        setModeratorCanLockPosts(g.moderator_can_lock_posts ?? true);
 
         // Check if user is admin
         const membershipRes = await groupsApi.checkMembership(slug);
