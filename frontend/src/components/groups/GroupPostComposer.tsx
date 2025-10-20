@@ -111,11 +111,20 @@ const GroupPostComposer: React.FC<GroupPostComposerProps> = ({
 
     try {
       setSubmitting(true);
+
+      // Use title if provided, otherwise use content preview, or default
+      const postTitle = title.trim() ||
+                       (content.trim().substring(0, 100)) ||
+                       'Untitled Post';
+
       const postData: CreatePostData = {
-        title: title.trim() || undefined,
-        content: content.trim() || undefined,
-        content_type: 'text' // Default to text, can be extended for different types
+        title: postTitle,
+        content_type: 'text'
       };
+
+      if (content.trim()) {
+        postData.content = content.trim();
+      }
 
       if (linkUrl.trim()) {
         postData.link_url = linkUrl.trim();
