@@ -271,6 +271,13 @@ export interface UpdateGroupData {
   allow_image_posts?: boolean;
   allow_video_posts?: boolean;
   allow_poll_posts?: boolean;
+  moderator_can_remove_posts?: boolean;
+  moderator_can_remove_comments?: boolean;
+  moderator_can_ban_members?: boolean;
+  moderator_can_approve_posts?: boolean;
+  moderator_can_approve_members?: boolean;
+  moderator_can_pin_posts?: boolean;
+  moderator_can_lock_posts?: boolean;
   rules?: string;
 }
 
