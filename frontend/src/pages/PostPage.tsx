@@ -11,6 +11,7 @@ import PostCard from '../components/PostCard';
 import CommentForm from '../components/CommentForm';
 import RatingBadge from '../components/RatingBadge';
 import { Post, Comment } from '../types';
+import { getApiBaseUrl } from '../config/app.config';
 
 const Container = styled.div`
   max-width: 680px;
