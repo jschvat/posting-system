@@ -136,8 +136,24 @@ const GroupPostCard: React.FC<GroupPostCardProps> = ({
         <PostLink to={`/g/${groupSlug || post.group_slug}/posts/${post.id}`}>
           <PostTitle>{post.title}</PostTitle>
 
-          {thumbnail && (
-            <Thumbnail src={thumbnail} alt={post.title} />
+          {post.media && post.media.length > 0 && (
+            <MediaGallery>
+              {post.media.slice(0, 4).map((media, index) => (
+                <MediaItem key={media.id} $count={Math.min(post.media!.length, 4)}>
+                  {media.media_type.startsWith('image') ? (
+                    <MediaImage src={media.file_url} alt={`Media ${index + 1}`} />
+                  ) : media.media_type.startsWith('video') ? (
+                    <VideoContainer>
+                      <MediaVideo src={media.file_url} controls />
+                      <VideoOverlay>▶</VideoOverlay>
+                    </VideoContainer>
+                  ) : null}
+                  {index === 3 && post.media!.length > 4 && (
+                    <MoreOverlay>+{post.media!.length - 4} more</MoreOverlay>
+                  )}
+                </MediaItem>
+              ))}
+            </MediaGallery>
           )}
 
           {post.content_type === 'link' && post.link_url && (
@@ -350,6 +366,88 @@ const Thumbnail = styled.img`
   object-fit: cover;
   border-radius: 8px;
   margin-bottom: 8px;
+`;
+
+const MediaGallery = styled.div`
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin-bottom: 12px;
+  border-radius: 8px;
+  overflow: hidden;
+`;
+
+const MediaItem = styled.div<{ $count: number }>`
+  position: relative;
+  aspect-ratio: 16 / 9;
+  background: ${props => props.theme.colors.background};
+  overflow: hidden;
+
+  ${props => props.$count === 1 && `
+    grid-column: 1 / -1;
+    aspect-ratio: 16 / 9;
+  `}
+
+  ${props => props.$count === 3 && `
+    &:first-child {
+      grid-column: 1 / -1;
+    }
+  `}
+`;
+
+const MediaImage = styled.img`
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.2s ease;
+
+  &:hover {
+    transform: scale(1.05);
+  }
+`;
+
+const VideoContainer = styled.div`
+  position: relative;
+  width: 100%;
+  height: 100%;
+`;
+
+const MediaVideo = styled.video`
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+`;
+
+const VideoOverlay = styled.div`
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 24px;
+  pointer-events: none;
+`;
+
+const MoreOverlay = styled.div`
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 24px;
+  font-weight: 600;
 `;
 
 const LinkPreview = styled.a`
