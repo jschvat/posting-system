@@ -1064,12 +1064,27 @@ const ModeratorsTab: React.FC<{ slug: string }> = ({ slug }) => {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<number | null>(null);
   const [allMembers, setAllMembers] = useState<any[]>([]);
+  const [filteredMembers, setFilteredMembers] = useState<any[]>([]);
   const [showAddModerator, setShowAddModerator] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     loadModerators();
     loadAllMembers();
   }, [slug]);
+
+  useEffect(() => {
+    if (searchQuery.trim() === '') {
+      setFilteredMembers(allMembers);
+    } else {
+      const query = searchQuery.toLowerCase();
+      setFilteredMembers(allMembers.filter(member =>
+        member.username?.toLowerCase().includes(query) ||
+        member.display_name?.toLowerCase().includes(query) ||
+        `${member.first_name} ${member.last_name}`.toLowerCase().includes(query)
+      ));
+    }
+  }, [searchQuery, allMembers]);
 
   const loadModerators = async () => {
     try {
@@ -1097,6 +1112,7 @@ const ModeratorsTab: React.FC<{ slug: string }> = ({ slug }) => {
       const res = await groupsApi.getGroupMembers(slug, { status: 'active', role: 'member' });
       if (res.success && res.data) {
         setAllMembers(res.data.members || []);
+        setFilteredMembers(res.data.members || []);
       }
     } catch (err: any) {
       console.error('Error loading members:', err);
@@ -1154,10 +1170,21 @@ const ModeratorsTab: React.FC<{ slug: string }> = ({ slug }) => {
       {showAddModerator && (
         <div style={{ marginBottom: '24px' }}>
           <SectionTitle style={{ fontSize: '16px', marginBottom: '12px' }}>Select member to promote:</SectionTitle>
-          {allMembers.length === 0 ? (
+          <SearchInput
+            type="text"
+            placeholder="Search members..."
+            value={searchQuery}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
+            style={{ marginBottom: '12px', width: '100%' }}
+          />
+          {filteredMembers.length === 0 && searchQuery && (
+            <EmptyState>No members found matching "{searchQuery}"</EmptyState>
+          )}
+          {filteredMembers.length === 0 && !searchQuery && (
             <EmptyState>No regular members available to promote</EmptyState>
-          ) : (
-            allMembers.map(member => (
+          )}
+          {filteredMembers.length > 0 && (
+            filteredMembers.map(member => (
               <MemberCard key={member.user_id}>
                 <MemberInfo>
                   {member.avatar_url && <MemberAvatar src={member.avatar_url} alt={member.username} />}
