@@ -498,7 +498,7 @@ const getErrorMessage = (err: any): string => {
   return err.message || 'An error occurred';
 };
 
-type TabType = 'pending-members' | 'pending-posts' | 'posts' | 'members' | 'banned' | 'activity';
+type TabType = 'pending-members' | 'pending-posts' | 'posts' | 'members' | 'moderators' | 'banned' | 'activity';
 
 // Tab Components
 const PendingMembersTab: React.FC<{ slug: string }> = ({ slug }) => {
