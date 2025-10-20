@@ -221,6 +221,54 @@ const RejectButton = styled.button`
   }
 `;
 
+const SearchHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  gap: 16px;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: stretch;
+  }
+`;
+
+const SearchInput = styled.input`
+  padding: 8px 12px;
+  border: 1px solid ${props => props.theme.colors.border};
+  border-radius: 6px;
+  background: ${props => props.theme.colors.background};
+  color: ${props => props.theme.colors.text};
+  font-size: 14px;
+  min-width: 250px;
+
+  &:focus {
+    outline: none;
+    border-color: ${props => props.theme.colors.primary};
+  }
+`;
+
+const PostStatus = styled.span<{ $status: string }>`
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  background: ${props => props.$status === 'removed' ? '#e74c3c' : '#f39c12'};
+  color: white;
+`;
+
+const RemovalReason = styled.div`
+  padding: 8px;
+  background: rgba(231, 76, 60, 0.1);
+  border-left: 3px solid #e74c3c;
+  color: ${props => props.theme.colors.text.secondary};
+  font-size: 13px;
+  margin-top: 8px;
+  font-style: italic;
+`;
+
 const MemberManagementHeader = styled.div`
   display: flex;
   justify-content: space-between;
@@ -440,62 +488,6 @@ const PostActions = styled.div`
   display: flex;
   gap: 8px;
   margin-top: 12px;
-`;
-
-const PostStatus = styled.span<{ $status: string }>`
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  background: ${props => props.$status === 'removed' ? '#e74c3c' : '#f39c12'};
-  color: white;
-`;
-
-const RemovalReason = styled.div`
-  padding: 8px;
-  background: rgba(231, 76, 60, 0.1);
-  border-left: 3px solid #e74c3c;
-  color: ${props => props.theme.colors.text.secondary};
-  font-size: 13px;
-  margin-top: 8px;
-  font-style: italic;
-`;
-
-const SearchHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-  gap: 16px;
-
-  @media (max-width: ${props => props.theme.breakpoints.tablet}) {
-    flex-direction: column;
-    align-items: stretch;
-  }
-`;
-
-const SearchInput = styled.input`
-  padding: 8px 12px;
-  border: 1px solid ${props => props.theme.colors.border};
-  border-radius: 6px;
-  background: ${props => props.theme.colors.background};
-  color: ${props => props.theme.colors.text};
-  font-size: 14px;
-  min-width: 250px;
-
-  &:focus {
-    outline: none;
-    border-color: ${props => props.theme.colors.primary};
-  }
-
-  &::placeholder {
-    color: ${props => props.theme.colors.text.secondary};
-  }
-
-  @media (max-width: ${props => props.theme.breakpoints.tablet}) {
-    min-width: 100%;
-  }
 `;
 
 // Helper Functions
@@ -1277,8 +1269,9 @@ const GroupModPage: React.FC = () => {
       console.log('[GroupModPage] Group response:', groupRes);
 
       if (groupRes.success && groupRes.data) {
-        setGroup(groupRes.data);
-        console.log('[GroupModPage] Group set:', groupRes.data);
+        const g = (groupRes.data as any).group || groupRes.data;
+        setGroup(g);
+        console.log('[GroupModPage] Group set:', g);
 
         // Check membership and role
         const membershipRes = await groupsApi.checkMembership(slug);

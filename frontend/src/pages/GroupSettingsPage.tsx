@@ -64,7 +64,7 @@ const GroupSettingsPage: React.FC = () => {
 
       const groupRes = await groupsApi.getGroup(slug);
       if (groupRes.success && groupRes.data) {
-        const g = groupRes.data;
+        const g = (groupRes.data as any).group || groupRes.data;
         setGroup(g);
         setDisplayName(g.display_name);
         setDescription(g.description || '');
