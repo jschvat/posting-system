@@ -34,32 +34,22 @@ const GroupPostComposer: React.FC<GroupPostComposerProps> = ({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showLinkInput, setShowLinkInput] = useState(false);
+  const [showAttachMenu, setShowAttachMenu] = useState(false);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
 
-    // Validate file types - accept both images and videos
-    const allowedFileTypes = [
-      'image/jpeg', 'image/png', 'image/gif', 'image/webp',
-      'video/mp4', 'video/webm', 'video/ogg'
-    ];
-
-    const invalidFiles = files.filter(f => !allowedFileTypes.includes(f.type));
-    if (invalidFiles.length > 0) {
-      showError('Please select only image or video files');
-      return;
-    }
-
-    // Validate file size (50MB max)
-    const maxSize = 50 * 1024 * 1024;
+    // Validate file size (100MB max for all file types)
+    const maxSize = 100 * 1024 * 1024;
     const oversizedFiles = files.filter(f => f.size > maxSize);
     if (oversizedFiles.length > 0) {
-      showError('File size must be less than 50MB');
+      showError('File size must be less than 100MB');
       return;
     }
 
     setSelectedFiles(prev => [...prev, ...files]);
+    setShowAttachMenu(false);
   };
 
   const handleUploadFiles = async () => {
@@ -188,6 +178,18 @@ const GroupPostComposer: React.FC<GroupPostComposerProps> = ({
     }
   }, [selectedFiles.length]);
 
+  // Close menu when clicking outside
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (showAttachMenu && !(event.target as Element).closest('[data-attach-menu]')) {
+        setShowAttachMenu(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showAttachMenu]);
+
   return (
     <ComposerCard>
       <ComposerTitle>Create a Post</ComposerTitle>
@@ -265,46 +267,106 @@ const GroupPostComposer: React.FC<GroupPostComposerProps> = ({
         {error && <ErrorMessage>{error}</ErrorMessage>}
 
         <FormActions>
-          <AttachmentButtons>
-            {allowedTypes.image && (
-              <>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*,video/*"
-                  multiple
-                  onChange={handleFileSelect}
-                  style={{ display: 'none' }}
-                />
-                <ActionButton
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  title="Add images or videos"
-                >
-                  📷 Photo/Video
-                </ActionButton>
-              </>
-            )}
-            {allowedTypes.link && !showLinkInput && (
-              <ActionButton
+          <AttachmentSection>
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              onChange={handleFileSelect}
+              style={{ display: 'none' }}
+            />
+
+            <AttachMenuContainer data-attach-menu>
+              <AttachButton
                 type="button"
-                onClick={() => setShowLinkInput(true)}
-                title="Add a link"
+                onClick={() => setShowAttachMenu(!showAttachMenu)}
+                title="Add attachment"
               >
-                🔗 Link
-              </ActionButton>
-            )}
-            {allowedTypes.poll && (
-              <ActionButton
-                type="button"
-                onClick={() => showError('Poll functionality coming soon')}
-                title="Create a poll"
-                disabled
-              >
-                📊 Poll
-              </ActionButton>
-            )}
-          </AttachmentButtons>
+                <PlusIcon>+</PlusIcon>
+              </AttachButton>
+
+              {showAttachMenu && (
+                <AttachMenu>
+                  {allowedTypes.image && (
+                    <>
+                      <MenuItem onClick={() => {
+                        if (fileInputRef.current) {
+                          fileInputRef.current.accept = 'image/*';
+                          fileInputRef.current.click();
+                        }
+                      }}>
+                        <MenuIcon>📷</MenuIcon>
+                        <MenuText>Photo</MenuText>
+                      </MenuItem>
+                      <MenuItem onClick={() => {
+                        if (fileInputRef.current) {
+                          fileInputRef.current.accept = 'video/*';
+                          fileInputRef.current.click();
+                        }
+                      }}>
+                        <MenuIcon>🎥</MenuIcon>
+                        <MenuText>Video</MenuText>
+                      </MenuItem>
+                    </>
+                  )}
+                  {allowedTypes.link && (
+                    <MenuItem onClick={() => {
+                      setShowLinkInput(true);
+                      setShowAttachMenu(false);
+                    }}>
+                      <MenuIcon>🔗</MenuIcon>
+                      <MenuText>Link</MenuText>
+                    </MenuItem>
+                  )}
+                  <MenuItem onClick={() => {
+                    if (fileInputRef.current) {
+                      fileInputRef.current.accept = '.pdf';
+                      fileInputRef.current.click();
+                    }
+                  }}>
+                    <MenuIcon>📄</MenuIcon>
+                    <MenuText>PDF</MenuText>
+                  </MenuItem>
+                  <MenuItem onClick={() => {
+                    if (fileInputRef.current) {
+                      fileInputRef.current.accept = '.doc,.docx,.xls,.xlsx,.ppt,.pptx';
+                      fileInputRef.current.click();
+                    }
+                  }}>
+                    <MenuIcon>📊</MenuIcon>
+                    <MenuText>Office Document</MenuText>
+                  </MenuItem>
+                  <MenuItem onClick={() => {
+                    if (fileInputRef.current) {
+                      fileInputRef.current.accept = '.skp,.dae,.3ds,.obj,.fbx,.stl';
+                      fileInputRef.current.click();
+                    }
+                  }}>
+                    <MenuIcon>🏗️</MenuIcon>
+                    <MenuText>3D Model</MenuText>
+                  </MenuItem>
+                  <MenuItem onClick={() => {
+                    if (fileInputRef.current) {
+                      fileInputRef.current.accept = '.zip,.rar,.7z,.tar,.gz';
+                      fileInputRef.current.click();
+                    }
+                  }}>
+                    <MenuIcon>📦</MenuIcon>
+                    <MenuText>Archive</MenuText>
+                  </MenuItem>
+                  {allowedTypes.poll && (
+                    <MenuItem onClick={() => {
+                      showError('Poll functionality coming soon');
+                      setShowAttachMenu(false);
+                    }}>
+                      <MenuIcon>📊</MenuIcon>
+                      <MenuText>Poll</MenuText>
+                    </MenuItem>
+                  )}
+                </AttachMenu>
+              )}
+            </AttachMenuContainer>
+          </AttachmentSection>
 
           <SubmitButton type="submit" disabled={submitting || uploading}>
             {submitting ? 'Posting...' : 'Post'}
@@ -434,36 +496,106 @@ const FormActions = styled.div`
   border-top: 1px solid ${props => props.theme.colors.border};
 `;
 
-const AttachmentButtons = styled.div`
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
+const AttachmentSection = styled.div`
+  flex: 1;
 `;
 
-const ActionButton = styled.button`
-  padding: 8px 16px;
-  border-radius: 6px;
-  border: 1px solid ${props => props.theme.colors.border};
-  background: transparent;
-  color: ${props => props.theme.colors.text};
-  font-size: 14px;
-  font-weight: 500;
+const AttachMenuContainer = styled.div`
+  position: relative;
+  display: inline-block;
+`;
+
+const AttachButton = styled.button`
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid ${props => props.theme.colors.primary};
+  background: ${props => props.theme.colors.primary};
+  color: white;
+  font-size: 24px;
+  font-weight: 300;
   cursor: pointer;
   transition: all 0.2s ease;
   display: flex;
   align-items: center;
-  gap: 6px;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 
-  &:hover:not(:disabled) {
+  &:hover {
+    transform: rotate(90deg) scale(1.1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+
+  &:active {
+    transform: rotate(90deg) scale(0.95);
+  }
+`;
+
+const PlusIcon = styled.span`
+  line-height: 1;
+  margin-top: -2px;
+`;
+
+const AttachMenu = styled.div`
+  position: absolute;
+  bottom: 48px;
+  left: 0;
+  background: ${props => props.theme.colors.surface};
+  border: 1px solid ${props => props.theme.colors.border};
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  min-width: 200px;
+  padding: 8px;
+  z-index: 1000;
+  animation: slideUp 0.2s ease;
+
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+`;
+
+const MenuItem = styled.button`
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border: none;
+  background: transparent;
+  color: ${props => props.theme.colors.text};
+  font-size: 15px;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  text-align: left;
+
+  &:hover {
     background: ${props => props.theme.colors.background};
-    border-color: ${props => props.theme.colors.primary};
-    color: ${props => props.theme.colors.primary};
   }
 
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
+  &:active {
+    transform: scale(0.98);
   }
+`;
+
+const MenuIcon = styled.span`
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+`;
+
+const MenuText = styled.span`
+  flex: 1;
+  font-weight: 500;
 `;
 
 const SubmitButton = styled.button`
