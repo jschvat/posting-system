@@ -27,7 +27,7 @@ interface ProfileData {
 }
 
 const EditProfilePage: React.FC = () => {
-  const { state, dispatch } = useAuth();
+  const { state, updateUser } = useAuth();
   const navigate = useNavigate();
   const { showError, showSuccess } = useToast();
   const avatarInputRef = useRef<HTMLInputElement>(null);
@@ -67,7 +67,7 @@ const EditProfilePage: React.FC = () => {
   const loadProfile = async () => {
     try {
       setLoading(true);
-      const response = await usersApi.getUserById(state.user!.id);
+      const response = await usersApi.getUser(state.user!.id);
       if (response.success && response.data) {
         const user = response.data;
         setFormData({
@@ -145,7 +145,7 @@ const EditProfilePage: React.FC = () => {
       let avatarUrl = avatarPreview;
       if (avatarFile) {
         const response = await mediaApi.uploadFiles({ files: [avatarFile] });
-        if (response.success && response.data && response.data[0]) {
+        if (response.success && response.data && response.data[0] && response.data[0].file_url) {
           avatarUrl = response.data[0].file_url;
         }
       }
@@ -154,7 +154,7 @@ const EditProfilePage: React.FC = () => {
       let bannerUrl = bannerPreview;
       if (bannerFile) {
         const response = await mediaApi.uploadFiles({ files: [bannerFile] });
-        if (response.success && response.data && response.data[0]) {
+        if (response.success && response.data && response.data[0] && response.data[0].file_url) {
           bannerUrl = response.data[0].file_url;
         }
       }
@@ -172,7 +172,7 @@ const EditProfilePage: React.FC = () => {
         showSuccess('Profile updated successfully');
         // Update auth state with new user data
         if (response.data) {
-          dispatch({ type: 'UPDATE_USER', payload: response.data });
+          updateUser(response.data);
         }
         navigate(`/user/${state.user!.id}`);
       }
