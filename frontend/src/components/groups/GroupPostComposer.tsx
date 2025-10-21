@@ -95,6 +95,36 @@ const GroupPostComposer: React.FC<GroupPostComposerProps> = ({
     setUploadedMedia(prev => prev.filter(m => m.id !== mediaId));
   };
 
+  const handlePaste = (e: React.ClipboardEvent) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    const imageFiles: File[] = [];
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (item.type.indexOf('image') !== -1) {
+        const file = item.getAsFile();
+        if (file) {
+          imageFiles.push(file);
+        }
+      }
+    }
+
+    if (imageFiles.length > 0) {
+      // Validate file size (50MB max)
+      const maxSize = 50 * 1024 * 1024;
+      const oversizedFiles = imageFiles.filter(f => f.size > maxSize);
+      if (oversizedFiles.length > 0) {
+        showError('Pasted image is too large (max 50MB)');
+        return;
+      }
+
+      setSelectedFiles(prev => [...prev, ...imageFiles]);
+      showSuccess(`${imageFiles.length} image(s) pasted`);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -181,9 +211,10 @@ const GroupPostComposer: React.FC<GroupPostComposerProps> = ({
 
         <FormGroup>
           <TextArea
-            placeholder="What's on your mind?"
+            placeholder="What's on your mind? (You can paste images here)"
             value={content}
             onChange={(e) => setContent(e.target.value)}
+            onPaste={handlePaste}
             rows={4}
           />
         </FormGroup>

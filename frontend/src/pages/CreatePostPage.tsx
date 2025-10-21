@@ -290,6 +290,32 @@ const CreatePostPage: React.FC = () => {
     setSelectedFiles(prev => prev.filter((_, i) => i !== index));
   };
 
+  const handlePaste = (e: React.ClipboardEvent) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    const imageFiles: File[] = [];
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (item.type.indexOf('image') !== -1) {
+        const file = item.getAsFile();
+        if (file) {
+          imageFiles.push(file);
+        }
+      }
+    }
+
+    if (imageFiles.length > 0) {
+      if (imageFiles.length + selectedFiles.length > MAX_FILES) {
+        setError(`You can only upload up to ${MAX_FILES} files`);
+        return;
+      }
+      setSelectedFiles(prev => [...prev, ...imageFiles]);
+      setError(null);
+    }
+  };
+
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (isSubmitting) return;
@@ -347,12 +373,13 @@ const CreatePostPage: React.FC = () => {
         <Form onSubmit={handleSubmit}>
           {/* Content Input */}
           <FormGroup>
-            <Label htmlFor="content">What's on your mind? (Optional if adding media)</Label>
+            <Label htmlFor="content">What's on your mind? (You can paste images here)</Label>
             <TextArea
               id="content"
               placeholder="Share your thoughts..."
               value={formData.content}
               onChange={(e) => handleInputChange('content', e.target.value)}
+              onPaste={handlePaste}
               hasError={isContentOverLimit}
             />
             <CharacterCount isOverLimit={isContentOverLimit}>
