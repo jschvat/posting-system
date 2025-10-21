@@ -20,6 +20,7 @@ export interface User extends BaseEntity {
   display_name?: string;
   bio?: string;
   avatar_url?: string;
+  banner_url?: string;
   is_active: boolean;
   address?: string;
   location_city?: string;
@@ -32,6 +33,15 @@ export interface User extends BaseEntity {
   location_updated_at?: string;
   location_accuracy?: number;
   reputation_score?: number;
+  // Profile enhancements
+  website?: string;
+  twitter_handle?: string;
+  linkedin_url?: string;
+  github_username?: string;
+  job_title?: string;
+  company?: string;
+  tagline?: string;
+  profile_visibility?: 'public' | 'followers' | 'private';
 }
 
 export interface UserStats {
