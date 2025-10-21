@@ -1,1066 +1,701 @@
 /**
- * EditProfilePage Component
- * Comprehensive user profile editing with location features
+ * Edit Profile Page - Allow users to update their profile information
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { useAuth } from '../contexts/AuthContext';
-import { usersApi, authApi, getUserAvatarUrl } from '../services/api';
-import locationApi from '../services/locationApi';
-import { FaUser, FaLock } from 'react-icons/fa6';
-import { FaSave, FaEnvelope, FaMapMarkerAlt } from 'react-icons/fa';
-import LocationPermission from '../components/LocationPermission';
-
-const Container = styled.div`
-  max-width: 900px;
-  margin: 0 auto;
-  padding: ${({ theme }) => theme.spacing.xl};
-
-  @media (max-width: ${({ theme }) => theme.breakpoints.mobile}) {
-    padding: ${({ theme }) => theme.spacing.md};
-  }
-`;
-
-const Header = styled.div`
-  margin-bottom: ${({ theme }) => theme.spacing.xl};
-`;
-
-const Title = styled.h1`
-  font-size: 2rem;
-  color: ${({ theme }) => theme.colors.text.primary};
-  margin-bottom: ${({ theme }) => theme.spacing.sm};
-`;
-
-const Subtitle = styled.p`
-  color: ${({ theme }) => theme.colors.text.muted};
-  font-size: 0.95rem;
-`;
-
-const Section = styled.div`
-  background: ${({ theme }) => theme.colors.surface};
-  border: 1px solid ${({ theme }) => theme.colors.border};
-  border-radius: ${({ theme }) => theme.borderRadius.lg};
-  padding: ${({ theme }) => theme.spacing.xl};
-  margin-bottom: ${({ theme }) => theme.spacing.lg};
-`;
-
-const SectionTitle = styled.h2`
-  font-size: 1.3rem;
-  color: ${({ theme }) => theme.colors.text.primary};
-  margin-bottom: ${({ theme }) => theme.spacing.md};
-  display: flex;
-  align-items: center;
-  gap: ${({ theme }) => theme.spacing.sm};
-
-  svg {
-    color: ${({ theme }) => theme.colors.primary};
-  }
-`;
-
-const FormGrid = styled.div`
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: ${({ theme }) => theme.spacing.lg};
-
-  @media (min-width: ${({ theme }) => theme.breakpoints.tablet}) {
-    grid-template-columns: 1fr 1fr;
-  }
-`;
-
-const FormGroup = styled.div<{ $fullWidth?: boolean }>`
-  display: flex;
-  flex-direction: column;
-  gap: ${({ theme }) => theme.spacing.sm};
-  grid-column: ${({ $fullWidth }) => ($fullWidth ? '1 / -1' : 'auto')};
-`;
-
-const Label = styled.label`
-  font-weight: 500;
-  color: ${({ theme }) => theme.colors.text.primary};
-  font-size: 0.9rem;
-`;
-
-const Input = styled.input`
-  padding: ${({ theme }) => theme.spacing.md};
-  border: 1px solid ${({ theme }) => theme.colors.border};
-  border-radius: ${({ theme }) => theme.borderRadius.md};
-  font-size: 0.95rem;
-  color: ${({ theme }) => theme.colors.text.primary};
-  background: ${({ theme }) => theme.colors.background};
-  transition: border-color 0.2s ease;
-
-  &:focus {
-    outline: none;
-    border-color: ${({ theme }) => theme.colors.primary};
-  }
-
-  &:disabled {
-    background: ${({ theme }) => theme.colors.surface};
-    cursor: not-allowed;
-  }
-`;
-
-const TextArea = styled.textarea`
-  padding: ${({ theme }) => theme.spacing.md};
-  border: 1px solid ${({ theme }) => theme.colors.border};
-  border-radius: ${({ theme }) => theme.borderRadius.md};
-  font-size: 0.95rem;
-  color: ${({ theme }) => theme.colors.text.primary};
-  background: ${({ theme }) => theme.colors.background};
-  min-height: 100px;
-  resize: vertical;
-  font-family: inherit;
-  transition: border-color 0.2s ease;
-
-  &:focus {
-    outline: none;
-    border-color: ${({ theme }) => theme.colors.primary};
-  }
-`;
-
-const LocationOptions = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: ${({ theme }) => theme.spacing.md};
-`;
-
-const LocationToggle = styled.div`
-  display: flex;
-  gap: ${({ theme }) => theme.spacing.md};
-  margin-bottom: ${({ theme }) => theme.spacing.md};
-`;
-
-const ToggleButton = styled.button<{ $active: boolean }>`
-  padding: ${({ theme }) => theme.spacing.sm} ${({ theme }) => theme.spacing.lg};
-  border: 1px solid ${({ theme, $active }) => ($active ? theme.colors.primary : theme.colors.border)};
-  background: ${({ theme, $active }) => ($active ? theme.colors.primary : theme.colors.surface)};
-  color: ${({ theme, $active }) => ($active ? 'white' : theme.colors.text.primary)};
-  border-radius: ${({ theme }) => theme.borderRadius.md};
-  font-size: 0.9rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-
-  &:hover {
-    background: ${({ theme, $active }) => ($active ? theme.colors.primary + 'dd' : theme.colors.background)};
-  }
-`;
-
-const GpsButton = styled.button`
-  padding: ${({ theme }) => theme.spacing.md};
-  border: 1px solid ${({ theme }) => theme.colors.primary};
-  background: ${({ theme }) => theme.colors.primary};
-  color: white;
-  border-radius: ${({ theme }) => theme.borderRadius.md};
-  font-size: 0.95rem;
-  font-weight: 500;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: ${({ theme }) => theme.spacing.sm};
-  transition: all 0.2s ease;
-
-  &:hover:not(:disabled) {
-    background: ${({ theme }) => theme.colors.primary}dd;
-  }
-
-  &:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-`;
-
-const LocationInfo = styled.div`
-  padding: ${({ theme }) => theme.spacing.md};
-  background: ${({ theme }) => theme.colors.background};
-  border: 1px solid ${({ theme }) => theme.colors.border};
-  border-radius: ${({ theme }) => theme.borderRadius.md};
-  font-size: 0.9rem;
-  color: ${({ theme }) => theme.colors.text.secondary};
-`;
-
-const PrivacyOptions = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: ${({ theme }) => theme.spacing.sm};
-`;
-
-const RadioOption = styled.label`
-  display: flex;
-  align-items: flex-start;
-  gap: ${({ theme }) => theme.spacing.sm};
-  padding: ${({ theme }) => theme.spacing.md};
-  border: 1px solid ${({ theme }) => theme.colors.border};
-  border-radius: ${({ theme }) => theme.borderRadius.md};
-  cursor: pointer;
-  transition: all 0.2s ease;
-
-  &:hover {
-    background: ${({ theme }) => theme.colors.background};
-  }
-`;
-
-const RadioInput = styled.input`
-  margin-top: 4px;
-`;
-
-const RadioContent = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: ${({ theme }) => theme.spacing.xs};
-`;
-
-const RadioTitle = styled.div`
-  font-weight: 500;
-  color: ${({ theme }) => theme.colors.text.primary};
-`;
-
-const RadioDescription = styled.div`
-  font-size: 0.85rem;
-  color: ${({ theme }) => theme.colors.text.muted};
-`;
-
-const ButtonGroup = styled.div`
-  display: flex;
-  gap: ${({ theme }) => theme.spacing.md};
-  justify-content: flex-end;
-  margin-top: ${({ theme }) => theme.spacing.lg};
-`;
-
-const Button = styled.button<{ $variant?: 'primary' | 'secondary' }>`
-  padding: ${({ theme }) => theme.spacing.md} ${({ theme }) => theme.spacing.xl};
-  border: 1px solid ${({ theme, $variant }) =>
-    $variant === 'primary' ? theme.colors.primary : theme.colors.border
-  };
-  background: ${({ theme, $variant }) =>
-    $variant === 'primary' ? theme.colors.primary : theme.colors.surface
-  };
-  color: ${({ theme, $variant }) =>
-    $variant === 'primary' ? 'white' : theme.colors.text.primary
-  };
-  border-radius: ${({ theme }) => theme.borderRadius.md};
-  font-size: 0.95rem;
-  font-weight: 500;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: ${({ theme }) => theme.spacing.sm};
-  transition: all 0.2s ease;
-
-  &:hover:not(:disabled) {
-    background: ${({ theme, $variant }) =>
-      $variant === 'primary' ? theme.colors.primary + 'dd' : theme.colors.background
-    };
-  }
-
-  &:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-`;
-
-const ErrorMessage = styled.div`
-  color: ${({ theme }) => theme.colors.error};
-  font-size: 0.9rem;
-  margin-top: ${({ theme }) => theme.spacing.sm};
-`;
-
-const SuccessMessage = styled.div`
-  color: ${({ theme }) => theme.colors.success};
-  font-size: 0.9rem;
-  margin-top: ${({ theme }) => theme.spacing.sm};
-`;
-
-const HelpText = styled.div`
-  font-size: 0.85rem;
-  color: ${({ theme }) => theme.colors.text.muted};
-  margin-top: ${({ theme }) => theme.spacing.xs};
-`;
+import { usersApi, mediaApi } from '../services/api';
+import { useToast } from '../components/Toast';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 interface ProfileData {
-  username: string;
-  email: string;
   first_name: string;
   last_name: string;
   bio: string;
-  avatar_url?: string;
-}
-
-interface LocationData {
-  latitude?: number;
-  longitude?: number;
-  address?: string;
-  city?: string;
-  state?: string;
-  zip?: string;
-  country?: string;
-  accuracy?: number;
+  website: string;
+  twitter_handle: string;
+  linkedin_url: string;
+  github_username: string;
+  job_title: string;
+  company: string;
+  tagline: string;
+  location_city: string;
+  location_state: string;
+  location_country: string;
 }
 
 const EditProfilePage: React.FC = () => {
-  const { state } = useAuth();
-  const user = state.user;
+  const { state, dispatch } = useAuth();
+  const navigate = useNavigate();
+  const { showError, showSuccess } = useToast();
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const bannerInputRef = useRef<HTMLInputElement>(null);
 
-  const [profileData, setProfileData] = useState<ProfileData>({
-    username: user?.username || '',
-    email: user?.email || '',
-    first_name: user?.first_name || '',
-    last_name: user?.last_name || '',
-    bio: user?.bio || '',
-    avatar_url: user?.avatar_url || '',
-    address: user?.address || '',
-    location_city: user?.location_city || '',
-    location_state: user?.location_state || '',
-    location_zip: user?.location_zip || '',
-    location_country: user?.location_country || '',
-  } as any);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [avatarPreview, setAvatarPreview] = useState<string>('');
+  const [bannerPreview, setBannerPreview] = useState<string>('');
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [bannerFile, setBannerFile] = useState<File | null>(null);
 
-  const [locationMethod, setLocationMethod] = useState<'gps' | 'manual'>('gps');
-  const [locationData, setLocationData] = useState<LocationData>({});
-  const [locationSharing, setLocationSharing] = useState<'exact' | 'city' | 'off'>('off');
-  const [showDistanceInProfile, setShowDistanceInProfile] = useState(false);
-  const [gpsLoading, setGpsLoading] = useState(false);
-
-  const [passwordData, setPasswordData] = useState({
-    current_password: '',
-    new_password: '',
-    confirm_password: '',
+  const [formData, setFormData] = useState<ProfileData>({
+    first_name: '',
+    last_name: '',
+    bio: '',
+    website: '',
+    twitter_handle: '',
+    linkedin_url: '',
+    github_username: '',
+    job_title: '',
+    company: '',
+    tagline: '',
+    location_city: '',
+    location_state: '',
+    location_country: ''
   });
 
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
-
-  // Load current user location settings
   useEffect(() => {
-    const loadUserLocation = async () => {
-      if (!user?.id) return;
+    if (!state.user) {
+      navigate('/login');
+      return;
+    }
+    loadProfile();
+  }, [state.user]);
 
-      try {
-        const response = await locationApi.getUserLocation(user.id);
-        console.log('Loaded user location:', response);
-        if (response.success && response.data?.location) {
-          const loc = response.data.location;
-          setLocationData({
-            latitude: loc.latitude ?? undefined,
-            longitude: loc.longitude ?? undefined,
-            city: loc.city ?? undefined,
-            state: loc.state ?? undefined,
-            country: loc.country ?? undefined,
-            accuracy: loc.accuracy ?? undefined,
-          });
-          setLocationSharing(loc.sharing || 'off');
-        }
-      } catch (err) {
-        console.error('Error loading user location:', err);
+  const loadProfile = async () => {
+    try {
+      setLoading(true);
+      const response = await usersApi.getUserById(state.user!.id);
+      if (response.success && response.data) {
+        const user = response.data;
+        setFormData({
+          first_name: user.first_name || '',
+          last_name: user.last_name || '',
+          bio: user.bio || '',
+          website: user.website || '',
+          twitter_handle: user.twitter_handle || '',
+          linkedin_url: user.linkedin_url || '',
+          github_username: user.github_username || '',
+          job_title: user.job_title || '',
+          company: user.company || '',
+          tagline: user.tagline || '',
+          location_city: user.location_city || '',
+          location_state: user.location_state || '',
+          location_country: user.location_country || ''
+        });
+        setAvatarPreview(user.avatar_url || '');
+        setBannerPreview(user.banner_url || '');
       }
-    };
-
-    loadUserLocation();
-  }, [user?.id]);
-
-  const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    setProfileData({
-      ...profileData,
-      [e.target.name]: e.target.value,
-    });
+    } catch (err: any) {
+      showError('Failed to load profile');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setPasswordData({
-      ...passwordData,
-      [e.target.name]: e.target.value,
-    });
+  const handleInputChange = (field: keyof ProfileData, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleLocationChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setLocationData({
-      ...locationData,
-      [e.target.name]: e.target.value,
-    });
-  };
+  const handleAvatarSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-  const captureGpsLocation = async () => {
-    if (!navigator.geolocation) {
-      setError('Geolocation is not supported by your browser');
+    if (!file.type.startsWith('image/')) {
+      showError('Please select an image file');
       return;
     }
 
-    setGpsLoading(true);
-    setError('');
+    if (file.size > 5 * 1024 * 1024) {
+      showError('Image must be less than 5MB');
+      return;
+    }
 
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const latitude = position.coords.latitude;
-        const longitude = position.coords.longitude;
-        const accuracy = Math.round(position.coords.accuracy);
-
-        // Try to get address information using reverse geocoding
-        try {
-          const response = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`
-          );
-          const data = await response.json();
-
-          if (data && data.address) {
-            setLocationData({
-              latitude,
-              longitude,
-              accuracy,
-              city: data.address.city || data.address.town || data.address.village || '',
-              state: data.address.state || '',
-              country: data.address.country || '',
-            });
-          } else {
-            // If reverse geocoding fails, just set coordinates
-            setLocationData({
-              latitude,
-              longitude,
-              accuracy,
-              city: locationData.city || '',
-              state: locationData.state || '',
-              country: locationData.country || '',
-            });
-          }
-
-          setSuccess('Location captured successfully!');
-          setTimeout(() => setSuccess(''), 3000);
-        } catch (err) {
-          console.error('Reverse geocoding error:', err);
-          // On error, still save the coordinates
-          setLocationData({
-            latitude,
-            longitude,
-            accuracy,
-            city: locationData.city || '',
-            state: locationData.state || '',
-            country: locationData.country || '',
-          });
-          setSuccess('Location coordinates captured!');
-          setTimeout(() => setSuccess(''), 3000);
-        }
-
-        setGpsLoading(false);
-      },
-      (error) => {
-        let errorMessage = 'Failed to capture location';
-        switch (error.code) {
-          case error.PERMISSION_DENIED:
-            errorMessage = 'Location permission denied';
-            break;
-          case error.POSITION_UNAVAILABLE:
-            errorMessage = 'Location information unavailable';
-            break;
-          case error.TIMEOUT:
-            errorMessage = 'Location request timed out';
-            break;
-        }
-        setError(errorMessage);
-        setGpsLoading(false);
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0,
-      }
-    );
+    setAvatarFile(file);
+    setAvatarPreview(URL.createObjectURL(file));
   };
 
-  const handleSaveProfile = async () => {
-    setLoading(true);
-    setError('');
-    setSuccess('');
+  const handleBannerSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      showError('Please select an image file');
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      showError('Image must be less than 10MB');
+      return;
+    }
+
+    setBannerFile(file);
+    setBannerPreview(URL.createObjectURL(file));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
 
     try {
-      // Prepare update data, removing empty strings for optional URL fields
+      setSaving(true);
+
+      // Upload avatar if changed
+      let avatarUrl = avatarPreview;
+      if (avatarFile) {
+        const response = await mediaApi.uploadFiles({ files: [avatarFile] });
+        if (response.success && response.data && response.data[0]) {
+          avatarUrl = response.data[0].file_url;
+        }
+      }
+
+      // Upload banner if changed
+      let bannerUrl = bannerPreview;
+      if (bannerFile) {
+        const response = await mediaApi.uploadFiles({ files: [bannerFile] });
+        if (response.success && response.data && response.data[0]) {
+          bannerUrl = response.data[0].file_url;
+        }
+      }
+
+      // Update profile
       const updateData = {
-        ...profileData,
-        avatar_url: profileData.avatar_url || undefined, // Don't send empty string
+        ...formData,
+        avatar_url: avatarUrl,
+        banner_url: bannerUrl
       };
 
-      console.log('Sending update data:', updateData);
-
-      // Update profile using users API
-      const response = await usersApi.updateUser(user!.id, updateData);
+      const response = await usersApi.updateUser(state.user!.id, updateData);
 
       if (response.success) {
-        // Update localStorage
-        localStorage.setItem('userData', JSON.stringify({ ...user, ...profileData }));
-
-        setSuccess('Profile updated successfully! Please refresh to see changes.');
-        setTimeout(() => setSuccess(''), 5000);
-      }
-    } catch (err: any) {
-      console.error('Profile update error:', err);
-      console.error('Error response:', err.response?.data);
-      const errorMsg = err.response?.data?.error?.message || err.message || 'Failed to update profile';
-      setError(errorMsg);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSaveLocation = async () => {
-    console.log('handleSaveLocation called');
-    console.log('Location data:', locationData);
-    console.log('Location sharing:', locationSharing);
-    console.log('Show distance:', showDistanceInProfile);
-
-    setLoading(true);
-    setError('');
-    setSuccess('');
-
-    try {
-      // Update location if we have coordinates OR city/state/country
-      if (locationData.latitude && locationData.longitude) {
-        console.log('Updating location with coordinates...');
-        const locationResult = await locationApi.updateLocation({
-          latitude: locationData.latitude,
-          longitude: locationData.longitude,
-          address: locationData.address || undefined,
-          city: locationData.city || undefined,
-          state: locationData.state || undefined,
-          zip: locationData.zip || undefined,
-          country: locationData.country || undefined,
-          accuracy: locationData.accuracy || undefined,
-        });
-        console.log('Location update result:', locationResult);
-      } else if (locationData.city || locationData.state || locationData.country || locationData.address) {
-        // For manual entry without GPS, we'll need to geocode or set coordinates to 0,0
-        console.log('Updating location without coordinates (manual entry)...');
-        // Use 0,0 as placeholder coordinates when only city/state/country provided
-        const locationResult = await locationApi.updateLocation({
-          latitude: 0,
-          longitude: 0,
-          address: locationData.address || undefined,
-          city: locationData.city || undefined,
-          state: locationData.state || undefined,
-          zip: locationData.zip || undefined,
-          country: locationData.country || undefined,
-          accuracy: undefined,
-        });
-        console.log('Location update result:', locationResult);
-      }
-
-      // Update privacy settings
-      console.log('Updating location preferences...');
-      const prefsResult = await locationApi.updatePreferences({
-        sharing: locationSharing,
-        showDistance: showDistanceInProfile,
-      });
-      console.log('Preferences update result:', prefsResult);
-
-      // Reload user data to update profile with new location
-      if (user?.id) {
-        const updatedUserResponse = await usersApi.getUser(user.id);
-        if (updatedUserResponse.success && updatedUserResponse.data) {
-          localStorage.setItem('userData', JSON.stringify(updatedUserResponse.data));
-          console.log('User data updated in localStorage');
+        showSuccess('Profile updated successfully');
+        // Update auth state with new user data
+        if (response.data) {
+          dispatch({ type: 'UPDATE_USER', payload: response.data });
         }
+        navigate(`/user/${state.user!.id}`);
       }
-
-      setSuccess('Location settings saved successfully!');
-      setTimeout(() => setSuccess(''), 3000);
     } catch (err: any) {
-      console.error('Location save error:', err);
-      console.error('Error response:', err.response?.data);
-      const errorMsg = err.response?.data?.error?.message || err.message || 'Failed to update location';
-      setError(errorMsg);
+      showError(err.response?.data?.error?.message || 'Failed to update profile');
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
-  const handleChangePassword = async () => {
-    setLoading(true);
-    setError('');
-    setSuccess('');
-
-    if (passwordData.new_password !== passwordData.confirm_password) {
-      setError('New passwords do not match');
-      setLoading(false);
-      return;
-    }
-
-    if (passwordData.new_password.length < 6) {
-      setError('Password must be at least 6 characters');
-      setLoading(false);
-      return;
-    }
-
-    try {
-      await authApi.changePassword({
-        current_password: passwordData.current_password,
-        new_password: passwordData.new_password,
-      });
-
-      setPasswordData({
-        current_password: '',
-        new_password: '',
-        confirm_password: '',
-      });
-
-      setSuccess('Password changed successfully!');
-      setTimeout(() => setSuccess(''), 3000);
-    } catch (err: any) {
-      setError(err.message || 'Failed to change password');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (!user) {
-    return <Container><ErrorMessage>Please log in to edit your profile</ErrorMessage></Container>;
+  if (loading) {
+    return (
+      <Container>
+        <LoadingSpinner />
+      </Container>
+    );
   }
 
   return (
     <Container>
       <Header>
         <Title>Edit Profile</Title>
-        <Subtitle>Update your personal information and preferences</Subtitle>
+        <Subtitle>Customize your profile information</Subtitle>
       </Header>
 
-      {/* Profile Information */}
-      <Section>
-        <SectionTitle>
-          <FaUser />
-          Profile Information
-        </SectionTitle>
-
-        <FormGrid>
-          <FormGroup>
-            <Label>Username</Label>
-            <Input
-              type="text"
-              name="username"
-              value={profileData.username}
-              onChange={handleProfileChange}
-            />
-            <HelpText>Your unique username</HelpText>
-          </FormGroup>
-
-          <FormGroup>
-            <Label>Email</Label>
-            <Input
-              type="email"
-              name="email"
-              value={profileData.email}
-              onChange={handleProfileChange}
-            />
-          </FormGroup>
-
-          <FormGroup>
-            <Label>First Name</Label>
-            <Input
-              type="text"
-              name="first_name"
-              value={profileData.first_name}
-              onChange={handleProfileChange}
-            />
-          </FormGroup>
-
-          <FormGroup>
-            <Label>Last Name</Label>
-            <Input
-              type="text"
-              name="last_name"
-              value={profileData.last_name}
-              onChange={handleProfileChange}
-            />
-          </FormGroup>
-
-          <FormGroup $fullWidth>
-            <Label>Avatar</Label>
-            <Input
+      <Form onSubmit={handleSubmit}>
+        {/* Banner Upload */}
+        <Section>
+          <SectionTitle>Banner Image</SectionTitle>
+          <BannerUploadArea onClick={() => bannerInputRef.current?.click()}>
+            {bannerPreview ? (
+              <BannerPreview src={bannerPreview} alt="Banner" />
+            ) : (
+              <UploadPlaceholder>
+                <UploadIcon>🖼️</UploadIcon>
+                <UploadText>Click to upload banner image</UploadText>
+                <UploadHint>Recommended size: 1500x500px</UploadHint>
+              </UploadPlaceholder>
+            )}
+            <input
+              ref={bannerInputRef}
               type="file"
               accept="image/*"
-              onChange={async (e) => {
-                const file = e.target.files?.[0];
-                if (file && user) {
-                  setLoading(true);
-                  setError('');
-                  setSuccess('');
-
-                  try {
-                    const response = await usersApi.uploadAvatar(user.id, file);
-                    if (response.success && response.data) {
-                      // Update local state with new avatar URL
-                      setProfileData({
-                        ...profileData,
-                        avatar_url: response.data.avatar_url
-                      });
-
-                      // Update localStorage
-                      const updatedUser = { ...user, avatar_url: response.data.avatar_url };
-                      localStorage.setItem('userData', JSON.stringify(updatedUser));
-
-                      setSuccess('Avatar uploaded successfully! Refresh to see changes.');
-                      setTimeout(() => setSuccess(''), 3000);
-                    }
-                  } catch (err: any) {
-                    console.error('Avatar upload error:', err);
-                    const errorMsg = err.response?.data?.error?.message || err.message || 'Failed to upload avatar';
-                    setError(errorMsg);
-                  } finally {
-                    setLoading(false);
-                  }
-                }
-              }}
+              onChange={handleBannerSelect}
+              style={{ display: 'none' }}
             />
-            <HelpText>Upload a profile picture (JPG, PNG, GIF, WebP, max 5MB)</HelpText>
-            {user && profileData.avatar_url && (
-              <div style={{ marginTop: '8px' }}>
-                <img src={getUserAvatarUrl(user)} alt="Current avatar" style={{ width: '80px', height: '80px', borderRadius: '50%', objectFit: 'cover' }} />
-              </div>
+          </BannerUploadArea>
+        </Section>
+
+        {/* Avatar Upload */}
+        <Section>
+          <SectionTitle>Profile Picture</SectionTitle>
+          <AvatarUploadArea onClick={() => avatarInputRef.current?.click()}>
+            {avatarPreview ? (
+              <AvatarPreview src={avatarPreview} alt="Avatar" />
+            ) : (
+              <AvatarPlaceholder>
+                {state.user?.first_name[0]}{state.user?.last_name[0]}
+              </AvatarPlaceholder>
             )}
+            <input
+              ref={avatarInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleAvatarSelect}
+              style={{ display: 'none' }}
+            />
+            <AvatarOverlay>
+              <span>📷</span>
+              <span>Change</span>
+            </AvatarOverlay>
+          </AvatarUploadArea>
+        </Section>
+
+        {/* Basic Info */}
+        <Section>
+          <SectionTitle>Basic Information</SectionTitle>
+          <Row>
+            <FormGroup>
+              <Label>First Name</Label>
+              <Input
+                type="text"
+                value={formData.first_name}
+                onChange={(e) => handleInputChange('first_name', e.target.value)}
+                required
+              />
+            </FormGroup>
+            <FormGroup>
+              <Label>Last Name</Label>
+              <Input
+                type="text"
+                value={formData.last_name}
+                onChange={(e) => handleInputChange('last_name', e.target.value)}
+                required
+              />
+            </FormGroup>
+          </Row>
+
+          <FormGroup>
+            <Label>Tagline</Label>
+            <Input
+              type="text"
+              placeholder="A short headline about you..."
+              value={formData.tagline}
+              onChange={(e) => handleInputChange('tagline', e.target.value)}
+              maxLength={200}
+            />
           </FormGroup>
 
-          <FormGroup $fullWidth>
+          <FormGroup>
             <Label>Bio</Label>
             <TextArea
-              name="bio"
-              value={profileData.bio}
-              onChange={handleProfileChange}
               placeholder="Tell us about yourself..."
+              value={formData.bio}
+              onChange={(e) => handleInputChange('bio', e.target.value)}
+              rows={4}
             />
           </FormGroup>
+        </Section>
 
-          <FormGroup $fullWidth>
-            <Label>Address</Label>
-            <Input
-              type="text"
-              name="address"
-              value={(profileData as any).address || ''}
-              onChange={handleProfileChange}
-              placeholder="123 Main St"
-            />
-          </FormGroup>
-
-          <FormGroup>
-            <Label>City</Label>
-            <Input
-              type="text"
-              name="location_city"
-              value={(profileData as any).location_city || ''}
-              onChange={handleProfileChange}
-              placeholder="San Francisco"
-            />
-          </FormGroup>
-
-          <FormGroup>
-            <Label>State / Province</Label>
-            <Input
-              type="text"
-              name="location_state"
-              value={(profileData as any).location_state || ''}
-              onChange={handleProfileChange}
-              placeholder="California"
-            />
-          </FormGroup>
-
-          <FormGroup>
-            <Label>ZIP / Postal Code</Label>
-            <Input
-              type="text"
-              name="location_zip"
-              value={(profileData as any).location_zip || ''}
-              onChange={handleProfileChange}
-              placeholder="94102"
-            />
-          </FormGroup>
-
-          <FormGroup>
-            <Label>Country</Label>
-            <Input
-              type="text"
-              name="location_country"
-              value={(profileData as any).location_country || ''}
-              onChange={handleProfileChange}
-              placeholder="United States"
-            />
-          </FormGroup>
-        </FormGrid>
-
-        <ButtonGroup>
-          <Button $variant="primary" onClick={handleSaveProfile} disabled={loading}>
-            <FaSave />
-            Save Profile
-          </Button>
-        </ButtonGroup>
-      </Section>
-
-      {/* Location Settings */}
-      <Section>
-        <SectionTitle>
-          <FaMapMarkerAlt />
-          Location Settings
-        </SectionTitle>
-
-        <LocationOptions>
-          <LocationToggle>
-            <ToggleButton
-              $active={locationMethod === 'gps'}
-              onClick={() => setLocationMethod('gps')}
-            >
-              Use GPS
-            </ToggleButton>
-            <ToggleButton
-              $active={locationMethod === 'manual'}
-              onClick={() => setLocationMethod('manual')}
-            >
-              Manual Entry
-            </ToggleButton>
-          </LocationToggle>
-
-          {locationMethod === 'gps' ? (
-            <>
-              <GpsButton onClick={captureGpsLocation} disabled={gpsLoading}>
-                <FaMapMarkerAlt />
-                {gpsLoading ? 'Getting Location...' : 'Capture My Location'}
-              </GpsButton>
-
-              {(locationData.latitude && locationData.longitude) && (
-                <FormGrid>
-                  <FormGroup>
-                    <Label>City</Label>
-                    <Input
-                      type="text"
-                      name="city"
-                      value={locationData.city || ''}
-                      onChange={handleLocationChange}
-                      placeholder="San Francisco"
-                    />
-                  </FormGroup>
-
-                  <FormGroup>
-                    <Label>State / Province</Label>
-                    <Input
-                      type="text"
-                      name="state"
-                      value={locationData.state || ''}
-                      onChange={handleLocationChange}
-                      placeholder="California"
-                    />
-                  </FormGroup>
-
-                  <FormGroup $fullWidth>
-                    <Label>Country</Label>
-                    <Input
-                      type="text"
-                      name="country"
-                      value={locationData.country || ''}
-                      onChange={handleLocationChange}
-                      placeholder="United States"
-                    />
-                  </FormGroup>
-
-                  <FormGroup $fullWidth>
-                    <LocationInfo>
-                      📍 Coordinates: {locationData.latitude.toFixed(6)}, {locationData.longitude.toFixed(6)}
-                      {locationData.accuracy && ` (±${Math.round(locationData.accuracy)}m accuracy)`}
-                    </LocationInfo>
-                  </FormGroup>
-                </FormGrid>
-              )}
-
-              <LocationPermission />
-            </>
-          ) : (
-            <FormGrid>
-              <FormGroup $fullWidth>
-                <Label>Address</Label>
-                <Input
-                  type="text"
-                  name="address"
-                  value={locationData.address || ''}
-                  onChange={handleLocationChange}
-                  placeholder="123 Main St"
-                />
-              </FormGroup>
-
-              <FormGroup>
-                <Label>City</Label>
-                <Input
-                  type="text"
-                  name="city"
-                  value={locationData.city || ''}
-                  onChange={handleLocationChange}
-                  placeholder="San Francisco"
-                />
-              </FormGroup>
-
-              <FormGroup>
-                <Label>State / Province</Label>
-                <Input
-                  type="text"
-                  name="state"
-                  value={locationData.state || ''}
-                  onChange={handleLocationChange}
-                  placeholder="California"
-                />
-              </FormGroup>
-
-              <FormGroup>
-                <Label>ZIP / Postal Code</Label>
-                <Input
-                  type="text"
-                  name="zip"
-                  value={locationData.zip || ''}
-                  onChange={handleLocationChange}
-                  placeholder="94102"
-                />
-              </FormGroup>
-
-              <FormGroup>
-                <Label>Country</Label>
-                <Input
-                  type="text"
-                  name="country"
-                  value={locationData.country || ''}
-                  onChange={handleLocationChange}
-                  placeholder="United States"
-                />
-              </FormGroup>
-            </FormGrid>
-          )}
-
-          <FormGroup $fullWidth>
-            <Label>Privacy Settings</Label>
-            <PrivacyOptions>
-              {/* Only show "exact" option for manual entry */}
-              {locationMethod === 'manual' && (
-                <RadioOption>
-                  <RadioInput
-                    type="radio"
-                    name="location_sharing"
-                    value="exact"
-                    checked={locationSharing === 'exact'}
-                    onChange={(e) => setLocationSharing(e.target.value as 'exact')}
-                  />
-                  <RadioContent>
-                    <RadioTitle>Share Exact Address</RadioTitle>
-                    <RadioDescription>
-                      Show your full address including street, city, state, and ZIP.
-                    </RadioDescription>
-                  </RadioContent>
-                </RadioOption>
-              )}
-
-              <RadioOption>
-                <RadioInput
-                  type="radio"
-                  name="location_sharing"
-                  value="city"
-                  checked={locationSharing === 'city'}
-                  onChange={(e) => setLocationSharing(e.target.value as 'city')}
-                />
-                <RadioContent>
-                  <RadioTitle>Share City Only</RadioTitle>
-                  <RadioDescription>
-                    Only show your city. Your exact location remains private.
-                  </RadioDescription>
-                </RadioContent>
-              </RadioOption>
-
-              <RadioOption>
-                <RadioInput
-                  type="radio"
-                  name="location_sharing"
-                  value="off"
-                  checked={locationSharing === 'off'}
-                  onChange={(e) => setLocationSharing(e.target.value as 'off')}
-                />
-                <RadioContent>
-                  <RadioTitle>Don't Share Location</RadioTitle>
-                  <RadioDescription>
-                    Keep your location completely private.
-                  </RadioDescription>
-                </RadioContent>
-              </RadioOption>
-            </PrivacyOptions>
-          </FormGroup>
-
-          {locationSharing !== 'off' && (
+        {/* Work Info */}
+        <Section>
+          <SectionTitle>Work</SectionTitle>
+          <Row>
             <FormGroup>
-              <RadioOption>
-                <RadioInput
-                  type="checkbox"
-                  checked={showDistanceInProfile}
-                  onChange={(e) => setShowDistanceInProfile(e.target.checked)}
-                />
-                <RadioContent>
-                  <RadioTitle>Show distance in profile</RadioTitle>
-                  <RadioDescription>
-                    Display your distance to other users on your profile page
-                  </RadioDescription>
-                </RadioContent>
-              </RadioOption>
+              <Label>Job Title</Label>
+              <Input
+                type="text"
+                placeholder="e.g. Software Engineer"
+                value={formData.job_title}
+                onChange={(e) => handleInputChange('job_title', e.target.value)}
+              />
             </FormGroup>
-          )}
-        </LocationOptions>
+            <FormGroup>
+              <Label>Company</Label>
+              <Input
+                type="text"
+                placeholder="e.g. Acme Corp"
+                value={formData.company}
+                onChange={(e) => handleInputChange('company', e.target.value)}
+              />
+            </FormGroup>
+          </Row>
+        </Section>
 
-        <ButtonGroup>
-          <Button $variant="primary" onClick={handleSaveLocation} disabled={loading}>
-            <FaSave />
-            Save Location
-          </Button>
-        </ButtonGroup>
-      </Section>
+        {/* Location */}
+        <Section>
+          <SectionTitle>Location</SectionTitle>
+          <Row>
+            <FormGroup>
+              <Label>City</Label>
+              <Input
+                type="text"
+                value={formData.location_city}
+                onChange={(e) => handleInputChange('location_city', e.target.value)}
+              />
+            </FormGroup>
+            <FormGroup>
+              <Label>State/Province</Label>
+              <Input
+                type="text"
+                value={formData.location_state}
+                onChange={(e) => handleInputChange('location_state', e.target.value)}
+              />
+            </FormGroup>
+            <FormGroup>
+              <Label>Country</Label>
+              <Input
+                type="text"
+                value={formData.location_country}
+                onChange={(e) => handleInputChange('location_country', e.target.value)}
+              />
+            </FormGroup>
+          </Row>
+        </Section>
 
-      {/* Change Password */}
-      <Section>
-        <SectionTitle>
-          <FaLock />
-          Change Password
-        </SectionTitle>
-
-        <FormGrid>
-          <FormGroup $fullWidth>
-            <Label>Current Password</Label>
+        {/* Links */}
+        <Section>
+          <SectionTitle>Links</SectionTitle>
+          <FormGroup>
+            <Label>Website</Label>
             <Input
-              type="password"
-              name="current_password"
-              value={passwordData.current_password}
-              onChange={handlePasswordChange}
+              type="url"
+              placeholder="https://yourwebsite.com"
+              value={formData.website}
+              onChange={(e) => handleInputChange('website', e.target.value)}
             />
           </FormGroup>
 
           <FormGroup>
-            <Label>New Password</Label>
-            <Input
-              type="password"
-              name="new_password"
-              value={passwordData.new_password}
-              onChange={handlePasswordChange}
-            />
-            <HelpText>At least 6 characters</HelpText>
+            <Label>Twitter Handle</Label>
+            <InputWithPrefix>
+              <Prefix>@</Prefix>
+              <InputNoPadding
+                type="text"
+                placeholder="username"
+                value={formData.twitter_handle}
+                onChange={(e) => handleInputChange('twitter_handle', e.target.value)}
+              />
+            </InputWithPrefix>
           </FormGroup>
 
           <FormGroup>
-            <Label>Confirm New Password</Label>
+            <Label>GitHub Username</Label>
+            <InputWithPrefix>
+              <Prefix>github.com/</Prefix>
+              <InputNoPadding
+                type="text"
+                placeholder="username"
+                value={formData.github_username}
+                onChange={(e) => handleInputChange('github_username', e.target.value)}
+              />
+            </InputWithPrefix>
+          </FormGroup>
+
+          <FormGroup>
+            <Label>LinkedIn Profile</Label>
             <Input
-              type="password"
-              name="confirm_password"
-              value={passwordData.confirm_password}
-              onChange={handlePasswordChange}
+              type="url"
+              placeholder="https://linkedin.com/in/username"
+              value={formData.linkedin_url}
+              onChange={(e) => handleInputChange('linkedin_url', e.target.value)}
             />
           </FormGroup>
-        </FormGrid>
+        </Section>
 
-        <ButtonGroup>
-          <Button $variant="primary" onClick={handleChangePassword} disabled={loading}>
-            <FaLock />
-            Change Password
-          </Button>
-        </ButtonGroup>
-      </Section>
-
-      {error && <ErrorMessage>{error}</ErrorMessage>}
-      {success && <SuccessMessage>{success}</SuccessMessage>}
+        <Actions>
+          <CancelButton type="button" onClick={() => navigate(`/user/${state.user!.id}`)}>
+            Cancel
+          </CancelButton>
+          <SaveButton type="submit" disabled={saving}>
+            {saving ? 'Saving...' : 'Save Profile'}
+          </SaveButton>
+        </Actions>
+      </Form>
     </Container>
   );
 };
+
+// Styled Components
+const Container = styled.div`
+  max-width: 800px;
+  margin: 0 auto;
+  padding: ${props => props.theme.spacing.xl};
+`;
+
+const Header = styled.div`
+  margin-bottom: ${props => props.theme.spacing.xl};
+`;
+
+const Title = styled.h1`
+  font-size: 2rem;
+  font-weight: 700;
+  color: ${props => props.theme.colors.text.primary};
+  margin-bottom: ${props => props.theme.spacing.sm};
+`;
+
+const Subtitle = styled.p`
+  font-size: 1rem;
+  color: ${props => props.theme.colors.text.secondary};
+`;
+
+const Form = styled.form`
+  display: flex;
+  flex-direction: column;
+  gap: ${props => props.theme.spacing.xl};
+`;
+
+const Section = styled.div`
+  background: ${props => props.theme.colors.surface};
+  border: 1px solid ${props => props.theme.colors.border};
+  border-radius: ${props => props.theme.borderRadius.lg};
+  padding: ${props => props.theme.spacing.xl};
+`;
+
+const SectionTitle = styled.h2`
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: ${props => props.theme.colors.text.primary};
+  margin-bottom: ${props => props.theme.spacing.lg};
+`;
+
+const BannerUploadArea = styled.div`
+  width: 100%;
+  height: 200px;
+  border: 2px dashed ${props => props.theme.colors.border};
+  border-radius: ${props => props.theme.borderRadius.md};
+  overflow: hidden;
+  cursor: pointer;
+  position: relative;
+  transition: border-color 0.2s ease;
+
+  &:hover {
+    border-color: ${props => props.theme.colors.primary};
+  }
+`;
+
+const BannerPreview = styled.img`
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+`;
+
+const UploadPlaceholder = styled.div`
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: ${props => props.theme.colors.background};
+`;
+
+const UploadIcon = styled.div`
+  font-size: 48px;
+  margin-bottom: ${props => props.theme.spacing.md};
+`;
+
+const UploadText = styled.div`
+  font-size: 1rem;
+  font-weight: 600;
+  color: ${props => props.theme.colors.text.primary};
+  margin-bottom: ${props => props.theme.spacing.xs};
+`;
+
+const UploadHint = styled.div`
+  font-size: 0.875rem;
+  color: ${props => props.theme.colors.text.secondary};
+`;
+
+const AvatarUploadArea = styled.div`
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  overflow: hidden;
+  cursor: pointer;
+  position: relative;
+  border: 3px solid ${props => props.theme.colors.border};
+  transition: border-color 0.2s ease;
+
+  &:hover {
+    border-color: ${props => props.theme.colors.primary};
+  }
+`;
+
+const AvatarPreview = styled.img`
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+`;
+
+const AvatarPlaceholder = styled.div`
+  width: 100%;
+  height: 100%;
+  background: ${props => props.theme.colors.primary};
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 3rem;
+  font-weight: bold;
+`;
+
+const AvatarOverlay = styled.div`
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: ${props => props.theme.spacing.sm};
+  text-align: center;
+  font-size: 0.875rem;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+
+  ${AvatarUploadArea}:hover & {
+    opacity: 1;
+  }
+`;
+
+const Row = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: ${props => props.theme.spacing.lg};
+`;
+
+const FormGroup = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${props => props.theme.spacing.sm};
+`;
+
+const Label = styled.label`
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: ${props => props.theme.colors.text.primary};
+`;
+
+const Input = styled.input`
+  padding: ${props => props.theme.spacing.md};
+  border: 1px solid ${props => props.theme.colors.border};
+  border-radius: ${props => props.theme.borderRadius.md};
+  font-size: 1rem;
+  color: ${props => props.theme.colors.text.primary};
+  background: ${props => props.theme.colors.background};
+  transition: border-color 0.2s ease;
+
+  &:focus {
+    outline: none;
+    border-color: ${props => props.theme.colors.primary};
+  }
+
+  &::placeholder {
+    color: ${props => props.theme.colors.text.muted};
+  }
+`;
+
+const TextArea = styled.textarea`
+  padding: ${props => props.theme.spacing.md};
+  border: 1px solid ${props => props.theme.colors.border};
+  border-radius: ${props => props.theme.borderRadius.md};
+  font-size: 1rem;
+  font-family: inherit;
+  color: ${props => props.theme.colors.text.primary};
+  background: ${props => props.theme.colors.background};
+  resize: vertical;
+  transition: border-color 0.2s ease;
+
+  &:focus {
+    outline: none;
+    border-color: ${props => props.theme.colors.primary};
+  }
+
+  &::placeholder {
+    color: ${props => props.theme.colors.text.muted};
+  }
+`;
+
+const InputWithPrefix = styled.div`
+  display: flex;
+  align-items: center;
+  border: 1px solid ${props => props.theme.colors.border};
+  border-radius: ${props => props.theme.borderRadius.md};
+  overflow: hidden;
+  transition: border-color 0.2s ease;
+
+  &:focus-within {
+    border-color: ${props => props.theme.colors.primary};
+  }
+`;
+
+const Prefix = styled.span`
+  padding: ${props => props.theme.spacing.md};
+  background: ${props => props.theme.colors.background};
+  color: ${props => props.theme.colors.text.secondary};
+  font-size: 1rem;
+  border-right: 1px solid ${props => props.theme.colors.border};
+`;
+
+const InputNoPadding = styled.input`
+  flex: 1;
+  padding: ${props => props.theme.spacing.md};
+  border: none;
+  font-size: 1rem;
+  color: ${props => props.theme.colors.text.primary};
+  background: ${props => props.theme.colors.background};
+
+  &:focus {
+    outline: none;
+  }
+
+  &::placeholder {
+    color: ${props => props.theme.colors.text.muted};
+  }
+`;
+
+const Actions = styled.div`
+  display: flex;
+  gap: ${props => props.theme.spacing.md};
+  justify-content: flex-end;
+  padding-top: ${props => props.theme.spacing.lg};
+`;
+
+const CancelButton = styled.button`
+  padding: ${props => props.theme.spacing.md} ${props => props.theme.spacing.xl};
+  border: 1px solid ${props => props.theme.colors.border};
+  border-radius: ${props => props.theme.borderRadius.md};
+  background: transparent;
+  color: ${props => props.theme.colors.text.primary};
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: ${props => props.theme.colors.background};
+  }
+`;
+
+const SaveButton = styled.button`
+  padding: ${props => props.theme.spacing.md} ${props => props.theme.spacing.xl};
+  border: none;
+  border-radius: ${props => props.theme.borderRadius.md};
+  background: ${props => props.theme.colors.primary};
+  color: white;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover:not(:disabled) {
+    opacity: 0.9;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+`;
 
 export default EditProfilePage;
