@@ -6,7 +6,6 @@ import React, { useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import styled from 'styled-components';
-import { createPortal } from 'react-dom';
 import { usersApi, getUserAvatarUrl, followsApi } from '../services/api';
 import reputationApi from '../services/reputationApi';
 import ratingsApi from '../services/ratingsApi';
@@ -789,23 +788,6 @@ const UserProfilePage: React.FC = () => {
           </>
         )}
       </PostsSection>
-
-      {/* Edit Profile Modal */}
-      {showEditProfile && createPortal(
-        <>
-          <Overlay onClick={() => setShowEditProfile(false)} />
-          <Modal>
-            <ModalHeader>
-              <ModalTitle>Edit Profile</ModalTitle>
-              <CloseButton onClick={() => setShowEditProfile(false)}>×</CloseButton>
-            </ModalHeader>
-            <p style={{ textAlign: 'center', color: '#666', padding: '20px' }}>
-              Profile editing coming soon...
-            </p>
-          </Modal>
-        </>,
-        document.body
-      )}
     </Container>
   );
 };
