@@ -138,6 +138,10 @@ export interface CreatePostData {
   content_type: ContentType;
   link_url?: string;
   media_ids?: number[];
+  poll_question?: string;
+  poll_options?: string[];
+  poll_ends_at?: string | null;
+  poll_allow_multiple?: boolean;
 }
 
 export interface UpdatePostData {

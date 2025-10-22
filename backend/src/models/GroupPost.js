@@ -19,22 +19,27 @@ class GroupPost {
     is_pinned = false,
     is_locked = false,
     is_nsfw = false,
-    is_spoiler = false
+    is_spoiler = false,
+    poll_question = null,
+    poll_ends_at = null,
+    poll_allow_multiple = false
   }) {
     const query = `
       INSERT INTO group_posts (
         group_id, user_id, title, content, post_type,
         link_url, link_title, link_description, link_thumbnail,
-        status, is_pinned, is_locked, is_nsfw, is_spoiler
+        status, is_pinned, is_locked, is_nsfw, is_spoiler,
+        poll_question, poll_ends_at, poll_allow_multiple
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
       RETURNING *
     `;
 
     const values = [
       group_id, user_id, title, content, post_type,
       link_url, link_title, link_description, link_thumbnail,
-      status, is_pinned, is_locked, is_nsfw, is_spoiler
+      status, is_pinned, is_locked, is_nsfw, is_spoiler,
+      poll_question, poll_ends_at, poll_allow_multiple
     ];
 
     const result = await db.query(query, values);
@@ -77,6 +82,24 @@ class GroupPost {
     if (post) {
       // Fetch media for this post
       post.media = await GroupPostMedia.getByPostId(post.id);
+
+      // Fetch poll data if it's a poll
+      if (post.post_type === 'poll') {
+        const PollOption = require('./PollOption');
+        const PollVote = require('./PollVote');
+
+        // Get poll options with vote distribution
+        post.poll_options = await PollOption.getVoteDistribution(post.id);
+
+        // Get user's vote if authenticated
+        if (user_id) {
+          const userVote = await PollVote.getUserVote(post.id, user_id);
+          post.user_poll_vote = userVote ? userVote.option_id : null;
+        }
+
+        // Check if poll has ended
+        post.poll_has_ended = post.poll_ends_at ? new Date(post.poll_ends_at) < new Date() : false;
+      }
     }
 
     return post;

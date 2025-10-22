@@ -106,7 +106,11 @@ router.post('/:slug/posts', authenticateToken, async (req, res) => {
       link_description,
       link_thumbnail,
       is_nsfw = false,
-      is_spoiler = false
+      is_spoiler = false,
+      poll_question,
+      poll_options,
+      poll_ends_at,
+      poll_allow_multiple = false
     } = req.body;
 
     // Validate required fields
@@ -115,6 +119,30 @@ router.post('/:slug/posts', authenticateToken, async (req, res) => {
         success: false,
         error: 'Title is required'
       });
+    }
+
+    // Validate poll-specific requirements
+    if (post_type === 'poll') {
+      if (!poll_question) {
+        return res.status(400).json({
+          success: false,
+          error: 'Poll question is required for poll posts'
+        });
+      }
+
+      if (!poll_options || !Array.isArray(poll_options) || poll_options.length < 2) {
+        return res.status(400).json({
+          success: false,
+          error: 'At least 2 poll options are required'
+        });
+      }
+
+      if (poll_options.length > 10) {
+        return res.status(400).json({
+          success: false,
+          error: 'Maximum 10 poll options allowed'
+        });
+      }
     }
 
     const group = await Group.findBySlug(slug);
@@ -183,8 +211,17 @@ router.post('/:slug/posts', authenticateToken, async (req, res) => {
       link_thumbnail,
       status,
       is_nsfw,
-      is_spoiler
+      is_spoiler,
+      poll_question: post_type === 'poll' ? poll_question : null,
+      poll_ends_at: post_type === 'poll' ? poll_ends_at : null,
+      poll_allow_multiple: post_type === 'poll' ? poll_allow_multiple : false
     });
+
+    // If it's a poll, create the poll options
+    if (post_type === 'poll' && poll_options) {
+      const PollOption = require('../models/PollOption');
+      await PollOption.createMultiple(post.id, poll_options);
+    }
 
     res.status(201).json({
       success: true,

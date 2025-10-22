@@ -4,6 +4,7 @@ import { CreatePostData } from '../../types/group';
 import { Media } from '../../types';
 import { mediaApi } from '../../services/api';
 import { useToast } from '../Toast';
+import PollCreator from '../PollCreator';
 
 interface GroupPostComposerProps {
   onSubmit: (data: CreatePostData) => Promise<void>;
@@ -35,6 +36,13 @@ const GroupPostComposer: React.FC<GroupPostComposerProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [showLinkInput, setShowLinkInput] = useState(false);
   const [showAttachMenu, setShowAttachMenu] = useState(false);
+  const [showPollCreator, setShowPollCreator] = useState(false);
+  const [pollData, setPollData] = useState<{
+    question: string;
+    options: string[];
+    endsAt: string | null;
+    allowMultiple: boolean;
+  } | null>(null);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -119,7 +127,7 @@ const GroupPostComposer: React.FC<GroupPostComposerProps> = ({
     e.preventDefault();
     setError(null);
 
-    if (!title.trim() && !content.trim()) {
+    if (!title.trim() && !content.trim() && !showPollCreator) {
       setError('Please provide a title or content');
       return;
     }
@@ -129,17 +137,30 @@ const GroupPostComposer: React.FC<GroupPostComposerProps> = ({
       return;
     }
 
+    if (showPollCreator && pollData) {
+      if (!pollData.question.trim()) {
+        setError('Please provide a poll question');
+        return;
+      }
+
+      if (pollData.options.length < 2) {
+        setError('Please provide at least 2 poll options');
+        return;
+      }
+    }
+
     try {
       setSubmitting(true);
 
-      // Use title if provided, otherwise use content preview, or default
+      // Use title if provided, otherwise use content preview, poll question, or default
       const postTitle = title.trim() ||
                        (content.trim().substring(0, 100)) ||
+                       (showPollCreator && pollData ? pollData.question.substring(0, 100) : null) ||
                        'Untitled Post';
 
       const postData: CreatePostData = {
         title: postTitle,
-        content_type: 'text'
+        content_type: showPollCreator ? 'poll' : 'text'
       };
 
       if (content.trim()) {
@@ -155,6 +176,14 @@ const GroupPostComposer: React.FC<GroupPostComposerProps> = ({
         postData.media_ids = uploadedMedia.map(m => m.id);
       }
 
+      // Add poll data if creating a poll
+      if (showPollCreator && pollData) {
+        postData.poll_question = pollData.question;
+        postData.poll_options = pollData.options;
+        postData.poll_ends_at = pollData.endsAt;
+        postData.poll_allow_multiple = pollData.allowMultiple;
+      }
+
       await onSubmit(postData);
 
       // Reset form
@@ -164,6 +193,8 @@ const GroupPostComposer: React.FC<GroupPostComposerProps> = ({
       setSelectedFiles([]);
       setUploadedMedia([]);
       setShowLinkInput(false);
+      setShowPollCreator(false);
+      setPollData(null);
     } catch (err: any) {
       setError(err.response?.data?.error || 'Failed to create post');
     } finally {
@@ -356,7 +387,7 @@ const GroupPostComposer: React.FC<GroupPostComposerProps> = ({
                   </MenuItem>
                   {allowedTypes.poll && (
                     <MenuItem onClick={() => {
-                      showError('Poll functionality coming soon');
+                      setShowPollCreator(!showPollCreator);
                       setShowAttachMenu(false);
                     }}>
                       <MenuIcon>📊</MenuIcon>
@@ -372,6 +403,11 @@ const GroupPostComposer: React.FC<GroupPostComposerProps> = ({
             {submitting ? 'Posting...' : 'Post'}
           </SubmitButton>
         </FormActions>
+
+        {/* Poll Creator */}
+        {showPollCreator && (
+          <PollCreator onChange={(data) => setPollData(data)} />
+        )}
       </Form>
     </ComposerCard>
   );
