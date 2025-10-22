@@ -57,9 +57,9 @@ const Label = styled.label`
   font-size: 0.95rem;
 `;
 
-const TextArea = styled.textarea<{ hasError?: boolean }>`
+const TextArea = styled.textarea<{ $hasError?: boolean }>`
   padding: ${({ theme }) => theme.spacing.md};
-  border: 1px solid ${({ theme, hasError }) => hasError ? theme.colors.error : theme.colors.border};
+  border: 1px solid ${({ theme, $hasError }) => $hasError ? theme.colors.error : theme.colors.border};
   border-radius: ${({ theme }) => theme.borderRadius.md};
   font-size: 1rem;
   font-family: inherit;
@@ -69,7 +69,7 @@ const TextArea = styled.textarea<{ hasError?: boolean }>`
 
   &:focus {
     outline: none;
-    border-color: ${({ theme, hasError }) => hasError ? theme.colors.error : theme.colors.primary};
+    border-color: ${({ theme, $hasError }) => $hasError ? theme.colors.error : theme.colors.primary};
   }
 
   &::placeholder {
@@ -173,9 +173,9 @@ const RemoveMediaButton = styled.button`
   }
 `;
 
-const CharacterCount = styled.div<{ isOverLimit?: boolean }>`
+const CharacterCount = styled.div<{ $isOverLimit?: boolean }>`
   font-size: 0.85rem;
-  color: ${({ theme, isOverLimit }) => isOverLimit ? theme.colors.error : theme.colors.text.muted};
+  color: ${({ theme, $isOverLimit }) => $isOverLimit ? theme.colors.error : theme.colors.text.muted};
   text-align: right;
 `;
 
@@ -186,16 +186,16 @@ const ButtonGroup = styled.div`
   margin-top: ${({ theme }) => theme.spacing.lg};
 `;
 
-const Button = styled.button<{ variant?: 'primary' | 'secondary' }>`
+const Button = styled.button<{ $variant?: 'primary' | 'secondary' }>`
   padding: ${({ theme }) => theme.spacing.md} ${({ theme }) => theme.spacing.xl};
-  border: 1px solid ${({ theme, variant }) =>
-    variant === 'primary' ? theme.colors.primary : theme.colors.border
+  border: 1px solid ${({ theme, $variant }) =>
+    $variant === 'primary' ? theme.colors.primary : theme.colors.border
   };
-  background: ${({ theme, variant }) =>
-    variant === 'primary' ? theme.colors.primary : theme.colors.surface
+  background: ${({ theme, $variant }) =>
+    $variant === 'primary' ? theme.colors.primary : theme.colors.surface
   };
-  color: ${({ theme, variant }) =>
-    variant === 'primary' ? 'white' : theme.colors.text.primary
+  color: ${({ theme, $variant }) =>
+    $variant === 'primary' ? 'white' : theme.colors.text.primary
   };
   border-radius: ${({ theme }) => theme.borderRadius.md};
   font-size: 1rem;
@@ -204,8 +204,8 @@ const Button = styled.button<{ variant?: 'primary' | 'secondary' }>`
   transition: all 0.2s ease;
 
   &:hover {
-    background: ${({ theme, variant }) =>
-      variant === 'primary' ? theme.colors.primary + 'dd' : theme.colors.background
+    background: ${({ theme, $variant }) =>
+      $variant === 'primary' ? theme.colors.primary + 'dd' : theme.colors.background
     };
   }
 
@@ -380,9 +380,9 @@ const CreatePostPage: React.FC = () => {
               value={formData.content}
               onChange={(e) => handleInputChange('content', e.target.value)}
               onPaste={handlePaste}
-              hasError={isContentOverLimit}
+              $hasError={isContentOverLimit}
             />
-            <CharacterCount isOverLimit={isContentOverLimit}>
+            <CharacterCount $isOverLimit={isContentOverLimit}>
               {formData.content.length} / {MAX_CONTENT_LENGTH}
             </CharacterCount>
           </FormGroup>
@@ -459,10 +459,10 @@ const CreatePostPage: React.FC = () => {
 
           {/* Action Buttons */}
           <ButtonGroup>
-            <Button type="button" variant="secondary" onClick={handleCancel}>
+            <Button type="button" $variant="secondary" onClick={handleCancel}>
               Cancel
             </Button>
-            <Button type="submit" variant="primary" disabled={!canSubmit}>
+            <Button type="submit" $variant="primary" disabled={!canSubmit}>
               {isSubmitting ? <LoadingSpinner size="small" /> : 'Publish Post'}
             </Button>
           </ButtonGroup>
