@@ -3,7 +3,7 @@
  */
 
 import React, { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import styled from 'styled-components';
 import { createPortal } from 'react-dom';
@@ -24,11 +24,27 @@ const Container = styled.div`
   padding: ${({ theme }) => theme.spacing.md};
 `;
 
+const Banner = styled.div<{ $imageUrl?: string }>`
+  width: 100%;
+  height: 200px;
+  background: ${({ theme, $imageUrl }) =>
+    $imageUrl
+      ? `url(${$imageUrl})`
+      : `linear-gradient(135deg, ${theme.colors.primary}40 0%, ${theme.colors.secondary}40 100%)`
+  };
+  background-size: cover;
+  background-position: center;
+  border-radius: ${({ theme }) => theme.borderRadius.lg} ${({ theme }) => theme.borderRadius.lg} 0 0;
+  margin-bottom: -60px;
+  position: relative;
+`;
+
 const ProfileHeader = styled.div`
   background: ${({ theme }) => theme.colors.surface};
   border: 1px solid ${({ theme }) => theme.colors.border};
   border-radius: ${({ theme }) => theme.borderRadius.lg};
   padding: ${({ theme }) => theme.spacing.xl};
+  padding-top: 80px;
   margin-bottom: ${({ theme }) => theme.spacing.xl};
   box-shadow: ${({ theme }) => theme.shadows.sm};
 `;
@@ -388,8 +404,8 @@ const RetryButton = styled.button`
 const UserProfilePage: React.FC = () => {
   const { userId } = useParams<{ userId: string }>();
   const { state } = useAuth();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'posts' | 'following' | 'followers'>('posts');
-  const [showEditProfile, setShowEditProfile] = useState(false);
 
   const currentUser = state.user;
   const isOwnProfile = currentUser && userId && parseInt(userId) === currentUser.id;
@@ -548,6 +564,7 @@ const UserProfilePage: React.FC = () => {
   return (
     <Container>
       {/* Profile Header */}
+      <Banner $imageUrl={user.banner_url} />
       <ProfileHeader>
         <ProfileInfo>
           <div>
@@ -615,7 +632,7 @@ const UserProfilePage: React.FC = () => {
 
             {isOwnProfile ? (
               <ActionButtons>
-                <ActionButton onClick={() => setShowEditProfile(true)}>
+                <ActionButton onClick={() => navigate('/settings')}>
                   Edit Profile
                 </ActionButton>
               </ActionButtons>
