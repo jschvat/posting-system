@@ -400,6 +400,14 @@ const RetryButton = styled.button`
   }
 `;
 
+// Helper function to format tags
+const formatTag = (tag: string): string => {
+  return tag
+    .split('_')
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+};
+
 const UserProfilePage: React.FC = () => {
   const { userId } = useParams<{ userId: string }>();
   const { state } = useAuth();
@@ -602,6 +610,56 @@ const UserProfilePage: React.FC = () => {
 
             {user.bio && <Bio>{user.bio}</Bio>}
 
+            {/* Interests & Skills */}
+            {(user.hobbies?.length || user.skills?.length || user.favorite_pets?.length || user.expertise?.length) ? (
+              <InterestsSection>
+                {user.hobbies && user.hobbies.length > 0 && (
+                  <InterestGroup>
+                    <InterestLabel>Hobbies</InterestLabel>
+                    <TagsContainer>
+                      {user.hobbies.slice(0, 5).map((hobby) => (
+                        <Tag key={hobby}>{formatTag(hobby)}</Tag>
+                      ))}
+                      {user.hobbies.length > 5 && <Tag>+{user.hobbies.length - 5} more</Tag>}
+                    </TagsContainer>
+                  </InterestGroup>
+                )}
+                {user.skills && user.skills.length > 0 && (
+                  <InterestGroup>
+                    <InterestLabel>Skills</InterestLabel>
+                    <TagsContainer>
+                      {user.skills.slice(0, 5).map((skill) => (
+                        <Tag key={skill}>{formatTag(skill)}</Tag>
+                      ))}
+                      {user.skills.length > 5 && <Tag>+{user.skills.length - 5} more</Tag>}
+                    </TagsContainer>
+                  </InterestGroup>
+                )}
+                {user.favorite_pets && user.favorite_pets.length > 0 && (
+                  <InterestGroup>
+                    <InterestLabel>Favorite Pets</InterestLabel>
+                    <TagsContainer>
+                      {user.favorite_pets.slice(0, 5).map((pet) => (
+                        <Tag key={pet}>{formatTag(pet)}</Tag>
+                      ))}
+                      {user.favorite_pets.length > 5 && <Tag>+{user.favorite_pets.length - 5} more</Tag>}
+                    </TagsContainer>
+                  </InterestGroup>
+                )}
+                {user.expertise && user.expertise.length > 0 && (
+                  <InterestGroup>
+                    <InterestLabel>Expertise</InterestLabel>
+                    <TagsContainer>
+                      {user.expertise.slice(0, 5).map((exp) => (
+                        <Tag key={exp}>{formatTag(exp)}</Tag>
+                      ))}
+                      {user.expertise.length > 5 && <Tag>+{user.expertise.length - 5} more</Tag>}
+                    </TagsContainer>
+                  </InterestGroup>
+                )}
+              </InterestsSection>
+            ) : null}
+
             <StatsContainer>
               <StatItem
                 $clickable
@@ -791,5 +849,46 @@ const UserProfilePage: React.FC = () => {
     </Container>
   );
 };
+
+// Interests Section Styled Components
+const InterestsSection = styled.div`
+  margin-top: ${({ theme }) => theme.spacing.lg};
+  padding-top: ${({ theme }) => theme.spacing.lg};
+  border-top: 1px solid ${({ theme }) => theme.colors.border};
+  display: flex;
+  flex-direction: column;
+  gap: ${({ theme }) => theme.spacing.md};
+`;
+
+const InterestGroup = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${({ theme }) => theme.spacing.xs};
+`;
+
+const InterestLabel = styled.div`
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: ${({ theme }) => theme.colors.text.secondary};
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+`;
+
+const TagsContainer = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: ${({ theme }) => theme.spacing.xs};
+`;
+
+const Tag = styled.span`
+  display: inline-block;
+  padding: 4px 12px;
+  background: ${({ theme }) => theme.colors.primary}15;
+  border: 1px solid ${({ theme }) => theme.colors.primary}30;
+  border-radius: ${({ theme }) => theme.borderRadius.sm};
+  font-size: 0.875rem;
+  color: ${({ theme }) => theme.colors.text.primary};
+  font-weight: 500;
+`;
 
 export default UserProfilePage;

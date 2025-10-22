@@ -9,6 +9,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { usersApi, mediaApi } from '../services/api';
 import { useToast } from '../components/Toast';
 import LoadingSpinner from '../components/LoadingSpinner';
+import TagInput from '../components/TagInput';
+import { HOBBIES, SKILLS, FAVORITE_PETS, EXPERTISE } from '../constants/profileOptions';
 
 interface ProfileData {
   first_name: string;
@@ -24,6 +26,10 @@ interface ProfileData {
   location_city: string;
   location_state: string;
   location_country: string;
+  hobbies: string[];
+  skills: string[];
+  favorite_pets: string[];
+  expertise: string[];
 }
 
 const EditProfilePage: React.FC = () => {
@@ -53,7 +59,11 @@ const EditProfilePage: React.FC = () => {
     tagline: '',
     location_city: '',
     location_state: '',
-    location_country: ''
+    location_country: '',
+    hobbies: [],
+    skills: [],
+    favorite_pets: [],
+    expertise: []
   });
 
   useEffect(() => {
@@ -83,7 +93,11 @@ const EditProfilePage: React.FC = () => {
           tagline: user.tagline || '',
           location_city: user.location_city || '',
           location_state: user.location_state || '',
-          location_country: user.location_country || ''
+          location_country: user.location_country || '',
+          hobbies: user.hobbies || [],
+          skills: user.skills || [],
+          favorite_pets: user.favorite_pets || [],
+          expertise: user.expertise || []
         });
         setAvatarPreview(user.avatar_url || '');
         setBannerPreview(user.banner_url || '');
@@ -399,6 +413,55 @@ const EditProfilePage: React.FC = () => {
           </FormGroup>
         </Section>
 
+        {/* Interests & Skills */}
+        <Section>
+          <SectionTitle>Interests & Skills</SectionTitle>
+
+          <FormGroup>
+            <Label>Hobbies</Label>
+            <Description>Select your hobbies and interests</Description>
+            <TagInput
+              value={formData.hobbies}
+              onChange={(hobbies) => setFormData(prev => ({ ...prev, hobbies }))}
+              suggestions={HOBBIES}
+              placeholder="Type to search hobbies..."
+            />
+          </FormGroup>
+
+          <FormGroup>
+            <Label>Skills</Label>
+            <Description>Select your professional skills</Description>
+            <TagInput
+              value={formData.skills}
+              onChange={(skills) => setFormData(prev => ({ ...prev, skills }))}
+              suggestions={SKILLS}
+              placeholder="Type to search skills..."
+            />
+          </FormGroup>
+
+          <FormGroup>
+            <Label>Favorite Pets</Label>
+            <Description>What are your favorite types of pets?</Description>
+            <TagInput
+              value={formData.favorite_pets}
+              onChange={(favorite_pets) => setFormData(prev => ({ ...prev, favorite_pets }))}
+              suggestions={FAVORITE_PETS}
+              placeholder="Type to search pets..."
+            />
+          </FormGroup>
+
+          <FormGroup>
+            <Label>Expertise</Label>
+            <Description>Areas where you have deep knowledge or experience</Description>
+            <TagInput
+              value={formData.expertise}
+              onChange={(expertise) => setFormData(prev => ({ ...prev, expertise }))}
+              suggestions={EXPERTISE}
+              placeholder="Type to search expertise areas..."
+            />
+          </FormGroup>
+        </Section>
+
         <Actions>
           <CancelButton type="button" onClick={() => navigate(`/user/${state.user!.id}`)}>
             Cancel
@@ -574,6 +637,12 @@ const Label = styled.label`
   font-size: 0.875rem;
   font-weight: 600;
   color: ${props => props.theme.colors.text.primary};
+`;
+
+const Description = styled.p`
+  font-size: 0.875rem;
+  color: ${props => props.theme.colors.text.secondary};
+  margin: -${props => props.theme.spacing.xs} 0 ${props => props.theme.spacing.xs} 0;
 `;
 
 const Input = styled.input`

@@ -42,6 +42,11 @@ export interface User extends BaseEntity {
   company?: string;
   tagline?: string;
   profile_visibility?: 'public' | 'followers' | 'private';
+  // Interests and skills
+  hobbies?: string[];
+  skills?: string[];
+  favorite_pets?: string[];
+  expertise?: string[];
 }
 
 export interface UserStats {
