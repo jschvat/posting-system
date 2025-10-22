@@ -36,6 +36,9 @@ const groupPostsRoutes = require('./routes/groupPosts');
 const groupCommentsRoutes = require('./routes/groupComments');
 const groupMediaRoutes = require('./routes/groupMedia');
 const pollsRoutes = require('./routes/polls');
+const conversationsRoutes = require('./routes/conversations');
+const messagesRoutes = require('./routes/messages');
+const notificationsRoutes = require('./routes/notifications');
 
 // Import middleware
 const errorHandler = require('./middleware/errorHandler');
@@ -116,6 +119,9 @@ app.use('/api/groups', groupPostsRoutes);
 app.use('/api/groups', groupCommentsRoutes);
 app.use('/api/groups', groupMediaRoutes);
 app.use('/api/polls', pollsRoutes);
+app.use('/api/conversations', conversationsRoutes);
+app.use('/api/messages', messagesRoutes);
+app.use('/api/notifications', notificationsRoutes);
 
 // Catch-all route for undefined endpoints
 app.use(notFound);
