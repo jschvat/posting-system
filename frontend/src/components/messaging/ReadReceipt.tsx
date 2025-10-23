@@ -1,6 +1,9 @@
 import React from 'react';
 import styled from 'styled-components';
-import { FaCircle, FaCheck } from 'react-icons/fa';
+import * as FaIcons from 'react-icons/fa';
+
+const FaCircle = (FaIcons as any).FaCircle;
+const FaCheck = (FaIcons as any).FaCheck;
 
 interface ReadReceiptProps {
   status: 'sent' | 'delivered' | 'read';
@@ -13,13 +16,13 @@ const ReceiptContainer = styled.div`
   align-items: center;
   gap: 2px;
   font-size: 0.75rem;
-  color: ${props => props.theme.colors.textSecondary};
+  color: ${props => props.theme.colors.text.secondary};
   position: relative;
 `;
 
 const ReceiptIcon = styled.span<{ isRead?: boolean }>`
   display: inline-flex;
-  color: ${props => props.isRead ? props.theme.colors.primary : props.theme.colors.textSecondary};
+  color: ${props => props.isRead ? props.theme.colors.primary : props.theme.colors.text.secondary};
   transition: color 0.2s ease;
 `;
 

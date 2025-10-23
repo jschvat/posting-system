@@ -1,6 +1,10 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
-import { FaEdit, FaTrashAlt, FaReply } from 'react-icons/fa';
+import * as FaIcons from 'react-icons/fa';
+
+const FaEdit = (FaIcons as any).FaEdit;
+const FaTrash = (FaIcons as any).FaTrash;
+const FaReply = (FaIcons as any).FaReply;
 import { ReadReceipt } from './ReadReceipt';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -55,7 +59,7 @@ const SenderAvatar = styled.img`
 
 const SenderName = styled.span`
   font-size: 0.75rem;
-  color: ${props => props.theme.colors.textSecondary};
+  color: ${props => props.theme.colors.text.secondary};
   font-weight: 500;
 `;
 
@@ -112,7 +116,7 @@ const MessageMeta = styled.div<{ isOwn: boolean }>`
   gap: 6px;
   margin-top: 4px;
   font-size: 0.688rem;
-  color: ${props => props.isOwn ? 'rgba(255, 255, 255, 0.7)' : props.theme.colors.textSecondary};
+  color: ${props => props.isOwn ? 'rgba(255, 255, 255, 0.7)' : props.theme.colors.text.secondary};
 `;
 
 const Timestamp = styled.span``;
@@ -144,14 +148,14 @@ const ActionButton = styled.button`
   height: 28px;
   border: none;
   background: transparent;
-  color: ${props => props.theme.colors.textSecondary};
+  color: ${props => props.theme.colors.text.secondary};
   border-radius: 4px;
   cursor: pointer;
   transition: all 0.2s ease;
 
   &:hover {
     background: ${props => props.theme.colors.surface};
-    color: ${props => props.theme.colors.text};
+    color: ${props => props.theme.colors.text.primary};
   }
 `;
 
@@ -267,7 +271,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
               <FaEdit style={{ width: '12px', height: '12px' }} />
             </ActionButton>
             <ActionButton onClick={() => onDelete(message.id)} title="Delete">
-              <FaTrashAlt style={{ width: '12px', height: '12px' }} />
+              <FaTrash style={{ width: '12px', height: '12px' }} />
             </ActionButton>
           </MessageActions>
         )}

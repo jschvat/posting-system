@@ -18,7 +18,7 @@ const TypingContainer = styled.div`
   display: flex;
   align-items: center;
   padding: 8px 12px;
-  color: ${props => props.theme.colors.textSecondary};
+  color: ${props => props.theme.colors.text.secondary};
   font-size: 0.875rem;
   font-style: italic;
 `;
@@ -36,7 +36,7 @@ const Dot = styled.span<{ delay: number }>`
   width: 4px;
   height: 4px;
   border-radius: 50%;
-  background-color: ${props => props.theme.colors.textSecondary};
+  background-color: ${props => props.theme.colors.text.secondary};
   animation: ${bounce} 1.4s infinite ease-in-out;
   animation-delay: ${props => props.delay}s;
 `;

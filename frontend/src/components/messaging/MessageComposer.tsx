@@ -1,6 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import styled from 'styled-components';
-import { FaPaperPlane, FaTimes } from 'react-icons/fa';
+import * as FaIcons from 'react-icons/fa';
+
+const FaPaperPlane = (FaIcons as any).FaPaperPlane;
+const FaTimes = (FaIcons as any).FaTimes;
 import { useWebSocket } from '../../contexts/WebSocketContext';
 
 interface ReplyingTo {
@@ -51,7 +54,7 @@ const ReplySender = styled.span`
 
 const ReplyText = styled.span`
   font-size: 0.813rem;
-  color: ${props => props.theme.colors.textSecondary};
+  color: ${props => props.theme.colors.text.secondary};
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -65,14 +68,14 @@ const ClearReplyButton = styled.button`
   height: 24px;
   border: none;
   background: transparent;
-  color: ${props => props.theme.colors.textSecondary};
+  color: ${props => props.theme.colors.text.secondary};
   border-radius: 50%;
   cursor: pointer;
   transition: all 0.2s ease;
 
   &:hover {
     background: ${props => props.theme.colors.background};
-    color: ${props => props.theme.colors.text};
+    color: ${props => props.theme.colors.text.primary};
   }
 `;
 
@@ -113,7 +116,7 @@ const TextArea = styled.textarea`
   }
 
   &::placeholder {
-    color: ${props => props.theme.colors.textSecondary};
+    color: ${props => props.theme.colors.text.secondary};
   }
 `;
 
@@ -126,7 +129,7 @@ const SendButton = styled.button<{ canSend: boolean }>`
   border: none;
   border-radius: 50%;
   background: ${props => props.canSend ? props.theme.colors.primary : props.theme.colors.surface};
-  color: ${props => props.canSend ? '#ffffff' : props.theme.colors.textSecondary};
+  color: ${props => props.canSend ? '#ffffff' : props.theme.colors.text.secondary};
   cursor: ${props => props.canSend ? 'pointer' : 'not-allowed'};
   transition: all 0.2s ease;
   flex-shrink: 0;

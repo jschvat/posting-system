@@ -1,4 +1,12 @@
 import 'styled-components';
+import React from 'react';
+
+// Add JSX namespace for compatibility with react-icons
+declare global {
+  namespace JSX {
+    interface Element extends React.ReactElement<any, any> { }
+  }
+}
 
 declare module 'styled-components' {
   export interface DefaultTheme {
