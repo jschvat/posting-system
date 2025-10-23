@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import styled from 'styled-components';
 import { ConversationView } from '../components/messaging/ConversationView';
 import { Message } from '../services/api/messagesApi';
+import AuthContext from '../contexts/AuthContext';
 
 const PageContainer = styled.div`
   display: flex;
@@ -179,6 +180,30 @@ export const MessagingTestPage: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>(mockMessages);
   const [nextId, setNextId] = useState(8);
 
+  // Mock auth context with user ID 1
+  const mockAuthValue = useMemo(() => ({
+    state: {
+      user: {
+        id: 1,
+        username: 'You',
+        email: 'you@test.com',
+        first_name: 'Test',
+        last_name: 'User',
+        is_active: true,
+        created_at: new Date().toISOString(),
+      },
+      token: 'mock-token',
+      isAuthenticated: true,
+      isLoading: false,
+      error: null,
+    },
+    login: async () => {},
+    logout: () => {},
+    register: async () => {},
+    updateUser: async () => {},
+    clearError: () => {},
+  }), []);
+
   const handleSendMessage = (content: string, replyToId?: number) => {
     const newMessage: Message = {
       id: nextId,
@@ -234,26 +259,28 @@ export const MessagingTestPage: React.FC = () => {
   };
 
   return (
-    <PageContainer>
-      <Header>
-        <div>
-          <Title>Messaging System Test</Title>
-          <SubTitle>Test conversation with Alice</SubTitle>
-        </div>
-        <ButtonGroup>
-          <Button onClick={handleClearMessages}>Clear Messages</Button>
-          <Button onClick={handleResetMessages}>Reset to Default</Button>
-        </ButtonGroup>
-      </Header>
-      <ConversationContainer>
-        <ConversationView
-          conversationId={1}
-          messages={messages}
-          onSendMessage={handleSendMessage}
-          onEditMessage={handleEditMessage}
-          onDeleteMessage={handleDeleteMessage}
-        />
-      </ConversationContainer>
-    </PageContainer>
+    <AuthContext.Provider value={mockAuthValue}>
+      <PageContainer>
+        <Header>
+          <div>
+            <Title>Messaging System Test</Title>
+            <SubTitle>Test conversation with Alice (logged in as User #1)</SubTitle>
+          </div>
+          <ButtonGroup>
+            <Button onClick={handleClearMessages}>Clear Messages</Button>
+            <Button onClick={handleResetMessages}>Reset to Default</Button>
+          </ButtonGroup>
+        </Header>
+        <ConversationContainer>
+          <ConversationView
+            conversationId={1}
+            messages={messages}
+            onSendMessage={handleSendMessage}
+            onEditMessage={handleEditMessage}
+            onDeleteMessage={handleDeleteMessage}
+          />
+        </ConversationContainer>
+      </PageContainer>
+    </AuthContext.Provider>
   );
 };

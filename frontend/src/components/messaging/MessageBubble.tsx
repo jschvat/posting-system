@@ -35,10 +35,9 @@ interface MessageBubbleProps {
 
 const BubbleContainer = styled.div<{ isOwn: boolean }>`
   display: flex;
-  flex-direction: row;
-  align-items: flex-end;
-  justify-content: ${props => props.isOwn ? 'flex-end' : 'flex-start'};
-  margin-bottom: 2px;
+  flex-direction: column;
+  align-items: ${props => props.isOwn ? 'flex-end' : 'flex-start'};
+  margin-bottom: 12px;
   padding: 0 12px;
   width: 100%;
 `;
@@ -64,8 +63,8 @@ const SenderName = styled.span`
   font-size: 0.688rem;
   color: ${props => props.theme.colors.text.secondary};
   font-weight: 500;
-  margin-bottom: 4px;
-  padding: 0 12px;
+  margin-bottom: 2px;
+  padding-left: 4px;
 `;
 
 const BubbleWrapper = styled.div<{ isOwn: boolean }>`
@@ -244,22 +243,19 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
 
   if (message.deleted_at) {
     return (
-      <>
+      <BubbleContainer isOwn={isOwnMessage}>
         {!isOwnMessage && (
           <SenderName>{message.sender_username}</SenderName>
         )}
-        <BubbleContainer isOwn={isOwnMessage}>
-          {!isOwnMessage && message.sender_avatar && (
-            <SenderAvatar src={message.sender_avatar} alt={message.sender_username} />
-          )}
-          <BubbleWrapper isOwn={isOwnMessage}>
-            <DeletedMessage>This message has been deleted</DeletedMessage>
+        <BubbleWrapper isOwn={isOwnMessage}>
+          <DeletedMessage>This message has been deleted</DeletedMessage>
+          {message.created_at && (
             <MessageMeta isOwn={isOwnMessage}>
               <Timestamp>{formatTime(message.created_at)}</Timestamp>
             </MessageMeta>
-          </BubbleWrapper>
-        </BubbleContainer>
-      </>
+          )}
+        </BubbleWrapper>
+      </BubbleContainer>
     );
   }
 
@@ -270,39 +266,13 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   };
 
   return (
-    <>
+    <BubbleContainer isOwn={isOwnMessage}>
       {!isOwnMessage && (
         <SenderName>{message.sender_username}</SenderName>
       )}
-      <BubbleContainer isOwn={isOwnMessage}>
-        {!isOwnMessage && message.sender_avatar && (
-          <SenderAvatar src={message.sender_avatar} alt={message.sender_username} />
-        )}
 
-        <BubbleWrapper isOwn={isOwnMessage}>
-        {isOwnMessage && onEdit && onDelete && onReply && (
-          <MessageActions className="message-actions" isOwn={isOwnMessage}>
-            <ActionButton onClick={() => onReply(message)} title="Reply">
-              <FaReply style={{ width: '12px', height: '12px' }} />
-            </ActionButton>
-            <ActionButton onClick={() => setIsEditing(true)} title="Edit">
-              <FaEdit style={{ width: '12px', height: '12px' }} />
-            </ActionButton>
-            <ActionButton onClick={() => onDelete(message.id)} title="Delete">
-              <FaTrash style={{ width: '12px', height: '12px' }} />
-            </ActionButton>
-          </MessageActions>
-        )}
-
-        {!isOwnMessage && onReply && (
-          <MessageActions className="message-actions" isOwn={isOwnMessage}>
-            <ActionButton onClick={() => onReply(message)} title="Reply">
-              <FaReply style={{ width: '12px', height: '12px' }} />
-            </ActionButton>
-          </MessageActions>
-        )}
-
-        {message.reply_to_id && (
+      <BubbleWrapper isOwn={isOwnMessage}>
+        {message.reply_to_id && message.reply_to_content && message.reply_to_sender && (
           <ReplyPreview>
             <ReplyAuthor>{message.reply_to_sender}</ReplyAuthor>
             <ReplyText>{message.reply_to_content}</ReplyText>
@@ -329,20 +299,14 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
           <MessageContent>{message.content}</MessageContent>
         )}
 
-        <MessageMeta isOwn={isOwnMessage}>
-          <Timestamp>{formatTime(message.created_at)}</Timestamp>
-          {message.edited_at && <EditedLabel>(edited)</EditedLabel>}
-          {isOwnMessage && (
-            <ReadReceipt
-              status={getReadStatus()}
-              readBy={message.read_by}
-              showTooltip
-            />
-          )}
-        </MessageMeta>
+        {(message.created_at || message.edited_at) && (
+          <MessageMeta isOwn={isOwnMessage}>
+            {message.created_at && <Timestamp>{formatTime(message.created_at)}</Timestamp>}
+            {message.edited_at && <EditedLabel>(edited)</EditedLabel>}
+          </MessageMeta>
+        )}
       </BubbleWrapper>
     </BubbleContainer>
-    </>
   );
 };
 
