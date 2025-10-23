@@ -4,7 +4,6 @@
  */
 
 const express = require('express');
-const http = require('http');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
@@ -18,9 +17,6 @@ const { config } = require('../../config/app.config');
 
 // Import database connection
 const { initializeDatabase, testConnection, closeConnection } = require('./config/database');
-
-// Import WebSocket
-const { initializeWebSocket } = require('./websocket');
 
 // Import routes
 const authRoutes = require('./routes/auth');
@@ -145,22 +141,13 @@ async function startServer() {
     await testConnection();
     console.log('✅ Database connection established successfully.');
 
-    // Create HTTP server
-    const httpServer = http.createServer(app);
-
-    // Initialize WebSocket server
-    const io = initializeWebSocket(httpServer);
-
-    // Make io available to routes via app.locals
-    app.locals.io = io;
-
-    // Start HTTP server
-    httpServer.listen(PORT, () => {
-      console.log(`🚀 Server is running on port ${PORT}`);
+    // Start HTTP server (no WebSocket - runs on separate server)
+    app.listen(PORT, () => {
+      console.log(`🚀 API Server is running on port ${PORT}`);
       console.log(`🌍 Environment: ${config.env}`);
       console.log(`📊 Health check available at: http://localhost:${PORT}/health`);
       console.log(`📡 API endpoints available at: http://localhost:${PORT}/api`);
-      console.log(`🔌 WebSocket server available at: ws://localhost:${PORT}`);
+      console.log(`💡 WebSocket server should be started separately on port 3002`);
     });
 
   } catch (error) {

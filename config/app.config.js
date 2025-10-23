@@ -22,7 +22,7 @@ const config = {
   server: {
     // Backend API server
     api: {
-      port: parseInt(process.env.API_PORT) || 3002,
+      port: parseInt(process.env.API_PORT) || 3001,
       host: process.env.API_HOST || 'localhost',
       protocol: process.env.API_PROTOCOL || 'http'
     },
