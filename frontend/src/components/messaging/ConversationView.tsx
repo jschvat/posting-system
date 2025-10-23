@@ -159,7 +159,7 @@ export const ConversationView: React.FC<ConversationViewProps> = ({
         <ComposerContainer>
           <MessageComposer
             conversationId={conversationId}
-            onSend={handleSendMessage}
+            onSendMessage={handleSendMessage}
             replyingTo={replyingTo || undefined}
             onClearReply={() => setReplyingTo(null)}
           />
@@ -174,7 +174,11 @@ export const ConversationView: React.FC<ConversationViewProps> = ({
         {messages.map((message) => (
           <MessageBubble
             key={message.id}
-            message={message}
+            message={{
+              ...message,
+              sender_username: message.sender?.username || 'Unknown',
+              sender_avatar: message.sender?.avatar_url
+            } as any}
             onReply={handleReply}
             onEdit={onEditMessage}
             onDelete={onDeleteMessage}
@@ -186,7 +190,7 @@ export const ConversationView: React.FC<ConversationViewProps> = ({
       <ComposerContainer>
         <MessageComposer
           conversationId={conversationId}
-          onSend={handleSendMessage}
+          onSendMessage={handleSendMessage}
           replyingTo={replyingTo || undefined}
           onClearReply={() => setReplyingTo(null)}
         />
