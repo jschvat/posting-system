@@ -31,6 +31,7 @@ import CreateGroupPage from './pages/CreateGroupPage';
 import GroupPostPage from './pages/GroupPostPage';
 import GroupModPage from './pages/GroupModPage';
 import GroupSettingsPage from './pages/GroupSettingsPage';
+import { MessagingTestPage } from './pages/MessagingTestPage';
 
 // Import components
 import Header from './components/Header';
@@ -215,6 +216,9 @@ const AuthenticatedApp: React.FC = () => {
             <Route path="/g/:slug/moderate" element={<GroupModPage />} />
             <Route path="/g/:slug/settings" element={<GroupSettingsPage />} />
             <Route path="/g/:slug/posts/:postId" element={<GroupPostPage />} />
+
+            {/* Messaging Test Page */}
+            <Route path="/test/messaging" element={<MessagingTestPage />} />
 
             {/* Redirect to home for any other routes */}
             <Route path="*" element={<Navigate to="/" replace />} />
