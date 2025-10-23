@@ -14,6 +14,7 @@ import { config } from './config/app.config';
 
 // Import contexts
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { WebSocketProvider } from './contexts/WebSocketContext';
 import { ToastProvider } from './components/Toast';
 
 // Import pages
@@ -235,17 +236,19 @@ const App: React.FC = () => {
         <ToastProvider>
           <Router>
             <AuthProvider>
-              <Routes>
-                {/* Login page for unauthenticated users */}
-                <Route path="/login" element={<LoginPage />} />
+              <WebSocketProvider>
+                <Routes>
+                  {/* Login page for unauthenticated users */}
+                  <Route path="/login" element={<LoginPage />} />
 
-                {/* All other routes require authentication */}
-                <Route path="/*" element={
-                  <ProtectedRoute>
-                    <AuthenticatedApp />
-                  </ProtectedRoute>
-                } />
-              </Routes>
+                  {/* All other routes require authentication */}
+                  <Route path="/*" element={
+                    <ProtectedRoute>
+                      <AuthenticatedApp />
+                    </ProtectedRoute>
+                  } />
+                </Routes>
+              </WebSocketProvider>
             </AuthProvider>
           </Router>
         </ToastProvider>
