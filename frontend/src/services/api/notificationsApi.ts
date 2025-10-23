@@ -3,7 +3,7 @@
  * Handles all notification-related API calls
  */
 
-import api from '../api';
+import { apiClient } from '../api';
 import { ApiResponse } from '../../types';
 
 export interface Notification {
@@ -45,37 +45,37 @@ export const notificationsApi = {
     limit?: number;
     offset?: number;
   }): Promise<ApiResponse<Notification[]>> => {
-    const response = await api.get('/notifications', { params });
+    const response = await apiClient.get('/notifications', { params });
     return response.data;
   },
 
   getUnreadCount: async (): Promise<ApiResponse<{ count: number }>> => {
-    const response = await api.get('/notifications/unread-count');
+    const response = await apiClient.get('/notifications/unread-count');
     return response.data;
   },
 
   markAsRead: async (notificationId: number): Promise<ApiResponse<any>> => {
-    const response = await api.post(`/notifications/${notificationId}/read`);
+    const response = await apiClient.post(`/notifications/${notificationId}/read`);
     return response.data;
   },
 
   markAllAsRead: async (): Promise<ApiResponse<any>> => {
-    const response = await api.post('/notifications/read-all');
+    const response = await apiClient.post('/notifications/read-all');
     return response.data;
   },
 
   deleteNotification: async (notificationId: number): Promise<ApiResponse<any>> => {
-    const response = await api.delete(`/notifications/${notificationId}`);
+    const response = await apiClient.delete(`/notifications/${notificationId}`);
     return response.data;
   },
 
   clearAll: async (): Promise<ApiResponse<any>> => {
-    const response = await api.delete('/notifications/clear-all');
+    const response = await apiClient.delete('/notifications/clear-all');
     return response.data;
   },
 
   getPreferences: async (): Promise<ApiResponse<NotificationPreference[]>> => {
-    const response = await api.get('/notifications/preferences');
+    const response = await apiClient.get('/notifications/preferences');
     return response.data;
   },
 
@@ -85,7 +85,7 @@ export const notificationsApi = {
     in_app_enabled?: boolean;
     frequency?: 'realtime' | 'hourly' | 'daily';
   }): Promise<ApiResponse<NotificationPreference>> => {
-    const response = await api.put(`/notifications/preferences/${type}`, data);
+    const response = await apiClient.put(`/notifications/preferences/${type}`, data);
     return response.data;
   }
 };

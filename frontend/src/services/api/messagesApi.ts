@@ -3,7 +3,7 @@
  * Handles all messaging-related API calls
  */
 
-import api from '../api';
+import { apiClient } from '../api';
 import { ApiResponse } from '../../types';
 
 export interface Message {
@@ -51,12 +51,12 @@ export const messagesApi = {
     offset?: number;
     include_archived?: boolean;
   }): Promise<ApiResponse<Conversation[]>> => {
-    const response = await api.get('/conversations', { params });
+    const response = await apiClient.get('/conversations', { params });
     return response.data;
   },
 
   getConversation: async (id: number): Promise<ApiResponse<Conversation>> => {
-    const response = await api.get(`/conversations/${id}`);
+    const response = await apiClient.get(`/conversations/${id}`);
     return response.data;
   },
 
@@ -65,22 +65,22 @@ export const messagesApi = {
     participant_ids: number[];
     title?: string;
   }): Promise<ApiResponse<Conversation>> => {
-    const response = await api.post('/conversations', data);
+    const response = await apiClient.post('/conversations', data);
     return response.data;
   },
 
   getUnreadCount: async (): Promise<ApiResponse<{ count: number }>> => {
-    const response = await api.get('/conversations/unread-count');
+    const response = await apiClient.get('/conversations/unread-count');
     return response.data;
   },
 
   archiveConversation: async (id: number, archived: boolean): Promise<ApiResponse<any>> => {
-    const response = await api.post(`/conversations/${id}/archive`, { archived });
+    const response = await apiClient.post(`/conversations/${id}/archive`, { archived });
     return response.data;
   },
 
   muteConversation: async (id: number, muted: boolean): Promise<ApiResponse<any>> => {
-    const response = await api.post(`/conversations/${id}/mute`, { muted });
+    const response = await apiClient.post(`/conversations/${id}/mute`, { muted });
     return response.data;
   },
 
@@ -90,7 +90,7 @@ export const messagesApi = {
     before_cursor?: string;
     after_cursor?: string;
   }): Promise<ApiResponse<{ messages: Message[]; has_more: boolean }>> => {
-    const response = await api.get(`/conversations/${conversationId}/messages`, { params });
+    const response = await apiClient.get(`/conversations/${conversationId}/messages`, { params });
     return response.data;
   },
 
@@ -100,27 +100,27 @@ export const messagesApi = {
     attachment_url?: string;
     reply_to_id?: number;
   }): Promise<ApiResponse<Message>> => {
-    const response = await api.post(`/conversations/${conversationId}/messages`, data);
+    const response = await apiClient.post(`/conversations/${conversationId}/messages`, data);
     return response.data;
   },
 
   editMessage: async (messageId: number, content: string): Promise<ApiResponse<Message>> => {
-    const response = await api.put(`/messages/${messageId}`, { content });
+    const response = await apiClient.put(`/messages/${messageId}`, { content });
     return response.data;
   },
 
   deleteMessage: async (messageId: number): Promise<ApiResponse<any>> => {
-    const response = await api.delete(`/messages/${messageId}`);
+    const response = await apiClient.delete(`/messages/${messageId}`);
     return response.data;
   },
 
   markAsRead: async (conversationId: number): Promise<ApiResponse<any>> => {
-    const response = await api.post(`/conversations/${conversationId}/read`);
+    const response = await apiClient.post(`/conversations/${conversationId}/read`);
     return response.data;
   },
 
   searchMessages: async (conversationId: number, query: string): Promise<ApiResponse<Message[]>> => {
-    const response = await api.get(`/conversations/${conversationId}/messages/search`, {
+    const response = await apiClient.get(`/conversations/${conversationId}/messages/search`, {
       params: { q: query }
     });
     return response.data;
