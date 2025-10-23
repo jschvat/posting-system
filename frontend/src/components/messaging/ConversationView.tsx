@@ -20,43 +20,43 @@ const Container = styled.div`
   display: flex;
   flex-direction: column;
   height: 100%;
-  background: ${props => props.theme.colors.background};
+  background: #ffffff;
 `;
 
 const MessagesContainer = styled.div`
   flex: 1;
   overflow-y: auto;
-  padding: 16px;
+  padding: 16px 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 1px;
 
   /* Smooth scrolling */
   scroll-behavior: smooth;
 
   /* Custom scrollbar */
   &::-webkit-scrollbar {
-    width: 8px;
+    width: 6px;
   }
 
   &::-webkit-scrollbar-track {
-    background: ${props => props.theme.colors.background};
+    background: transparent;
   }
 
   &::-webkit-scrollbar-thumb {
-    background: ${props => props.theme.colors.border};
-    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 3px;
   }
 
   &::-webkit-scrollbar-thumb:hover {
-    background: ${props => props.theme.colors.text.muted};
+    background: rgba(0, 0, 0, 0.3);
   }
 `;
 
 const ComposerContainer = styled.div`
-  padding: 16px;
-  background: ${props => props.theme.colors.surface};
-  border-top: 1px solid ${props => props.theme.colors.border};
+  padding: 12px 16px;
+  background: #f6f6f6;
+  border-top: 1px solid #e5e5e5;
 `;
 
 const LoadingContainer = styled.div`

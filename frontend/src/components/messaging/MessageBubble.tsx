@@ -35,44 +35,51 @@ interface MessageBubbleProps {
 
 const BubbleContainer = styled.div<{ isOwn: boolean }>`
   display: flex;
-  flex-direction: column;
-  align-items: ${props => props.isOwn ? 'flex-end' : 'flex-start'};
-  margin-bottom: 12px;
-  max-width: 70%;
-  align-self: ${props => props.isOwn ? 'flex-end' : 'flex-start'};
+  flex-direction: row;
+  align-items: flex-end;
+  justify-content: ${props => props.isOwn ? 'flex-end' : 'flex-start'};
+  margin-bottom: 2px;
+  padding: 0 12px;
+  width: 100%;
 `;
 
 const SenderInfo = styled.div`
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
   padding: 0 12px;
 `;
 
 const SenderAvatar = styled.img`
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   object-fit: cover;
+  margin: 0 8px 4px 0;
+  flex-shrink: 0;
 `;
 
 const SenderName = styled.span`
-  font-size: 0.75rem;
+  font-size: 0.688rem;
   color: ${props => props.theme.colors.text.secondary};
   font-weight: 500;
+  margin-bottom: 4px;
+  padding: 0 12px;
 `;
 
 const BubbleWrapper = styled.div<{ isOwn: boolean }>`
   position: relative;
   display: flex;
   flex-direction: column;
-  background: ${props => props.isOwn ? props.theme.colors.primary : props.theme.colors.surface};
-  color: ${props => props.isOwn ? '#ffffff' : props.theme.colors.text};
+  background: ${props => props.isOwn ? '#007AFF' : '#E5E5EA'};
+  color: ${props => props.isOwn ? '#ffffff' : '#000000'};
   border-radius: 18px;
-  padding: 10px 14px;
+  padding: 8px 12px;
+  max-width: 65%;
   word-wrap: break-word;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  word-break: break-word;
+  box-shadow: none;
 
   &:hover {
     .message-actions {
@@ -114,16 +121,18 @@ const MessageMeta = styled.div<{ isOwn: boolean }>`
   display: flex;
   align-items: center;
   gap: 6px;
-  margin-top: 4px;
-  font-size: 0.688rem;
-  color: ${props => props.isOwn ? 'rgba(255, 255, 255, 0.7)' : props.theme.colors.text.secondary};
+  margin-top: 2px;
+  font-size: 0.65rem;
+  color: ${props => props.isOwn ? 'rgba(255, 255, 255, 0.85)' : 'rgba(0, 0, 0, 0.45)'};
 `;
 
-const Timestamp = styled.span``;
+const Timestamp = styled.span`
+  font-weight: 400;
+`;
 
 const EditedLabel = styled.span`
   font-style: italic;
-  opacity: 0.7;
+  opacity: 0.8;
 `;
 
 const MessageActions = styled.div<{ isOwn: boolean }>`
