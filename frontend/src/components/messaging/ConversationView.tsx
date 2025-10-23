@@ -179,6 +179,7 @@ export const ConversationView: React.FC<ConversationViewProps> = ({
               sender_username: message.sender?.username || 'Unknown',
               sender_avatar: message.sender?.avatar_url
             } as any}
+            isOwnMessage={message.sender_id === state.user?.id}
             onReply={handleReply}
             onEdit={onEditMessage}
             onDelete={onDeleteMessage}
