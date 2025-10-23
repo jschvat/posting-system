@@ -244,14 +244,22 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
 
   if (message.deleted_at) {
     return (
-      <BubbleContainer isOwn={isOwnMessage}>
-        <BubbleWrapper isOwn={isOwnMessage}>
-          <DeletedMessage>This message has been deleted</DeletedMessage>
-          <MessageMeta isOwn={isOwnMessage}>
-            <Timestamp>{formatTime(message.created_at)}</Timestamp>
-          </MessageMeta>
-        </BubbleWrapper>
-      </BubbleContainer>
+      <>
+        {!isOwnMessage && (
+          <SenderName>{message.sender_username}</SenderName>
+        )}
+        <BubbleContainer isOwn={isOwnMessage}>
+          {!isOwnMessage && message.sender_avatar && (
+            <SenderAvatar src={message.sender_avatar} alt={message.sender_username} />
+          )}
+          <BubbleWrapper isOwn={isOwnMessage}>
+            <DeletedMessage>This message has been deleted</DeletedMessage>
+            <MessageMeta isOwn={isOwnMessage}>
+              <Timestamp>{formatTime(message.created_at)}</Timestamp>
+            </MessageMeta>
+          </BubbleWrapper>
+        </BubbleContainer>
+      </>
     );
   }
 
@@ -262,15 +270,16 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   };
 
   return (
-    <BubbleContainer isOwn={isOwnMessage}>
+    <>
       {!isOwnMessage && (
-        <SenderInfo>
-          {message.sender_avatar && <SenderAvatar src={message.sender_avatar} alt={message.sender_username} />}
-          <SenderName>{message.sender_username}</SenderName>
-        </SenderInfo>
+        <SenderName>{message.sender_username}</SenderName>
       )}
+      <BubbleContainer isOwn={isOwnMessage}>
+        {!isOwnMessage && message.sender_avatar && (
+          <SenderAvatar src={message.sender_avatar} alt={message.sender_username} />
+        )}
 
-      <BubbleWrapper isOwn={isOwnMessage}>
+        <BubbleWrapper isOwn={isOwnMessage}>
         {isOwnMessage && onEdit && onDelete && onReply && (
           <MessageActions className="message-actions" isOwn={isOwnMessage}>
             <ActionButton onClick={() => onReply(message)} title="Reply">
@@ -333,6 +342,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
         </MessageMeta>
       </BubbleWrapper>
     </BubbleContainer>
+    </>
   );
 };
 
