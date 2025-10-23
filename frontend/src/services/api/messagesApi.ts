@@ -3,7 +3,7 @@
  * Handles all messaging-related API calls
  */
 
-import api from './index';
+import api from '../api';
 import { ApiResponse } from '../../types';
 
 export interface Message {

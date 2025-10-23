@@ -42,14 +42,14 @@ interface WebSocketProviderProps {
 }
 
 export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }) => {
-  const { token, user } = useAuth();
+  const { state } = useAuth();
   const [socket, setSocket] = useState<Socket | null>(null);
   const [connected, setConnected] = useState(false);
   const socketRef = useRef<Socket | null>(null);
 
   // Initialize WebSocket connection
   useEffect(() => {
-    if (!token || !user) {
+    if (!state.token || !state.user) {
       // Disconnect if no auth
       if (socketRef.current) {
         console.log('🔌 Disconnecting WebSocket (no auth)');
@@ -64,7 +64,7 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
     // Create socket connection
     console.log('🔌 Connecting to WebSocket...');
     const newSocket = io(WS_URL, {
-      auth: { token }
+      auth: { token: state.token }
     });
 
     newSocket.on('connect', () => {
@@ -94,7 +94,7 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }
       console.log('🔌 Cleaning up WebSocket connection');
       newSocket.close();
     };
-  }, [token, user]);
+  }, [state.token, state.user]);
 
   // Join conversation room
   const joinConversation = useCallback((conversationId: number) => {
