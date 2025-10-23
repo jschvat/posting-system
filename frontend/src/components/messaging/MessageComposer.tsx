@@ -30,7 +30,7 @@ const ReplyBar = styled.div`
   align-items: center;
   gap: 12px;
   padding: 8px 12px;
-  background: ${props => props.theme.colors.backgroundSecondary};
+  background: ${props => props.theme.colors.surface};
   border-left: 3px solid ${props => props.theme.colors.primary};
   border-radius: 4px;
   margin-bottom: 12px;
@@ -94,7 +94,7 @@ const TextArea = styled.textarea`
   padding: 12px 16px;
   border: 1px solid ${props => props.theme.colors.border};
   border-radius: 22px;
-  background: ${props => props.theme.colors.backgroundSecondary};
+  background: ${props => props.theme.colors.surface};
   color: ${props => props.theme.colors.text};
   font-size: 0.938rem;
   font-family: inherit;
@@ -125,7 +125,7 @@ const SendButton = styled.button<{ canSend: boolean }>`
   height: 44px;
   border: none;
   border-radius: 50%;
-  background: ${props => props.canSend ? props.theme.colors.primary : props.theme.colors.backgroundSecondary};
+  background: ${props => props.canSend ? props.theme.colors.primary : props.theme.colors.surface};
   color: ${props => props.canSend ? '#ffffff' : props.theme.colors.textSecondary};
   cursor: ${props => props.canSend ? 'pointer' : 'not-allowed'};
   transition: all 0.2s ease;
@@ -155,7 +155,7 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({
   const [message, setMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
-  const typingTimeoutRef = useRef<NodeJS.Timeout>();
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { socket } = useWebSocket();
 
   // Auto-resize textarea
@@ -251,7 +251,7 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({
           </ReplyContent>
           {onClearReply && (
             <ClearReplyButton onClick={onClearReply}>
-              <FaTimes size={14} />
+              <FaTimes style={{ width: '14px', height: '14px' }} />
             </ClearReplyButton>
           )}
         </ReplyBar>
@@ -276,7 +276,7 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({
           canSend={canSend}
           title="Send message"
         >
-          <FaPaperPlane size={16} />
+          <FaPaperPlane style={{ width: '16px', height: '16px' }} />
         </SendButton>
       </InputContainer>
     </ComposerContainer>

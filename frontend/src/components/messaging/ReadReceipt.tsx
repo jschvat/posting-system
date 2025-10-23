@@ -1,6 +1,6 @@
 import React from 'react';
 import styled from 'styled-components';
-import { FaCheckCircle, FaCheck, FaCheckDouble } from 'react-icons/fa';
+import { FaCircle, FaCheck } from 'react-icons/fa';
 
 interface ReadReceiptProps {
   status: 'sent' | 'delivered' | 'read';
@@ -29,7 +29,7 @@ const Tooltip = styled.div`
   right: 0;
   margin-bottom: 4px;
   padding: 8px 12px;
-  background: ${props => props.theme.colors.backgroundSecondary};
+  background: ${props => props.theme.colors.surface};
   border: 1px solid ${props => props.theme.colors.border};
   border-radius: 4px;
   font-size: 0.75rem;
@@ -78,13 +78,13 @@ export const ReadReceipt: React.FC<ReadReceiptProps> = ({
       case 'delivered':
         return (
           <ReceiptIcon>
-            <FaCheckDouble />
+            <FaCheck />
           </ReceiptIcon>
         );
       case 'read':
         return (
           <ReceiptIcon isRead>
-            <FaCheckDouble />
+            <FaCheck />
           </ReceiptIcon>
         );
       default:
@@ -116,7 +116,7 @@ export const ReadReceipt: React.FC<ReadReceiptProps> = ({
           <ReadByList>
             {readBy.map((reader) => (
               <ReadByItem key={reader.userId}>
-                <FaCheckCircle size={10} color="#4CAF50" />
+                <FaCircle style={{ width: '10px', height: '10px' }} color="#4CAF50" />
                 <span>
                   {reader.username} · {formatReadTime(reader.readAt)}
                 </span>

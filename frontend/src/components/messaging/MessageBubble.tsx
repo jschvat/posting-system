@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
-import { FaEdit, FaTrash, FaReply } from 'react-icons/fa';
+import { FaEdit, FaTrashAlt, FaReply } from 'react-icons/fa';
 import { ReadReceipt } from './ReadReceipt';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -63,7 +63,7 @@ const BubbleWrapper = styled.div<{ isOwn: boolean }>`
   position: relative;
   display: flex;
   flex-direction: column;
-  background: ${props => props.isOwn ? props.theme.colors.primary : props.theme.colors.backgroundSecondary};
+  background: ${props => props.isOwn ? props.theme.colors.primary : props.theme.colors.surface};
   color: ${props => props.isOwn ? '#ffffff' : props.theme.colors.text};
   border-radius: 18px;
   padding: 10px 14px;
@@ -150,7 +150,7 @@ const ActionButton = styled.button`
   transition: all 0.2s ease;
 
   &:hover {
-    background: ${props => props.theme.colors.backgroundSecondary};
+    background: ${props => props.theme.colors.surface};
     color: ${props => props.theme.colors.text};
   }
 `;
@@ -261,13 +261,13 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
         {isOwnMessage && onEdit && onDelete && onReply && (
           <MessageActions className="message-actions" isOwn={isOwnMessage}>
             <ActionButton onClick={() => onReply(message)} title="Reply">
-              <FaReply size={12} />
+              <FaReply style={{ width: '12px', height: '12px' }} />
             </ActionButton>
             <ActionButton onClick={() => setIsEditing(true)} title="Edit">
-              <FaEdit size={12} />
+              <FaEdit style={{ width: '12px', height: '12px' }} />
             </ActionButton>
             <ActionButton onClick={() => onDelete(message.id)} title="Delete">
-              <FaTrash size={12} />
+              <FaTrashAlt style={{ width: '12px', height: '12px' }} />
             </ActionButton>
           </MessageActions>
         )}
@@ -275,7 +275,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
         {!isOwnMessage && onReply && (
           <MessageActions className="message-actions" isOwn={isOwnMessage}>
             <ActionButton onClick={() => onReply(message)} title="Reply">
-              <FaReply size={12} />
+              <FaReply style={{ width: '12px', height: '12px' }} />
             </ActionButton>
           </MessageActions>
         )}
