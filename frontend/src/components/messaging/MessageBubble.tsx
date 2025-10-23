@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
 import * as FaIcons from 'react-icons/fa';
+import { ReadReceipt } from './ReadReceipt';
+import { useAuth } from '../../contexts/AuthContext';
 
 const FaEdit = (FaIcons as any).FaEdit;
 const FaTrash = (FaIcons as any).FaTrash;
 const FaReply = (FaIcons as any).FaReply;
-import { ReadReceipt } from './ReadReceipt';
-import { useAuth } from '../../contexts/AuthContext';
 
 interface Message {
   id: number;

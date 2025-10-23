@@ -1,10 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import styled from 'styled-components';
 import * as FaIcons from 'react-icons/fa';
+import { useWebSocket } from '../../contexts/WebSocketContext';
 
 const FaPaperPlane = (FaIcons as any).FaPaperPlane;
 const FaTimes = (FaIcons as any).FaTimes;
-import { useWebSocket } from '../../contexts/WebSocketContext';
 
 interface ReplyingTo {
   messageId: number;

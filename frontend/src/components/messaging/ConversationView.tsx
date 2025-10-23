@@ -85,9 +85,9 @@ export const ConversationView: React.FC<ConversationViewProps> = ({
   onDeleteMessage,
   isLoading = false,
 }) => {
-  const { user } = useAuth();
+  const { state } = useAuth();
   const { socket } = useWebSocket();
-  const [replyingTo, setReplyingTo] = useState<{ id: number; content: string; senderName: string } | null>(null);
+  const [replyingTo, setReplyingTo] = useState<{ messageId: number; content: string; senderName: string } | null>(null);
   const [typingUsers, setTypingUsers] = useState<string[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -101,7 +101,7 @@ export const ConversationView: React.FC<ConversationViewProps> = ({
     if (!socket) return;
 
     const handleTypingStart = (data: { userId: number; username: string; conversationId: number }) => {
-      if (data.conversationId === conversationId && data.userId !== user?.id) {
+      if (data.conversationId === conversationId && data.userId !== state.user?.id) {
         setTypingUsers(prev => {
           if (!prev.includes(data.username)) {
             return [...prev, data.username];
@@ -124,15 +124,19 @@ export const ConversationView: React.FC<ConversationViewProps> = ({
       socket.off('user:typing:started', handleTypingStart);
       socket.off('user:typing:stopped', handleTypingStop);
     };
-  }, [socket, conversationId, user?.id]);
+  }, [socket, conversationId, state.user?.id]);
 
   const handleSendMessage = (content: string) => {
-    onSendMessage(content, replyingTo?.id);
+    onSendMessage(content, replyingTo?.messageId);
     setReplyingTo(null);
   };
 
-  const handleReply = (messageId: number, content: string, senderName: string) => {
-    setReplyingTo({ id: messageId, content, senderName });
+  const handleReply = (message: any) => {
+    setReplyingTo({
+      messageId: message.id,
+      content: message.content,
+      senderName: message.sender_username
+    });
   };
 
   if (isLoading) {

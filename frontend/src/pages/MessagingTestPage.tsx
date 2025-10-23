@@ -53,7 +53,7 @@ const Button = styled.button`
   transition: all 0.2s ease;
 
   &:hover {
-    background: ${props => props.theme.colors.hover};
+    background: ${props => props.theme.colors.background};
   }
 
   &:active {
