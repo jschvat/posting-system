@@ -204,13 +204,14 @@ export const MessagingTestPage: React.FC = () => {
     clearError: () => {},
   }), []);
 
-  const handleSendMessage = (content: string, replyToId?: number) => {
+  const handleSendMessage = (content: string, replyToId?: number, mediaFile?: { file: File; type: 'image' | 'video'; dataUrl: string }) => {
     const newMessage: Message = {
       id: nextId,
       conversation_id: 1,
       sender_id: 1,
       content,
-      message_type: 'text',
+      message_type: mediaFile ? mediaFile.type : 'text',
+      attachment_url: mediaFile?.dataUrl,
       reply_to_id: replyToId,
       created_at: new Date().toISOString(),
       sender: {

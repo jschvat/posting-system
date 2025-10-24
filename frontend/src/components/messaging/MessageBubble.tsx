@@ -15,7 +15,9 @@ interface Message {
   sender_username: string;
   sender_avatar?: string;
   content: string;
-  message_type: string;
+  message_type: 'text' | 'image' | 'video' | 'file';
+  attachment_url?: string;
+  attachment_type?: string;
   created_at: string;
   edited_at?: string;
   deleted_at?: string;
@@ -74,11 +76,50 @@ const BubbleWrapper = styled.div<{ isOwn: boolean }>`
   background: ${props => props.isOwn ? '#007AFF' : '#E5E5EA'};
   color: ${props => props.isOwn ? '#ffffff' : '#000000'};
   border-radius: 18px;
+  ${props => props.isOwn ? 'border-bottom-right-radius: 4px;' : 'border-bottom-left-radius: 4px;'}
   padding: 8px 12px;
   max-width: 65%;
   word-wrap: break-word;
   word-break: break-word;
   box-shadow: none;
+
+  &::before {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    ${props => props.isOwn ? `
+      right: -8px;
+      width: 20px;
+      height: 20px;
+      background: #007AFF;
+      border-bottom-left-radius: 16px;
+    ` : `
+      left: -8px;
+      width: 20px;
+      height: 20px;
+      background: #E5E5EA;
+      border-bottom-right-radius: 16px;
+    `}
+  }
+
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    ${props => props.isOwn ? `
+      right: -10px;
+      width: 10px;
+      height: 20px;
+      background: white;
+      border-bottom-left-radius: 10px;
+    ` : `
+      left: -10px;
+      width: 10px;
+      height: 20px;
+      background: white;
+      border-bottom-right-radius: 10px;
+    `}
+  }
 
   &:hover {
     .message-actions {
@@ -114,6 +155,57 @@ const ReplyText = styled.span`
 const MessageContent = styled.div`
   line-height: 1.4;
   font-size: 0.938rem;
+`;
+
+const MediaContainer = styled.div`
+  margin: 4px 0;
+  border-radius: 12px;
+  overflow: hidden;
+  max-width: 100%;
+`;
+
+const MessageImage = styled.img`
+  display: block;
+  max-width: 100%;
+  max-height: 400px;
+  width: auto;
+  height: auto;
+  border-radius: 12px;
+  cursor: pointer;
+
+  &:hover {
+    opacity: 0.95;
+  }
+`;
+
+const MessageVideo = styled.video`
+  display: block;
+  max-width: 100%;
+  max-height: 400px;
+  width: auto;
+  height: auto;
+  border-radius: 12px;
+`;
+
+const ImageModal = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  cursor: zoom-out;
+`;
+
+const FullSizeImage = styled.img`
+  max-width: 90vw;
+  max-height: 90vh;
+  object-fit: contain;
+  border-radius: 8px;
 `;
 
 const MessageMeta = styled.div<{ isOwn: boolean }>`
@@ -218,10 +310,41 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   const { state } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(message.content);
+  const [showFullImage, setShowFullImage] = useState(false);
 
   const formatTime = (timestamp: string) => {
     const date = new Date(timestamp);
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const renderMedia = () => {
+    if (!message.attachment_url) return null;
+
+    switch (message.message_type) {
+      case 'image':
+        return (
+          <MediaContainer>
+            <MessageImage
+              src={message.attachment_url}
+              alt="Shared image"
+              loading="lazy"
+              onClick={() => setShowFullImage(true)}
+            />
+          </MediaContainer>
+        );
+      case 'video':
+        return (
+          <MediaContainer>
+            <MessageVideo
+              src={message.attachment_url}
+              controls
+              preload="metadata"
+            />
+          </MediaContainer>
+        );
+      default:
+        return null;
+    }
   };
 
   const handleEdit = () => {
@@ -266,6 +389,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   };
 
   return (
+    <>
     <BubbleContainer isOwn={isOwnMessage}>
       {!isOwnMessage && (
         <SenderName>{message.sender_username}</SenderName>
@@ -296,7 +420,10 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
             </EditActions>
           </>
         ) : (
-          <MessageContent>{message.content}</MessageContent>
+          <>
+            {renderMedia()}
+            {message.content && <MessageContent>{message.content}</MessageContent>}
+          </>
         )}
 
         {(message.created_at || message.edited_at) && (
@@ -307,6 +434,12 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
         )}
       </BubbleWrapper>
     </BubbleContainer>
+    {showFullImage && message.attachment_url && message.message_type === 'image' && (
+      <ImageModal onClick={() => setShowFullImage(false)}>
+        <FullSizeImage src={message.attachment_url} alt="Full size" />
+      </ImageModal>
+    )}
+  </>
   );
 };
 

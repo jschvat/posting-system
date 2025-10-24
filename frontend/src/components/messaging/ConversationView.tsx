@@ -10,7 +10,7 @@ import { Message } from '../../services/api/messagesApi';
 interface ConversationViewProps {
   conversationId: number;
   messages: Message[];
-  onSendMessage: (content: string, replyToId?: number) => void;
+  onSendMessage: (content: string, replyToId?: number, mediaFile?: { file: File; type: 'image' | 'video'; dataUrl: string }) => void;
   onEditMessage: (messageId: number, content: string) => void;
   onDeleteMessage: (messageId: number) => void;
   isLoading?: boolean;
@@ -126,8 +126,8 @@ export const ConversationView: React.FC<ConversationViewProps> = ({
     };
   }, [socket, conversationId, state.user?.id]);
 
-  const handleSendMessage = (content: string) => {
-    onSendMessage(content, replyingTo?.messageId);
+  const handleSendMessage = (content: string, replyToId?: number, mediaFile?: { file: File; type: 'image' | 'video'; dataUrl: string }) => {
+    onSendMessage(content, replyingTo?.messageId || replyToId, mediaFile);
     setReplyingTo(null);
   };
 

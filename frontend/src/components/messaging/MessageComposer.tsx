@@ -5,6 +5,8 @@ import { useWebSocket } from '../../contexts/WebSocketContext';
 
 const FaPaperPlane = (FaIcons as any).FaPaperPlane;
 const FaTimes = (FaIcons as any).FaTimes;
+const FaPaperclip = (FaIcons as any).FaPaperclip;
+const FaImage = (FaIcons as any).FaImage;
 
 interface ReplyingTo {
   messageId: number;
@@ -14,7 +16,7 @@ interface ReplyingTo {
 
 interface MessageComposerProps {
   conversationId: number;
-  onSendMessage: (content: string, replyToId?: number) => void;
+  onSendMessage: (content: string, replyToId?: number, mediaFile?: { file: File; type: 'image' | 'video'; dataUrl: string }) => void;
   replyingTo?: ReplyingTo;
   onClearReply?: () => void;
   disabled?: boolean;
@@ -120,6 +122,78 @@ const TextArea = styled.textarea`
   }
 `;
 
+const AttachButton = styled.button`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: ${props => props.theme.colors.text.secondary};
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+
+  &:hover {
+    background: ${props => props.theme.colors.surface};
+    color: ${props => props.theme.colors.primary};
+  }
+
+  &:active {
+    transform: scale(0.95);
+  }
+`;
+
+const HiddenFileInput = styled.input`
+  display: none;
+`;
+
+const MediaPreviewContainer = styled.div`
+  position: relative;
+  margin-bottom: 12px;
+  border-radius: 12px;
+  overflow: hidden;
+  max-width: 300px;
+`;
+
+const MediaPreviewImage = styled.img`
+  display: block;
+  max-width: 100%;
+  max-height: 200px;
+  border-radius: 12px;
+`;
+
+const MediaPreviewVideo = styled.video`
+  display: block;
+  max-width: 100%;
+  max-height: 200px;
+  border-radius: 12px;
+`;
+
+const RemoveMediaButton = styled.button`
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.6);
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: rgba(0, 0, 0, 0.8);
+    transform: scale(1.1);
+  }
+`;
+
 const SendButton = styled.button<{ canSend: boolean }>`
   display: flex;
   align-items: center;
@@ -157,7 +231,9 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({
 }) => {
   const [message, setMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [selectedMedia, setSelectedMedia] = useState<{ file: File; type: 'image' | 'video'; dataUrl: string } | null>(null);
   const textAreaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { socket } = useWebSocket();
 
@@ -212,12 +288,55 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({
     }
   };
 
+  // Handle file selection
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Check if it's an image or video
+    const isImage = file.type.startsWith('image/');
+    const isVideo = file.type.startsWith('video/');
+
+    if (!isImage && !isVideo) {
+      alert('Please select an image or video file');
+      return;
+    }
+
+    // Create data URL for preview
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const dataUrl = event.target?.result as string;
+      setSelectedMedia({
+        file,
+        type: isImage ? 'image' : 'video',
+        dataUrl
+      });
+    };
+    reader.readAsDataURL(file);
+
+    // Reset file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  // Handle remove media
+  const handleRemoveMedia = () => {
+    setSelectedMedia(null);
+  };
+
+  // Handle attachment button click
+  const handleAttachClick = () => {
+    fileInputRef.current?.click();
+  };
+
   // Handle send message
   const handleSend = () => {
     const trimmedMessage = message.trim();
-    if (trimmedMessage && !disabled) {
-      onSendMessage(trimmedMessage, replyingTo?.messageId);
+    if ((trimmedMessage || selectedMedia) && !disabled) {
+      onSendMessage(trimmedMessage, replyingTo?.messageId, selectedMedia || undefined);
       setMessage('');
+      setSelectedMedia(null);
       handleTypingStop();
 
       // Reset textarea height
@@ -242,7 +361,7 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({
     };
   }, []);
 
-  const canSend = message.trim().length > 0 && !disabled;
+  const canSend = (message.trim().length > 0 || selectedMedia !== null) && !disabled;
 
   return (
     <ComposerContainer>
@@ -260,7 +379,29 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({
         </ReplyBar>
       )}
 
+      {selectedMedia && (
+        <MediaPreviewContainer>
+          {selectedMedia.type === 'image' ? (
+            <MediaPreviewImage src={selectedMedia.dataUrl} alt="Preview" />
+          ) : (
+            <MediaPreviewVideo src={selectedMedia.dataUrl} controls />
+          )}
+          <RemoveMediaButton onClick={handleRemoveMedia}>
+            <FaTimes style={{ width: '14px', height: '14px' }} />
+          </RemoveMediaButton>
+        </MediaPreviewContainer>
+      )}
+
       <InputContainer>
+        <HiddenFileInput
+          ref={fileInputRef}
+          type="file"
+          accept="image/*,video/*"
+          onChange={handleFileSelect}
+        />
+        <AttachButton onClick={handleAttachClick} title="Attach photo or video">
+          <FaImage style={{ width: '18px', height: '18px' }} />
+        </AttachButton>
         <TextAreaWrapper>
           <TextArea
             ref={textAreaRef}

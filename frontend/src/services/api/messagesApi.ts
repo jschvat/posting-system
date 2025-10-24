@@ -11,7 +11,7 @@ export interface Message {
   conversation_id: number;
   sender_id: number;
   content: string;
-  message_type: 'text' | 'image' | 'file' | 'system';
+  message_type: 'text' | 'image' | 'video' | 'file' | 'system';
   attachment_url?: string;
   reply_to_id?: number;
   edited_at?: string;
