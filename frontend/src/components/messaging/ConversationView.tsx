@@ -13,6 +13,7 @@ interface ConversationViewProps {
   onSendMessage: (content: string, replyToId?: number, mediaFile?: { file: File; type: 'image' | 'video'; dataUrl: string }) => void;
   onEditMessage: (messageId: number, content: string) => void;
   onDeleteMessage: (messageId: number) => void;
+  onReactionToggle?: (messageId: number, emoji: string) => void;
   isLoading?: boolean;
 }
 
@@ -83,6 +84,7 @@ export const ConversationView: React.FC<ConversationViewProps> = ({
   onSendMessage,
   onEditMessage,
   onDeleteMessage,
+  onReactionToggle,
   isLoading = false,
 }) => {
   const { state } = useAuth();
@@ -183,6 +185,7 @@ export const ConversationView: React.FC<ConversationViewProps> = ({
             onReply={handleReply}
             onEdit={onEditMessage}
             onDelete={onDeleteMessage}
+            onReactionToggle={onReactionToggle}
           />
         ))}
         <TypingIndicator usernames={typingUsers} />

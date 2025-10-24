@@ -259,6 +259,71 @@ export const MessagingTestPage: React.FC = () => {
     setNextId(8);
   };
 
+  const handleReactionToggle = (messageId: number, emoji: string) => {
+    setMessages(prev =>
+      prev.map(msg => {
+        if (msg.id !== messageId) return msg;
+
+        const reactions = msg.reactions || [];
+        const existingReaction = reactions.find(r => r.emoji === emoji);
+
+        if (existingReaction) {
+          // Check if current user already reacted
+          const userReacted = existingReaction.users.some(u => u.user_id === 1);
+
+          if (userReacted) {
+            // Remove user's reaction
+            const updatedUsers = existingReaction.users.filter(u => u.user_id !== 1);
+            if (updatedUsers.length === 0) {
+              // Remove emoji entirely if no users left
+              return {
+                ...msg,
+                reactions: reactions.filter(r => r.emoji !== emoji)
+              };
+            } else {
+              // Update count and users
+              return {
+                ...msg,
+                reactions: reactions.map(r =>
+                  r.emoji === emoji
+                    ? { ...r, count: updatedUsers.length, users: updatedUsers }
+                    : r
+                )
+              };
+            }
+          } else {
+            // Add user's reaction
+            return {
+              ...msg,
+              reactions: reactions.map(r =>
+                r.emoji === emoji
+                  ? {
+                      ...r,
+                      count: r.count + 1,
+                      users: [...r.users, { user_id: 1, username: 'You' }]
+                    }
+                  : r
+              )
+            };
+          }
+        } else {
+          // Add new reaction
+          return {
+            ...msg,
+            reactions: [
+              ...reactions,
+              {
+                emoji,
+                count: 1,
+                users: [{ user_id: 1, username: 'You' }]
+              }
+            ]
+          };
+        }
+      })
+    );
+  };
+
   return (
     <AuthContext.Provider value={mockAuthValue}>
       <PageContainer>
@@ -279,6 +344,7 @@ export const MessagingTestPage: React.FC = () => {
             onSendMessage={handleSendMessage}
             onEditMessage={handleEditMessage}
             onDeleteMessage={handleDeleteMessage}
+            onReactionToggle={handleReactionToggle}
           />
         </ConversationContainer>
       </PageContainer>

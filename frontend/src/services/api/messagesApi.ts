@@ -6,6 +6,12 @@
 import { apiClient } from '../api';
 import { ApiResponse } from '../../types';
 
+export interface Reaction {
+  emoji: string;
+  count: number;
+  users: Array<{ user_id: number; username: string }>;
+}
+
 export interface Message {
   id: number;
   conversation_id: number;
@@ -17,6 +23,7 @@ export interface Message {
   edited_at?: string;
   deleted_at?: string;
   created_at: string;
+  reactions?: Reaction[];
   sender?: {
     id: number;
     username: string;

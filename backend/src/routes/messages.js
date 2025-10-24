@@ -3,6 +3,7 @@ const router = express.Router();
 const { authenticate: authenticateToken } = require('../middleware/auth');
 const Message = require('../models/Message');
 const Conversation = require('../models/Conversation');
+const MessageReaction = require('../models/messageReaction');
 
 /**
  * @route   GET /api/messages/:id
@@ -222,6 +223,96 @@ router.get('/:id/read-receipts', authenticateToken, async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to get read receipts'
+    });
+  }
+});
+
+/**
+ * @route   POST /api/messages/:id/reactions
+ * @desc    Toggle reaction on a message
+ * @access  Private
+ */
+router.post('/:id/reactions', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { emoji } = req.body;
+
+    if (!emoji) {
+      return res.status(400).json({
+        success: false,
+        error: 'Emoji is required'
+      });
+    }
+
+    const message = await Message.getById(parseInt(id));
+    if (!message) {
+      return res.status(404).json({
+        success: false,
+        error: 'Message not found'
+      });
+    }
+
+    // Check if user is participant in the conversation
+    const isParticipant = await Conversation.isParticipant(message.conversation_id, req.user.id);
+    if (!isParticipant) {
+      return res.status(403).json({
+        success: false,
+        error: 'You do not have access to this message'
+      });
+    }
+
+    const result = await MessageReaction.toggleReaction(parseInt(id), req.user.id, emoji);
+
+    res.json({
+      success: true,
+      data: result
+    });
+  } catch (error) {
+    console.error('Error toggling reaction:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to toggle reaction'
+    });
+  }
+});
+
+/**
+ * @route   GET /api/messages/:id/reactions
+ * @desc    Get reactions for a message
+ * @access  Private
+ */
+router.get('/:id/reactions', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const message = await Message.getById(parseInt(id));
+    if (!message) {
+      return res.status(404).json({
+        success: false,
+        error: 'Message not found'
+      });
+    }
+
+    // Check if user is participant in the conversation
+    const isParticipant = await Conversation.isParticipant(message.conversation_id, req.user.id);
+    if (!isParticipant) {
+      return res.status(403).json({
+        success: false,
+        error: 'You do not have access to this message'
+      });
+    }
+
+    const reactions = await MessageReaction.getReactionSummary(parseInt(id));
+
+    res.json({
+      success: true,
+      data: reactions
+    });
+  } catch (error) {
+    console.error('Error getting reactions:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get reactions'
     });
   }
 });

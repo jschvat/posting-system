@@ -3,10 +3,17 @@ import styled from 'styled-components';
 import * as FaIcons from 'react-icons/fa';
 import { ReadReceipt } from './ReadReceipt';
 import { useAuth } from '../../contexts/AuthContext';
+import { MessageReactions } from './MessageReactions';
 
 const FaEdit = (FaIcons as any).FaEdit;
 const FaTrash = (FaIcons as any).FaTrash;
 const FaReply = (FaIcons as any).FaReply;
+
+interface Reaction {
+  emoji: string;
+  count: number;
+  users: Array<{ user_id: number; username: string }>;
+}
 
 interface Message {
   id: number;
@@ -25,6 +32,7 @@ interface Message {
   reply_to_content?: string;
   reply_to_sender?: string;
   read_by?: Array<{ userId: number; username: string; readAt: string }>;
+  reactions?: Reaction[];
 }
 
 interface MessageBubbleProps {
@@ -33,6 +41,7 @@ interface MessageBubbleProps {
   onEdit?: (messageId: number, content: string) => void;
   onDelete?: (messageId: number) => void;
   onReply?: (message: Message) => void;
+  onReactionToggle?: (messageId: number, emoji: string) => void;
 }
 
 const BubbleContainer = styled.div<{ isOwn: boolean }>`
@@ -305,7 +314,8 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   isOwnMessage,
   onEdit,
   onDelete,
-  onReply
+  onReply,
+  onReactionToggle
 }) => {
   const { state } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
@@ -433,13 +443,22 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
           </MessageMeta>
         )}
       </BubbleWrapper>
+
+      {message.reactions && message.reactions.length > 0 && onReactionToggle && state.user && (
+        <MessageReactions
+          messageId={message.id}
+          reactions={message.reactions}
+          currentUserId={state.user.id}
+          onReactionToggle={onReactionToggle}
+        />
+      )}
     </BubbleContainer>
     {showFullImage && message.attachment_url && message.message_type === 'image' && (
       <ImageModal onClick={() => setShowFullImage(false)}>
         <FullSizeImage src={message.attachment_url} alt="Full size" />
       </ImageModal>
     )}
-  </>
+    </>
   );
 };
 
