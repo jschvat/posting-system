@@ -51,6 +51,11 @@ const BubbleContainer = styled.div<{ isOwn: boolean }>`
   margin-bottom: 12px;
   padding: 0 12px;
   width: 100%;
+
+  &:hover .message-reactions .add-reaction-btn {
+    opacity: 1;
+    pointer-events: auto;
+  }
 `;
 
 const SenderInfo = styled.div`

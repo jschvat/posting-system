@@ -59,7 +59,7 @@ const Count = styled.span`
   margin-left: 2px;
 `;
 
-const AddReactionButton = styled.button`
+const AddReactionButton = styled.button<{ hasReaction: boolean }>`
   display: flex;
   align-items: center;
   justify-content: center;
@@ -74,6 +74,10 @@ const AddReactionButton = styled.button`
   color: #8E8E93;
   transition: all 0.2s ease;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+
+  /* Hide by default unless there's already a reaction */
+  opacity: ${props => props.hasReaction ? 1 : 0};
+  pointer-events: ${props => props.hasReaction ? 'auto' : 'none'};
 
   &:hover {
     transform: scale(1.15);
@@ -150,7 +154,7 @@ export const MessageReactions: React.FC<MessageReactionsProps> = ({
   };
 
   return (
-    <ReactionsContainer isOwn={isOwnMessage}>
+    <ReactionsContainer isOwn={isOwnMessage} className="message-reactions">
       {currentUserReaction && (
         <ReactionBubble
           isCurrentUser={true}
@@ -164,6 +168,8 @@ export const MessageReactions: React.FC<MessageReactionsProps> = ({
 
       <ReactionWrapper>
         <AddReactionButton
+          hasReaction={!!currentUserReaction}
+          className="add-reaction-btn"
           onClick={() => setShowPicker(!showPicker)}
           title="Add reaction"
         >
