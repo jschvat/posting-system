@@ -450,6 +450,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
           reactions={message.reactions || []}
           currentUserId={state.user.id}
           onReactionToggle={onReactionToggle}
+          isOwnMessage={isOwnMessage}
         />
       )}
     </BubbleContainer>

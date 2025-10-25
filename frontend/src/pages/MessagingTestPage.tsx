@@ -265,53 +265,76 @@ export const MessagingTestPage: React.FC = () => {
         if (msg.id !== messageId) return msg;
 
         const reactions = msg.reactions || [];
-        const existingReaction = reactions.find(r => r.emoji === emoji);
 
-        if (existingReaction) {
-          // Check if current user already reacted
-          const userReacted = existingReaction.users.some(u => u.user_id === 1);
+        // Find if user has ANY existing reaction (one reaction per user limit)
+        const userCurrentReaction = reactions.find(r =>
+          r.users.some(u => u.user_id === 1)
+        );
 
-          if (userReacted) {
-            // Remove user's reaction
-            const updatedUsers = existingReaction.users.filter(u => u.user_id !== 1);
-            if (updatedUsers.length === 0) {
-              // Remove emoji entirely if no users left
-              return {
-                ...msg,
-                reactions: reactions.filter(r => r.emoji !== emoji)
-              };
-            } else {
-              // Update count and users
-              return {
-                ...msg,
-                reactions: reactions.map(r =>
-                  r.emoji === emoji
-                    ? { ...r, count: updatedUsers.length, users: updatedUsers }
-                    : r
-                )
-              };
-            }
+        // If clicking the same emoji user already reacted with, remove it
+        if (userCurrentReaction && userCurrentReaction.emoji === emoji) {
+          const updatedUsers = userCurrentReaction.users.filter(u => u.user_id !== 1);
+
+          if (updatedUsers.length === 0) {
+            // Remove emoji entirely if no other users
+            return {
+              ...msg,
+              reactions: reactions.filter(r => r.emoji !== emoji)
+            };
           } else {
-            // Add user's reaction
+            // Keep emoji but remove current user
             return {
               ...msg,
               reactions: reactions.map(r =>
                 r.emoji === emoji
-                  ? {
-                      ...r,
-                      count: r.count + 1,
-                      users: [...r.users, { user_id: 1, username: 'You' }]
-                    }
+                  ? { ...r, count: updatedUsers.length, users: updatedUsers }
                   : r
               )
             };
           }
+        }
+
+        // Remove user's old reaction (if any) and add new one
+        let updatedReactions = reactions;
+
+        // First, remove user from their old reaction
+        if (userCurrentReaction) {
+          updatedReactions = reactions
+            .map(r => {
+              if (r.emoji === userCurrentReaction.emoji) {
+                const newUsers = r.users.filter(u => u.user_id !== 1);
+                return newUsers.length > 0
+                  ? { ...r, count: newUsers.length, users: newUsers }
+                  : null;
+              }
+              return r;
+            })
+            .filter(r => r !== null) as typeof reactions;
+        }
+
+        // Then add user to new reaction
+        const targetReaction = updatedReactions.find(r => r.emoji === emoji);
+
+        if (targetReaction) {
+          // Add user to existing emoji
+          return {
+            ...msg,
+            reactions: updatedReactions.map(r =>
+              r.emoji === emoji
+                ? {
+                    ...r,
+                    count: r.count + 1,
+                    users: [...r.users, { user_id: 1, username: 'You' }]
+                  }
+                : r
+            )
+          };
         } else {
-          // Add new reaction
+          // Create new emoji reaction
           return {
             ...msg,
             reactions: [
-              ...reactions,
+              ...updatedReactions,
               {
                 emoji,
                 count: 1,
