@@ -77,17 +77,17 @@ const AddReactionButton = styled.button`
 
 const EmojiPicker = styled.div`
   position: absolute;
-  bottom: 100%;
+  bottom: calc(100% + 4px);
   left: 0;
-  margin-bottom: 8px;
   display: flex;
   gap: 4px;
   padding: 8px;
   background: ${props => props.theme.colors.surface};
   border: 1px solid ${props => props.theme.colors.border};
   border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  z-index: 100;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  z-index: 1000;
+  white-space: nowrap;
 `;
 
 const EmojiOption = styled.button`
