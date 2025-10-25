@@ -444,10 +444,10 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
         )}
       </BubbleWrapper>
 
-      {message.reactions && message.reactions.length > 0 && onReactionToggle && state.user && (
+      {onReactionToggle && state.user && (
         <MessageReactions
           messageId={message.id}
-          reactions={message.reactions}
+          reactions={message.reactions || []}
           currentUserId={state.user.id}
           onReactionToggle={onReactionToggle}
         />
