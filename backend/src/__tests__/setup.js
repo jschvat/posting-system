@@ -3,6 +3,9 @@
  * Configures the testing environment for Jest
  */
 
+// Load test environment variables first
+require('dotenv').config({ path: '.env.test' });
+
 const { initTestDb, cleanTestDb } = require('./testDb');
 
 // Set test environment
