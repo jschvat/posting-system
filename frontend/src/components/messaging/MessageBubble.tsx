@@ -5,6 +5,8 @@ import { ReadReceipt } from './ReadReceipt';
 import { useAuth } from '../../contexts/AuthContext';
 import { MessageReactions } from './MessageReactions';
 
+const QUICK_REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
+
 const FaEdit = (FaIcons as any).FaEdit;
 const FaTrash = (FaIcons as any).FaTrash;
 const FaReply = (FaIcons as any).FaReply;
@@ -51,11 +53,6 @@ const BubbleContainer = styled.div<{ isOwn: boolean }>`
   margin-bottom: 12px;
   padding: 0 12px;
   width: 100%;
-
-  &:hover .message-reactions .add-reaction-btn {
-    opacity: 1;
-    pointer-events: auto;
-  }
 `;
 
 const SenderInfo = styled.div`
@@ -314,6 +311,53 @@ const EditButton = styled.button<{ primary?: boolean }>`
   }
 `;
 
+const ContextMenu = styled.div<{ x: number; y: number }>`
+  position: fixed;
+  left: ${props => props.x}px;
+  top: ${props => props.y}px;
+  display: flex;
+  gap: 6px;
+  padding: 10px;
+  background: #FFFFFF;
+  border: 1px solid #E5E5EA;
+  border-radius: 20px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  z-index: 10000;
+  white-space: nowrap;
+`;
+
+const EmojiOption = styled.button`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 1.5rem;
+  border-radius: 10px;
+  transition: all 0.15s ease;
+
+  &:hover {
+    background: #F2F2F7;
+    transform: scale(1.25);
+  }
+
+  &:active {
+    transform: scale(0.9);
+  }
+`;
+
+const Overlay = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9999;
+`;
+
 export const MessageBubble: React.FC<MessageBubbleProps> = ({
   message,
   isOwnMessage,
@@ -326,6 +370,23 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(message.content);
   const [showFullImage, setShowFullImage] = useState(false);
+  const [showReactionPicker, setShowReactionPicker] = useState(false);
+  const [contextMenuPosition, setContextMenuPosition] = useState({ x: 0, y: 0 });
+
+  const handleContextMenu = (e: React.MouseEvent) => {
+    if (!isOwnMessage && onReactionToggle && state.user) {
+      e.preventDefault();
+      setContextMenuPosition({ x: e.clientX, y: e.clientY });
+      setShowReactionPicker(true);
+    }
+  };
+
+  const handleReactionSelect = (emoji: string) => {
+    if (onReactionToggle) {
+      onReactionToggle(message.id, emoji);
+    }
+    setShowReactionPicker(false);
+  };
 
   const formatTime = (timestamp: string) => {
     const date = new Date(timestamp);
@@ -410,7 +471,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
         <SenderName>{message.sender_username}</SenderName>
       )}
 
-      <BubbleWrapper isOwn={isOwnMessage}>
+      <BubbleWrapper isOwn={isOwnMessage} onContextMenu={handleContextMenu}>
         {message.reply_to_id && message.reply_to_content && message.reply_to_sender && (
           <ReplyPreview>
             <ReplyAuthor>{message.reply_to_sender}</ReplyAuthor>
@@ -459,10 +520,27 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
         />
       )}
     </BubbleContainer>
+
     {showFullImage && message.attachment_url && message.message_type === 'image' && (
       <ImageModal onClick={() => setShowFullImage(false)}>
         <FullSizeImage src={message.attachment_url} alt="Full size" />
       </ImageModal>
+    )}
+
+    {showReactionPicker && (
+      <>
+        <Overlay onClick={() => setShowReactionPicker(false)} />
+        <ContextMenu x={contextMenuPosition.x} y={contextMenuPosition.y}>
+          {QUICK_REACTIONS.map((emoji) => (
+            <EmojiOption
+              key={emoji}
+              onClick={() => handleReactionSelect(emoji)}
+            >
+              {emoji}
+            </EmojiOption>
+          ))}
+        </ContextMenu>
+      </>
     )}
     </>
   );
