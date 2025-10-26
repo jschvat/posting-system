@@ -44,8 +44,8 @@ module.exports = {
   // Module paths
   moduleDirectories: ['node_modules', 'src'],
 
-  // Test timeout
-  testTimeout: 10000,
+  // Test timeout - increased for database-heavy tests
+  testTimeout: 120000,
 
   // Clear mocks between tests
   clearMocks: true,
