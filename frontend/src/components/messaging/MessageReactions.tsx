@@ -31,20 +31,20 @@ const ReactionBubble = styled.button<{ isCurrentUser: boolean }>`
   display: flex;
   align-items: center;
   justify-content: center;
-  min-width: 28px;
-  height: 28px;
-  padding: 0 6px;
-  border-radius: 14px;
-  border: 2px solid ${props => props.isCurrentUser ? '#007AFF' : '#E5E5EA'};
+  min-width: 22px;
+  height: 22px;
+  padding: 0 4px;
+  border-radius: 11px;
+  border: 1.5px solid ${props => props.isCurrentUser ? '#007AFF' : '#E5E5EA'};
   background: #FFFFFF;
   cursor: pointer;
-  font-size: 1.125rem;
+  font-size: 0.875rem;
   transition: all 0.2s ease;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 
   &:hover {
     transform: scale(1.15);
-    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.15);
   }
 
   &:active {
@@ -53,7 +53,7 @@ const ReactionBubble = styled.button<{ isCurrentUser: boolean }>`
 `;
 
 const Count = styled.span`
-  font-size: 0.688rem;
+  font-size: 0.625rem;
   color: #000000;
   font-weight: 600;
   margin-left: 2px;

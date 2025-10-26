@@ -373,9 +373,9 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   const [showReactionPicker, setShowReactionPicker] = useState(false);
   const [contextMenuPosition, setContextMenuPosition] = useState({ x: 0, y: 0 });
 
-  const handleContextMenu = (e: React.MouseEvent) => {
+  const handleBubbleClick = (e: React.MouseEvent) => {
     if (!isOwnMessage && onReactionToggle && state.user) {
-      e.preventDefault();
+      e.stopPropagation();
       setContextMenuPosition({ x: e.clientX, y: e.clientY });
       setShowReactionPicker(true);
     }
@@ -471,7 +471,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
         <SenderName>{message.sender_username}</SenderName>
       )}
 
-      <BubbleWrapper isOwn={isOwnMessage} onContextMenu={handleContextMenu}>
+      <BubbleWrapper isOwn={isOwnMessage} onClick={handleBubbleClick}>
         {message.reply_to_id && message.reply_to_content && message.reply_to_sender && (
           <ReplyPreview>
             <ReplyAuthor>{message.reply_to_sender}</ReplyAuthor>
