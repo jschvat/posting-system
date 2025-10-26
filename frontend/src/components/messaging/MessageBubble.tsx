@@ -508,17 +508,17 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
             {message.edited_at && <EditedLabel>(edited)</EditedLabel>}
           </MessageMeta>
         )}
-      </BubbleWrapper>
 
-      {onReactionToggle && state.user && !isOwnMessage && (
-        <MessageReactions
-          messageId={message.id}
-          reactions={message.reactions || []}
-          currentUserId={state.user.id}
-          onReactionToggle={onReactionToggle}
-          isOwnMessage={isOwnMessage}
-        />
-      )}
+        {onReactionToggle && state.user && !isOwnMessage && (
+          <MessageReactions
+            messageId={message.id}
+            reactions={message.reactions || []}
+            currentUserId={state.user.id}
+            onReactionToggle={onReactionToggle}
+            isOwnMessage={isOwnMessage}
+          />
+        )}
+      </BubbleWrapper>
     </BubbleContainer>
 
     {showFullImage && message.attachment_url && message.message_type === 'image' && (
