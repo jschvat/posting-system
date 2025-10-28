@@ -10,11 +10,41 @@ import { useAuth } from '../contexts/AuthContext';
 import { Post } from '../types';
 import PostCard from '../components/PostCard';
 import LoadingSpinner from '../components/LoadingSpinner';
+import { OnlineFollowers } from '../components/sidebar/OnlineFollowers';
 
-const Container = styled.div`
-  max-width: 680px;
+const PageContainer = styled.div`
+  display: flex;
+  max-width: 1200px;
   margin: 0 auto;
   padding: ${({ theme }) => theme.spacing.md};
+  gap: 24px;
+
+  @media (max-width: 1024px) {
+    flex-direction: column;
+  }
+`;
+
+const MainContent = styled.div`
+  flex: 1;
+  min-width: 0;
+  max-width: 680px;
+
+  @media (max-width: 1024px) {
+    max-width: 100%;
+  }
+`;
+
+const Sidebar = styled.div`
+  width: 320px;
+  flex-shrink: 0;
+
+  @media (max-width: 1024px) {
+    width: 100%;
+  }
+`;
+
+const Container = styled.div`
+  width: 100%;
 `;
 
 const WelcomeSection = styled.div`
@@ -218,28 +248,44 @@ const HomePage: React.FC = () => {
 
   if (isLoading && page === 1) {
     return (
-      <Container>
-        <LoadingSpinner size="large" />
-      </Container>
+      <PageContainer>
+        <MainContent>
+          <Container>
+            <LoadingSpinner size="large" />
+          </Container>
+        </MainContent>
+        <Sidebar>
+          <OnlineFollowers />
+        </Sidebar>
+      </PageContainer>
     );
   }
 
   if (error && page === 1) {
     return (
-      <Container>
-        <ErrorState>
-          <h3>Unable to load posts</h3>
-          <p>Something went wrong while loading the feed. Please try again.</p>
-          <LoadMoreButton onClick={handleRefresh} style={{ marginTop: '16px' }}>
-            Retry
-          </LoadMoreButton>
-        </ErrorState>
-      </Container>
+      <PageContainer>
+        <MainContent>
+          <Container>
+            <ErrorState>
+              <h3>Unable to load posts</h3>
+              <p>Something went wrong while loading the feed. Please try again.</p>
+              <LoadMoreButton onClick={handleRefresh} style={{ marginTop: '16px' }}>
+                Retry
+              </LoadMoreButton>
+            </ErrorState>
+          </Container>
+        </MainContent>
+        <Sidebar>
+          <OnlineFollowers />
+        </Sidebar>
+      </PageContainer>
     );
   }
 
   return (
-    <Container>
+    <PageContainer>
+      <MainContent>
+        <Container>
       {/* Welcome Section */}
       <WelcomeSection>
         <WelcomeTitle>Welcome back, {user?.first_name}!</WelcomeTitle>
@@ -296,7 +342,13 @@ const HomePage: React.FC = () => {
           <p>Be the first to share something! Create a post to get started.</p>
         </EmptyState>
       )}
-    </Container>
+        </Container>
+      </MainContent>
+
+      <Sidebar>
+        <OnlineFollowers />
+      </Sidebar>
+    </PageContainer>
   );
 };
 
