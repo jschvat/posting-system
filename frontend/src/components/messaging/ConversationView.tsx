@@ -93,10 +93,13 @@ export const ConversationView: React.FC<ConversationViewProps> = ({
   const [typingUsers, setTypingUsers] = useState<string[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Ensure messages is always an array
+  const safeMessages = messages || [];
+
   // Auto-scroll to bottom on new messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [safeMessages]);
 
   // Listen for typing indicators
   useEffect(() => {
@@ -149,7 +152,7 @@ export const ConversationView: React.FC<ConversationViewProps> = ({
     );
   }
 
-  if (messages.length === 0) {
+  if (safeMessages.length === 0) {
     return (
       <Container>
         <EmptyState>
@@ -173,7 +176,7 @@ export const ConversationView: React.FC<ConversationViewProps> = ({
   return (
     <Container>
       <MessagesContainer>
-        {messages.map((message) => (
+        {safeMessages.map((message) => (
           <MessageBubble
             key={message.id}
             message={{

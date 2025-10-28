@@ -7,6 +7,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import styled from 'styled-components';
 import { usersApi, getUserAvatarUrl, followsApi } from '../services/api';
+import { messagesApi } from '../services/api/messagesApi';
 import reputationApi from '../services/reputationApi';
 import ratingsApi from '../services/ratingsApi';
 import { useAuth } from '../contexts/AuthContext';
@@ -16,6 +17,7 @@ import FollowButton from '../components/FollowButton';
 import RatingButton from '../components/RatingButton';
 import RatingDisplay from '../components/RatingDisplay';
 import ReputationBadge from '../components/ReputationBadge';
+import { ChatPopup } from '../components/messaging/ChatPopup';
 
 const Container = styled.div`
   max-width: 680px;
@@ -413,6 +415,7 @@ const UserProfilePage: React.FC = () => {
   const { state } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'posts' | 'following' | 'followers'>('posts');
+  const [showChatPopup, setShowChatPopup] = useState(false);
 
   const currentUser = state.user;
   const isOwnProfile = currentUser && userId && parseInt(userId) === currentUser.id;
@@ -525,6 +528,11 @@ const UserProfilePage: React.FC = () => {
   const ratingStats = ratingsData?.data?.stats;
   const averageRating = ratingStats ? parseFloat(ratingStats.average_rating) : 0;
   const totalRatings = ratingStats ? parseInt(ratingStats.total_ratings) : 0;
+
+  // Handle sending a message - open chat popup
+  const handleSendMessage = () => {
+    setShowChatPopup(true);
+  };
 
   // Extract and format location data from user object
   const formatLocation = () => {
@@ -706,7 +714,7 @@ const UserProfilePage: React.FC = () => {
                   variant="outline"
                   size="medium"
                 />
-                <ActionButton $variant="secondary">Message</ActionButton>
+                <ActionButton $variant="secondary" onClick={handleSendMessage}>Message</ActionButton>
               </ActionButtons>
             )}
           </UserDetails>
@@ -846,6 +854,15 @@ const UserProfilePage: React.FC = () => {
           </>
         )}
       </PostsSection>
+
+      {showChatPopup && user && (
+        <ChatPopup
+          userId={user.id}
+          username={user.username}
+          avatarUrl={avatarUrl}
+          onClose={() => setShowChatPopup(false)}
+        />
+      )}
     </Container>
   );
 };

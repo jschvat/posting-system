@@ -131,5 +131,11 @@ export const messagesApi = {
       params: { q: query }
     });
     return response.data;
+  },
+
+  // Reactions
+  toggleReaction: async (messageId: number, emoji: string): Promise<ApiResponse<{ reactions: Reaction[] }>> => {
+    const response = await apiClient.post(`/messages/${messageId}/reactions`, { emoji });
+    return response.data;
   }
 };

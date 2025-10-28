@@ -7,6 +7,7 @@ import { Link, useLocation } from 'react-router-dom';
 import styled from 'styled-components';
 import { useAuth } from '../contexts/AuthContext';
 import { getUserAvatarUrl } from '../services/api';
+import { NotificationsPanel } from './NotificationsPanel';
 
 // Styled components
 const HeaderContainer = styled.header`
@@ -258,6 +259,9 @@ const Header: React.FC = () => {
           <NavLink to="/groups" $isActive={isActive('/groups')}>
             Groups
           </NavLink>
+          <NavLink to="/messages" $isActive={isActive('/messages')}>
+            Messages
+          </NavLink>
           <CreateButton to="/create">
             Create Post
           </CreateButton>
@@ -265,6 +269,7 @@ const Header: React.FC = () => {
 
         {/* User Section */}
         <UserSection>
+          <NotificationsPanel />
           <DropdownContainer ref={dropdownRef}>
             <UserAvatar
               onClick={toggleDropdown}
