@@ -47,6 +47,11 @@ export interface Group {
   member_count: number;
   post_count: number;
   rules?: string;
+  conversation_id?: number;
+  settings?: {
+    chat_enabled?: boolean;
+    [key: string]: any;
+  };
   created_at: string;
   updated_at: string;
   user_membership?: {

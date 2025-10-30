@@ -14,6 +14,7 @@ import {
   UpdateMemberRoleData,
   BanMemberData
 } from '../types/group';
+import { Conversation } from './api/messagesApi';
 
 // ============================================================================
 // GROUP CRUD OPERATIONS
@@ -282,6 +283,40 @@ export const getActivityLog = async (slug: string, params?: {
 };
 
 // ============================================================================
+// GROUP CHAT OPERATIONS
+// ============================================================================
+
+/**
+ * Get group chat conversation (members only)
+ */
+export const getGroupChat = async (slug: string): Promise<ApiResponse<{
+  conversation: Conversation;
+  participants: Array<{
+    user_id: number;
+    username: string;
+    avatar_url?: string;
+    role: string;
+  }>;
+}>> => {
+  const response = await api.get(`/groups/${slug}/chat`);
+  return response.data;
+};
+
+/**
+ * Toggle group chat enabled/disabled (admin only)
+ */
+export const toggleGroupChat = async (
+  slug: string,
+  enabled: boolean
+): Promise<ApiResponse<{
+  group: Group;
+  message: string;
+}>> => {
+  const response = await api.put(`/groups/${slug}/chat/toggle`, { enabled });
+  return response.data;
+};
+
+// ============================================================================
 // HELPER FUNCTIONS
 // ============================================================================
 
@@ -340,6 +375,8 @@ export default {
   rejectMember,
   getBannedMembers,
   getActivityLog,
+  getGroupChat,
+  toggleGroupChat,
   hasModeratorRole,
   hasAdminRole,
   canPost,

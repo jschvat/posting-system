@@ -194,7 +194,7 @@ const RemoveMediaButton = styled.button`
   }
 `;
 
-const SendButton = styled.button<{ canSend: boolean }>`
+const SendButton = styled.button<{ $canSend: boolean }>`
   display: flex;
   align-items: center;
   justify-content: center;
@@ -202,18 +202,18 @@ const SendButton = styled.button<{ canSend: boolean }>`
   height: 44px;
   border: none;
   border-radius: 50%;
-  background: ${props => props.canSend ? props.theme.colors.primary : props.theme.colors.surface};
-  color: ${props => props.canSend ? '#ffffff' : props.theme.colors.text.secondary};
-  cursor: ${props => props.canSend ? 'pointer' : 'not-allowed'};
+  background: ${props => props.$canSend ? props.theme.colors.primary : props.theme.colors.surface};
+  color: ${props => props.$canSend ? '#ffffff' : props.theme.colors.text.secondary};
+  cursor: ${props => props.$canSend ? 'pointer' : 'not-allowed'};
   transition: all 0.2s ease;
   flex-shrink: 0;
 
   &:hover {
-    transform: ${props => props.canSend ? 'scale(1.05)' : 'none'};
+    transform: ${props => props.$canSend ? 'scale(1.05)' : 'none'};
   }
 
   &:active {
-    transform: ${props => props.canSend ? 'scale(0.95)' : 'none'};
+    transform: ${props => props.$canSend ? 'scale(0.95)' : 'none'};
   }
 
   &:disabled {
@@ -417,7 +417,7 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({
         <SendButton
           onClick={handleSend}
           disabled={!canSend}
-          canSend={canSend}
+          $canSend={canSend}
           title="Send message"
         >
           <FaPaperPlane style={{ width: '16px', height: '16px' }} />

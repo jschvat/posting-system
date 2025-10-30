@@ -47,6 +47,9 @@ const GroupSettingsPage: React.FC = () => {
   const [moderatorCanPinPosts, setModeratorCanPinPosts] = useState(true);
   const [moderatorCanLockPosts, setModeratorCanLockPosts] = useState(true);
 
+  // Group chat settings
+  const [chatEnabled, setChatEnabled] = useState(false);
+
   useEffect(() => {
     if (!user) {
       navigate('/login');
@@ -88,6 +91,9 @@ const GroupSettingsPage: React.FC = () => {
         setModeratorCanPinPosts(g.moderator_can_pin_posts ?? true);
         setModeratorCanLockPosts(g.moderator_can_lock_posts ?? true);
 
+        // Chat settings
+        setChatEnabled(g.settings?.chat_enabled ?? false);
+
         // Check if user is admin
         const membershipRes = await groupsApi.checkMembership(slug);
         if (membershipRes.success && membershipRes.data) {
@@ -119,6 +125,16 @@ const GroupSettingsPage: React.FC = () => {
       setError(null);
       setSuccess(null);
 
+      // Update group chat setting if changed
+      const currentChatEnabled = group?.settings?.chat_enabled ?? false;
+      if (chatEnabled !== currentChatEnabled) {
+        const chatResponse = await groupsApi.toggleGroupChat(slug, chatEnabled);
+        if (!chatResponse.success) {
+          throw new Error('Failed to update group chat settings');
+        }
+      }
+
+      // Update other group settings
       const response = await groupsApi.updateGroup(slug, {
         display_name: displayName,
         description,
@@ -233,6 +249,30 @@ const GroupSettingsPage: React.FC = () => {
               Require post approval before publishing
             </CheckboxLabel>
           </FormGroup>
+        </FormSection>
+
+        <FormSection>
+          <SectionTitle>Group Chat</SectionTitle>
+          <Help>Enable a real-time group chat for all members. Members will be automatically added when they join the group.</Help>
+
+          <FormGroup>
+            <CheckboxLabel>
+              <Checkbox
+                type="checkbox"
+                checked={chatEnabled}
+                onChange={(e) => setChatEnabled(e.target.checked)}
+              />
+              <strong>Enable Group Chat</strong> - Add a chat tab where members can message each other in real-time
+            </CheckboxLabel>
+          </FormGroup>
+
+          {chatEnabled && (
+            <InfoBox>
+              When enabled, all current and future members will have access to the group chat.
+              The chat will appear as a tab on the group page. Members are automatically added
+              when they join the group and removed when they leave.
+            </InfoBox>
+          )}
         </FormSection>
 
         <FormSection>
@@ -554,6 +594,17 @@ const Help = styled.div`
   color: ${props => props.theme.colors.text.secondary};
   font-size: 14px;
   margin-bottom: 16px;
+`;
+
+const InfoBox = styled.div`
+  margin-top: 12px;
+  padding: 12px;
+  background: ${props => props.theme.colors.primary}15;
+  border: 1px solid ${props => props.theme.colors.primary}40;
+  border-radius: 6px;
+  color: ${props => props.theme.colors.text.secondary};
+  font-size: 14px;
+  line-height: 1.5;
 `;
 
 const ButtonGroup = styled.div`
