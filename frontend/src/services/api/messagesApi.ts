@@ -47,6 +47,13 @@ export interface Conversation {
     username: string;
     avatar_url?: string;
   }>;
+  participants?: Array<{
+    id: number;
+    user_id?: number;
+    username: string;
+    avatar_url?: string;
+    role?: string;
+  }>;
   unread_count: number;
   last_message?: Message;
 }

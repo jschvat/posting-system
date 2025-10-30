@@ -547,6 +547,7 @@ const GroupPage: React.FC = () => {
           onDeleteMessage={handleDeleteMessage}
           onReactionToggle={handleReactionToggle}
           groupName={group.display_name}
+          groupSlug={slug!}
         />
       )}
     </Container>
@@ -564,6 +565,7 @@ interface GroupChatPopupProps {
   onDeleteMessage: (messageId: number) => Promise<void>;
   onReactionToggle: (messageId: number, emoji: string) => Promise<void>;
   groupName: string;
+  groupSlug: string;
 }
 
 const GroupChatPopup: React.FC<GroupChatPopupProps> = ({
@@ -575,7 +577,8 @@ const GroupChatPopup: React.FC<GroupChatPopupProps> = ({
   onEditMessage,
   onDeleteMessage,
   onReactionToggle,
-  groupName
+  groupName,
+  groupSlug
 }) => {
   const [position, setPosition] = useState({ x: window.innerWidth - 420, y: 100 });
   const [size, setSize] = useState({ width: 400, height: 600 });
@@ -587,21 +590,11 @@ const GroupChatPopup: React.FC<GroupChatPopupProps> = ({
   const [participants, setParticipants] = useState<any[]>([]);
   const { state } = useAuth();
 
-  // Load participants when conversation is available
+  // Load participants from conversation data
   React.useEffect(() => {
-    const loadParticipants = async () => {
-      if (conversation?.id) {
-        try {
-          const response = await groupsApi.getGroupChat(conversation.id.toString());
-          if (response.success && response.data) {
-            setParticipants(response.data.participants || []);
-          }
-        } catch (err) {
-          console.error('Failed to load participants:', err);
-        }
-      }
-    };
-    loadParticipants();
+    if (conversation?.participants) {
+      setParticipants(conversation.participants);
+    }
   }, [conversation]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
