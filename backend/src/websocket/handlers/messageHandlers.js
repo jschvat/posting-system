@@ -38,7 +38,32 @@ function registerHandlers(io, socket, userSockets, typingUsers) {
       socket.join(`conversation:${conversationId}`);
       console.log(`User ${userId} joined conversation ${conversationId}`);
 
-      socket.emit('conversation:joined', { conversationId });
+      // Notify others in the room that a user joined
+      socket.to(`conversation:${conversationId}`).emit('conversation:user:joined', {
+        conversationId,
+        userId,
+        username: socket.username
+      });
+
+      // Get all active users in this conversation
+      const room = io.sockets.adapter.rooms.get(`conversation:${conversationId}`);
+      const activeUserIds = [];
+      if (room) {
+        for (const socketId of room) {
+          const sock = io.sockets.sockets.get(socketId);
+          if (sock && sock.userId) {
+            activeUserIds.push({
+              userId: sock.userId,
+              username: sock.username
+            });
+          }
+        }
+      }
+
+      socket.emit('conversation:joined', {
+        conversationId,
+        activeUsers: activeUserIds
+      });
     } catch (error) {
       console.error('Error joining conversation:', error);
       socket.emit('error', {
@@ -54,6 +79,14 @@ function registerHandlers(io, socket, userSockets, typingUsers) {
    */
   socket.on('conversation:leave', (data) => {
     const { conversationId } = data;
+
+    // Notify others in the room that a user left
+    socket.to(`conversation:${conversationId}`).emit('conversation:user:left', {
+      conversationId,
+      userId,
+      username: socket.username
+    });
+
     socket.leave(`conversation:${conversationId}`);
     console.log(`User ${userId} left conversation ${conversationId}`);
     socket.emit('conversation:left', { conversationId });

@@ -588,7 +588,9 @@ const GroupChatPopup: React.FC<GroupChatPopupProps> = ({
   const [resizeStart, setResizeStart] = useState({ x: 0, y: 0, width: 0, height: 0 });
   const [showMembersList, setShowMembersList] = useState(false);
   const [participants, setParticipants] = useState<any[]>([]);
+  const [activeUserIds, setActiveUserIds] = useState<Set<number>>(new Set());
   const { state } = useAuth();
+  const { socket } = useWebSocket();
 
   // Load participants from conversation data
   React.useEffect(() => {
@@ -596,6 +598,52 @@ const GroupChatPopup: React.FC<GroupChatPopupProps> = ({
       setParticipants(conversation.participants);
     }
   }, [conversation]);
+
+  // Join conversation room and track active users
+  React.useEffect(() => {
+    if (!socket || !conversation?.id) return;
+
+    // Join the conversation room
+    socket.emit('conversation:join', { conversationId: conversation.id });
+
+    // Handle joined response with active users
+    const handleJoined = (data: any) => {
+      if (data.conversationId === conversation.id && data.activeUsers) {
+        const activeIds = new Set(data.activeUsers.map((u: any) => u.userId));
+        setActiveUserIds(activeIds);
+      }
+    };
+
+    // Handle user joined
+    const handleUserJoined = (data: any) => {
+      if (data.conversationId === conversation.id) {
+        setActiveUserIds(prev => new Set(prev).add(data.userId));
+      }
+    };
+
+    // Handle user left
+    const handleUserLeft = (data: any) => {
+      if (data.conversationId === conversation.id) {
+        setActiveUserIds(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(data.userId);
+          return newSet;
+        });
+      }
+    };
+
+    socket.on('conversation:joined', handleJoined);
+    socket.on('conversation:user:joined', handleUserJoined);
+    socket.on('conversation:user:left', handleUserLeft);
+
+    // Cleanup: leave conversation room
+    return () => {
+      socket.emit('conversation:leave', { conversationId: conversation.id });
+      socket.off('conversation:joined', handleJoined);
+      socket.off('conversation:user:joined', handleUserJoined);
+      socket.off('conversation:user:left', handleUserLeft);
+    };
+  }, [socket, conversation]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     setIsDragging(true);
@@ -653,8 +701,8 @@ const GroupChatPopup: React.FC<GroupChatPopupProps> = ({
       <ChatPopupHeader onMouseDown={handleMouseDown}>
         <ChatPopupTitle>{groupName} Chat</ChatPopupTitle>
         <HeaderActions>
-          <MembersButton onClick={() => setShowMembersList(!showMembersList)} title="Toggle members list">
-            👥 {participants.length}
+          <MembersButton onClick={() => setShowMembersList(!showMembersList)} title="Toggle active members">
+            👥 {activeUserIds.size}
           </MembersButton>
           <CloseButton onClick={onClose}>&times;</CloseButton>
         </HeaderActions>
@@ -677,29 +725,37 @@ const GroupChatPopup: React.FC<GroupChatPopupProps> = ({
         {showMembersList && (
           <MembersSidebar>
             <MembersSidebarHeader>
-              Members ({participants.length})
+              Active Now ({activeUserIds.size})
             </MembersSidebarHeader>
             <MembersList>
-              {participants.map((participant) => (
-                <MemberItem key={participant.user_id}>
-                  <MemberAvatar>
-                    {participant.avatar_url ? (
-                      <img src={participant.avatar_url} alt={participant.username} />
-                    ) : (
-                      <div>{participant.username?.[0]?.toUpperCase() || '?'}</div>
-                    )}
-                  </MemberAvatar>
-                  <MemberInfo>
-                    <MemberName $isCurrentUser={participant.user_id === state.user?.id}>
-                      {participant.username}
-                      {participant.user_id === state.user?.id && ' (You)'}
-                    </MemberName>
-                    {participant.role && participant.role !== 'member' && (
-                      <MemberRole>{participant.role}</MemberRole>
-                    )}
-                  </MemberInfo>
-                </MemberItem>
-              ))}
+              {activeUserIds.size === 0 ? (
+                <EmptyMembersMessage>
+                  No one else is active in this chat right now
+                </EmptyMembersMessage>
+              ) : (
+                participants
+                  .filter(participant => activeUserIds.has(participant.user_id || participant.id))
+                  .map((participant) => (
+                  <MemberItem key={participant.user_id || participant.id}>
+                    <MemberAvatar>
+                      {participant.avatar_url ? (
+                        <img src={participant.avatar_url} alt={participant.username} />
+                      ) : (
+                        <div>{participant.username?.[0]?.toUpperCase() || '?'}</div>
+                      )}
+                    </MemberAvatar>
+                    <MemberInfo>
+                      <MemberName $isCurrentUser={participant.user_id === state.user?.id || participant.id === state.user?.id}>
+                        {participant.username}
+                        {(participant.user_id === state.user?.id || participant.id === state.user?.id) && ' (You)'}
+                      </MemberName>
+                      {participant.role && participant.role !== 'member' && (
+                        <MemberRole>{participant.role}</MemberRole>
+                      )}
+                    </MemberInfo>
+                  </MemberItem>
+                ))
+              )}
             </MembersList>
           </MembersSidebar>
         )}
@@ -1198,6 +1254,14 @@ const MemberRole = styled.div`
   background: ${props => props.theme.colors.surface};
   border-radius: 3px;
   width: fit-content;
+`;
+
+const EmptyMembersMessage = styled.div`
+  padding: 24px 16px;
+  text-align: center;
+  font-size: 13px;
+  color: ${props => props.theme.colors.text.secondary};
+  line-height: 1.5;
 `;
 
 const ResizeHandle = styled.div`
