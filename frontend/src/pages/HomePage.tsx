@@ -255,7 +255,7 @@ const HomePage: React.FC = () => {
           </Container>
         </MainContent>
         <Sidebar>
-          <OnlineFollowers />
+          {/* <OnlineFollowers /> */}
         </Sidebar>
       </PageContainer>
     );
@@ -276,7 +276,7 @@ const HomePage: React.FC = () => {
           </Container>
         </MainContent>
         <Sidebar>
-          <OnlineFollowers />
+          {/* <OnlineFollowers /> */}
         </Sidebar>
       </PageContainer>
     );
@@ -346,7 +346,7 @@ const HomePage: React.FC = () => {
       </MainContent>
 
       <Sidebar>
-        <OnlineFollowers />
+        {/* <OnlineFollowers /> */}
       </Sidebar>
     </PageContainer>
   );
