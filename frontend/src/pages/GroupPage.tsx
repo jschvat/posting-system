@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import styled from 'styled-components';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../components/Toast';
+import { useWebSocket } from '../contexts/WebSocketContext';
 import groupsApi from '../services/groupsApi';
 import groupPostsApi from '../services/groupPostsApi';
 import { Group, GroupPost, PostSortType, VoteType, CreatePostData } from '../types/group';
@@ -609,7 +610,7 @@ const GroupChatPopup: React.FC<GroupChatPopupProps> = ({
     // Handle joined response with active users
     const handleJoined = (data: any) => {
       if (data.conversationId === conversation.id && data.activeUsers) {
-        const activeIds = new Set(data.activeUsers.map((u: any) => u.userId));
+        const activeIds = new Set<number>(data.activeUsers.map((u: any) => u.userId as number));
         setActiveUserIds(activeIds);
       }
     };
