@@ -133,6 +133,8 @@ const NotificationItem = styled.div<{ $isRead: boolean }>`
 const NotificationContent = styled.div`
   display: flex;
   gap: 12px;
+  align-items: flex-start;
+  min-width: 0;
 `;
 
 const NotificationIcon = styled.div`
@@ -157,18 +159,24 @@ const NotificationIcon = styled.div`
 
 const NotificationText = styled.div`
   flex: 1;
+  min-width: 0;
+  overflow: hidden;
 
   .title {
     font-weight: ${({ theme }) => theme.fontWeight.medium};
     color: ${({ theme }) => theme.colors.text.primary};
     margin-bottom: 2px;
     font-size: 0.875rem;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
   }
 
   .message {
     color: ${({ theme }) => theme.colors.text.secondary};
     font-size: 0.8125rem;
     line-height: 1.4;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
   }
 
   .time {
@@ -408,11 +416,9 @@ export const NotificationsPanel: React.FC = () => {
           )}
         </NotificationsList>
 
-        {notifications.length > 0 && (
-          <ViewAllLink to="/notifications" onClick={() => setIsOpen(false)}>
-            View all notifications
-          </ViewAllLink>
-        )}
+        <ViewAllLink to="/notifications" onClick={() => setIsOpen(false)}>
+          View all notifications
+        </ViewAllLink>
       </Panel>
     </Container>
   );

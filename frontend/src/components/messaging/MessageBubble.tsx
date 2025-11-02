@@ -245,10 +245,14 @@ const MessageActions = styled.div<{ isOwn: boolean }>`
   gap: 4px;
   opacity: 0;
   transition: opacity 0.2s ease;
-  background: ${props => props.theme.colors.background};
+  background: ${props => props.theme.colors.surface};
   padding: 4px;
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+
+  ${BubbleWrapper}:hover & {
+    opacity: 1;
+  }
 `;
 
 const ActionButton = styled.button`
@@ -472,6 +476,32 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
       )}
 
       <BubbleWrapper isOwn={isOwnMessage} onClick={handleBubbleClick}>
+        {/* Edit/Delete Actions for Own Messages */}
+        {isOwnMessage && onEdit && onDelete && !isEditing && (
+          <MessageActions isOwn={isOwnMessage}>
+            <ActionButton
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsEditing(true);
+              }}
+              title="Edit message"
+            >
+              ✏️
+            </ActionButton>
+            <ActionButton
+              onClick={(e) => {
+                e.stopPropagation();
+                if (window.confirm('Are you sure you want to delete this message?')) {
+                  onDelete(message.id);
+                }
+              }}
+              title="Delete message"
+            >
+              🗑️
+            </ActionButton>
+          </MessageActions>
+        )}
+
         {message.reply_to_id && message.reply_to_content && message.reply_to_sender && (
           <ReplyPreview>
             <ReplyAuthor>{message.reply_to_sender}</ReplyAuthor>

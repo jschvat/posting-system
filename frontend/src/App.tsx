@@ -33,6 +33,7 @@ import GroupModPage from './pages/GroupModPage';
 import GroupSettingsPage from './pages/GroupSettingsPage';
 import { MessagingTestPage } from './pages/MessagingTestPage';
 import { MessagingPage } from './pages/MessagingPage';
+import { NotificationsPage } from './pages/NotificationsPage';
 
 // Import components
 import Header from './components/Header';
@@ -220,6 +221,9 @@ const AuthenticatedApp: React.FC = () => {
 
             {/* Messaging */}
             <Route path="/messages" element={<MessagingPage />} />
+
+            {/* Notifications */}
+            <Route path="/notifications" element={<NotificationsPage />} />
 
             {/* Messaging Test Page */}
             <Route path="/test/messaging" element={<MessagingTestPage />} />

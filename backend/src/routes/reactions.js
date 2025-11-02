@@ -13,6 +13,7 @@ const Reaction = require('../models/Reaction');
 const User = require('../models/User');
 const Post = require('../models/Post');
 const Comment = require('../models/Comment');
+const Notification = require('../models/Notification');
 
 const router = express.Router();
 
@@ -106,6 +107,26 @@ router.post('/post/:postId',
       // Toggle reaction
       const result = await Reaction.togglePostReaction(req.user.id, postId, normalizedType, emojiUnicode);
 
+      // Create notification if reaction was added (not removed) and it's not the user's own post
+      if (result.action === 'added' && post.user_id !== req.user.id) {
+        try {
+          await Notification.create({
+            user_id: post.user_id,
+            type: 'reaction',
+            title: 'New Reaction',
+            message: `${req.user.username} reacted ${emojiUnicode} to your post`,
+            actor_id: req.user.id,
+            entity_type: 'post',
+            entity_id: postId,
+            action_url: `/posts/${postId}`,
+            priority: 'normal'
+          });
+        } catch (notifError) {
+          console.error('Failed to create notification:', notifError);
+          // Don't fail the request if notification fails
+        }
+      }
+
       // Get updated reaction counts
       const counts = await Reaction.getPostReactionCounts(postId);
 
@@ -163,6 +184,26 @@ router.post('/comment/:commentId',
 
       // Toggle reaction
       const result = await Reaction.toggleCommentReaction(req.user.id, commentId, normalizedType, emojiUnicode);
+
+      // Create notification if reaction was added (not removed) and it's not the user's own comment
+      if (result.action === 'added' && comment.user_id !== req.user.id) {
+        try {
+          await Notification.create({
+            user_id: comment.user_id,
+            type: 'reaction',
+            title: 'New Reaction',
+            message: `${req.user.username} reacted ${emojiUnicode} to your comment`,
+            actor_id: req.user.id,
+            entity_type: 'comment',
+            entity_id: commentId,
+            action_url: `/posts/${comment.post_id}#comment-${commentId}`,
+            priority: 'normal'
+          });
+        } catch (notifError) {
+          console.error('Failed to create notification:', notifError);
+          // Don't fail the request if notification fails
+        }
+      }
 
       // Get updated reaction counts
       const counts = await Reaction.getCommentReactionCounts(commentId);

@@ -7,6 +7,7 @@ const express = require('express');
 const router = express.Router();
 const Follow = require('../models/Follow');
 const UserStats = require('../models/UserStats');
+const Notification = require('../models/Notification');
 const { authenticate, optionalAuthenticate } = require('../middleware/auth');
 
 /**
@@ -49,6 +50,24 @@ router.post('/:userId', authenticate, async (req, res, next) => {
       status: 'active',
       notifications_enabled: true
     });
+
+    // Create notification for the user being followed
+    try {
+      await Notification.create({
+        user_id: followingId,
+        type: 'follow',
+        title: 'New Follower',
+        message: `${req.user.username} started following you`,
+        actor_id: followerId,
+        entity_type: 'follow',
+        entity_id: follow.id,
+        action_url: `/profile/${req.user.username}`,
+        priority: 'normal'
+      });
+    } catch (notifError) {
+      console.error('Failed to create follow notification:', notifError);
+      // Don't fail the request if notification creation fails
+    }
 
     // Get updated counts
     const counts = await Follow.getCounts(followingId);

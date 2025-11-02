@@ -244,7 +244,7 @@ router.post('/:id/reactions', authenticateToken, async (req, res) => {
       });
     }
 
-    const message = await Message.getById(parseInt(id));
+    const message = await Message.findById(parseInt(id));
     if (!message) {
       return res.status(404).json({
         success: false,
@@ -285,7 +285,7 @@ router.get('/:id/reactions', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
 
-    const message = await Message.getById(parseInt(id));
+    const message = await Message.findById(parseInt(id));
     if (!message) {
       return res.status(404).json({
         success: false,

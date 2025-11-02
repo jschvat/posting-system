@@ -7,6 +7,7 @@ const express = require('express');
 const router = express.Router();
 const Share = require('../models/Share');
 const Post = require('../models/Post');
+const Notification = require('../models/Notification');
 const { authenticate, optionalAuthenticate } = require('../middleware/auth');
 
 /**
@@ -65,6 +66,24 @@ router.post('/:postId', authenticate, async (req, res, next) => {
       share_comment: finalComment,
       visibility
     });
+
+    // Create notification for the post author
+    try {
+      await Notification.create({
+        user_id: post.user_id,
+        type: 'share',
+        title: 'Post Shared',
+        message: `${req.user.username} shared your post`,
+        actor_id: userId,
+        entity_type: 'post',
+        entity_id: postId,
+        action_url: `/posts/${postId}`,
+        priority: 'normal'
+      });
+    } catch (notifError) {
+      console.error('Failed to create share notification:', notifError);
+      // Don't fail the request if notification creation fails
+    }
 
     // Get share count
     const shareCount = await Share.getShareCount(postId);

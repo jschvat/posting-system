@@ -16,6 +16,7 @@ const Media = require('../models/Media');
 const Reaction = require('../models/Reaction');
 const CommentInteraction = require('../models/CommentInteraction');
 const CommentMetrics = require('../models/CommentMetrics');
+const Notification = require('../models/Notification');
 
 const router = express.Router();
 
@@ -709,6 +710,48 @@ router.post('/',
       );
 
       const newComment = Comment.getCommentData(commentResult.rows[0]);
+
+      // Create notifications
+      if (parent_id) {
+        // Reply notification - notify parent comment author
+        const parentComment = await Comment.findById(parent_id);
+        if (parentComment && parentComment.user_id !== user_id) {
+          try {
+            await Notification.create({
+              user_id: parentComment.user_id,
+              type: 'comment_reply',
+              title: 'New Reply',
+              message: `${req.user.username} replied to your comment`,
+              actor_id: user_id,
+              entity_type: 'comment',
+              entity_id: comment.id,
+              action_url: `/posts/${post_id}#comment-${comment.id}`,
+              priority: 'normal'
+            });
+          } catch (notifError) {
+            console.error('Failed to create reply notification:', notifError);
+          }
+        }
+      } else {
+        // Comment notification - notify post author
+        if (post.user_id !== user_id) {
+          try {
+            await Notification.create({
+              user_id: post.user_id,
+              type: 'comment',
+              title: 'New Comment',
+              message: `${req.user.username} commented on your post`,
+              actor_id: user_id,
+              entity_type: 'comment',
+              entity_id: comment.id,
+              action_url: `/posts/${post_id}#comment-${comment.id}`,
+              priority: 'normal'
+            });
+          } catch (notifError) {
+            console.error('Failed to create comment notification:', notifError);
+          }
+        }
+      }
 
       res.status(201).json({
         success: true,

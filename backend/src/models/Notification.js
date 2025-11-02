@@ -96,9 +96,27 @@ class Notification {
     }
 
     if (type) {
-      query += ` AND n.type = $${paramIndex}`;
-      params.push(type);
-      paramIndex++;
+      // Support multiple types (comma-separated string or array)
+      let types;
+      if (typeof type === 'string' && type.includes(',')) {
+        types = type.split(',').map(t => t.trim()).filter(t => t);
+      } else if (Array.isArray(type)) {
+        types = type;
+      } else {
+        types = [type];
+      }
+
+      if (types.length === 1) {
+        // Single type - use equality
+        query += ` AND n.type = $${paramIndex}`;
+        params.push(types[0]);
+        paramIndex++;
+      } else if (types.length > 1) {
+        // Multiple types - use IN clause
+        query += ` AND n.type = ANY($${paramIndex})`;
+        params.push(types);
+        paramIndex++;
+      }
     }
 
     query += ` ORDER BY n.created_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
