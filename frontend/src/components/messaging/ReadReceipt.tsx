@@ -4,6 +4,7 @@ import * as FaIcons from 'react-icons/fa';
 
 const FaCircle = (FaIcons as any).FaCircle;
 const FaCheck = (FaIcons as any).FaCheck;
+const FaCheckDouble = (FaIcons as any).FaCheckDouble;
 
 interface ReadReceiptProps {
   status: 'sent' | 'delivered' | 'read';
@@ -15,15 +16,27 @@ const ReceiptContainer = styled.div`
   display: inline-flex;
   align-items: center;
   gap: 2px;
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   color: ${props => props.theme.colors.text.secondary};
   position: relative;
+  margin-left: 4px;
 `;
 
-const ReceiptIcon = styled.span<{ isRead?: boolean }>`
+const ReceiptIcon = styled.span<{ isRead?: boolean; isDelivered?: boolean }>`
   display: inline-flex;
-  color: ${props => props.isRead ? props.theme.colors.primary : props.theme.colors.text.secondary};
-  transition: color 0.2s ease;
+  align-items: center;
+  color: ${props =>
+    props.isRead ? '#4FC3F7' :
+    props.isDelivered ? '#90A4AE' :
+    '#B0BEC5'
+  };
+  transition: color 0.3s ease;
+  font-size: 0.7rem;
+
+  svg {
+    width: 12px;
+    height: 12px;
+  }
 `;
 
 const Tooltip = styled.div`
@@ -73,21 +86,24 @@ export const ReadReceipt: React.FC<ReadReceiptProps> = ({
   const renderIcon = () => {
     switch (status) {
       case 'sent':
+        // Single gray checkmark - message sent
         return (
-          <ReceiptIcon>
+          <ReceiptIcon title="Sent">
             <FaCheck />
           </ReceiptIcon>
         );
       case 'delivered':
+        // Double gray checkmarks - message delivered to device
         return (
-          <ReceiptIcon>
-            <FaCheck />
+          <ReceiptIcon isDelivered title="Delivered">
+            <FaCheckDouble />
           </ReceiptIcon>
         );
       case 'read':
+        // Double blue checkmarks - message read
         return (
-          <ReceiptIcon isRead>
-            <FaCheck />
+          <ReceiptIcon isRead title={`Read by ${readBy?.length || 0} ${readBy?.length === 1 ? 'person' : 'people'}`}>
+            <FaCheckDouble />
           </ReceiptIcon>
         );
       default:

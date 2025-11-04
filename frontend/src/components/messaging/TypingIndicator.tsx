@@ -17,28 +17,36 @@ const bounce = keyframes`
 const TypingContainer = styled.div`
   display: flex;
   align-items: center;
-  padding: 8px 12px;
-  color: ${props => props.theme.colors.text.secondary};
-  font-size: 0.875rem;
-  font-style: italic;
+  padding: 12px 16px;
+  margin: 4px 12px;
+  background: #E5E5EA;
+  border-radius: 18px;
+  border-bottom-left-radius: 4px;
+  max-width: fit-content;
+  gap: 8px;
 `;
 
 const TypingText = styled.span`
-  margin-right: 8px;
+  color: #8E8E93;
+  font-size: 0.813rem;
+  font-weight: 500;
 `;
 
 const DotsContainer = styled.span`
   display: inline-flex;
-  gap: 2px;
+  gap: 3px;
+  align-items: center;
+  height: 16px;
 `;
 
 const Dot = styled.span<{ delay: number }>`
-  width: 4px;
-  height: 4px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
-  background-color: ${props => props.theme.colors.text.secondary};
+  background-color: #8E8E93;
   animation: ${bounce} 1.4s infinite ease-in-out;
   animation-delay: ${props => props.delay}s;
+  will-change: transform;
 `;
 
 export const TypingIndicator: React.FC<TypingIndicatorProps> = ({ usernames }) => {

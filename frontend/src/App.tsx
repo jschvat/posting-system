@@ -34,6 +34,7 @@ import GroupSettingsPage from './pages/GroupSettingsPage';
 import { MessagingTestPage } from './pages/MessagingTestPage';
 import { MessagingPage } from './pages/MessagingPage';
 import { NotificationsPage } from './pages/NotificationsPage';
+import { ReceiptsTestPage } from './pages/ReceiptsTestPage';
 
 // Import components
 import Header from './components/Header';
@@ -227,6 +228,9 @@ const AuthenticatedApp: React.FC = () => {
 
             {/* Messaging Test Page */}
             <Route path="/test/messaging" element={<MessagingTestPage />} />
+
+            {/* Receipts & Typing Test Page */}
+            <Route path="/test/receipts" element={<ReceiptsTestPage />} />
 
             {/* Redirect to home for any other routes */}
             <Route path="*" element={<Navigate to="/" replace />} />

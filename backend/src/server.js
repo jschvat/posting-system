@@ -39,6 +39,8 @@ const pollsRoutes = require('./routes/polls');
 const conversationsRoutes = require('./routes/conversations');
 const messagesRoutes = require('./routes/messages');
 const notificationsRoutes = require('./routes/notifications');
+const deviceTokensRoutes = require('./routes/deviceTokens');
+const messageAttachmentsRoutes = require('./routes/messageAttachments');
 
 // Import middleware
 const errorHandler = require('./middleware/errorHandler');
@@ -130,6 +132,8 @@ app.use('/api/polls', pollsRoutes);
 app.use('/api/conversations', conversationsRoutes);
 app.use('/api/messages', messagesRoutes);
 app.use('/api/notifications', notificationsRoutes);
+app.use('/api/device-tokens', deviceTokensRoutes);
+app.use('/api/message-attachments', messageAttachmentsRoutes);
 
 // Catch-all route for undefined endpoints
 app.use(notFound);
