@@ -41,6 +41,12 @@ const messagesRoutes = require('./routes/messages');
 const notificationsRoutes = require('./routes/notifications');
 const deviceTokensRoutes = require('./routes/deviceTokens');
 const messageAttachmentsRoutes = require('./routes/messageAttachments');
+const marketplaceListingsRoutes = require('./routes/marketplaceListings');
+const marketplaceCategoriesRoutes = require('./routes/marketplaceCategories');
+const marketplaceOffersRoutes = require('./routes/marketplaceOffers');
+const marketplaceSavedRoutes = require('./routes/marketplaceSaved');
+const marketplaceAuctionsRoutes = require('./routes/marketplaceAuctions');
+const marketplaceRafflesRoutes = require('./routes/marketplaceRaffles');
 
 // Import middleware
 const errorHandler = require('./middleware/errorHandler');
@@ -98,6 +104,8 @@ if (config.database.logging) {
 // Static file serving for uploaded media
 // Note: Files are uploaded to src/uploads by the media routes
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+// Serve marketplace uploads from project root
+app.use('/uploads', express.static(path.join(__dirname, '../../uploads')));
 app.use('/media', express.static(path.join(__dirname, '../public/media')));
 
 // Health check endpoint
@@ -134,6 +142,12 @@ app.use('/api/messages', messagesRoutes);
 app.use('/api/notifications', notificationsRoutes);
 app.use('/api/device-tokens', deviceTokensRoutes);
 app.use('/api/message-attachments', messageAttachmentsRoutes);
+app.use('/api/marketplace/listings', marketplaceListingsRoutes);
+app.use('/api/marketplace/categories', marketplaceCategoriesRoutes);
+app.use('/api/marketplace/offers', marketplaceOffersRoutes);
+app.use('/api/marketplace/saved', marketplaceSavedRoutes);
+app.use('/api/marketplace/auctions', marketplaceAuctionsRoutes);
+app.use('/api/marketplace/raffles', marketplaceRafflesRoutes);
 
 // Catch-all route for undefined endpoints
 app.use(notFound);

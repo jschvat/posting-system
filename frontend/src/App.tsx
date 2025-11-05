@@ -35,6 +35,8 @@ import { MessagingTestPage } from './pages/MessagingTestPage';
 import { MessagingPage } from './pages/MessagingPage';
 import { NotificationsPage } from './pages/NotificationsPage';
 import { ReceiptsTestPage } from './pages/ReceiptsTestPage';
+import { MarketplaceBrowse } from './pages/marketplace/MarketplaceBrowse';
+import { ListingDetail } from './pages/marketplace/ListingDetail';
 
 // Import components
 import Header from './components/Header';
@@ -225,6 +227,10 @@ const AuthenticatedApp: React.FC = () => {
 
             {/* Notifications */}
             <Route path="/notifications" element={<NotificationsPage />} />
+
+            {/* Marketplace */}
+            <Route path="/marketplace" element={<MarketplaceBrowse />} />
+            <Route path="/marketplace/:id" element={<ListingDetail />} />
 
             {/* Messaging Test Page */}
             <Route path="/test/messaging" element={<MessagingTestPage />} />

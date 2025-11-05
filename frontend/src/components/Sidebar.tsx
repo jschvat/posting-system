@@ -137,6 +137,12 @@ const Sidebar: React.FC = () => {
             </NavLink>
           </NavItem>
           <NavItem>
+            <NavLink to="/marketplace" $isActive={isActive('/marketplace')}>
+              <IconPlaceholder>🛍️</IconPlaceholder>
+              Marketplace
+            </NavLink>
+          </NavItem>
+          <NavItem>
             <NavLink
               to={`/user/${mockUser.id}`}
               $isActive={isActive(`/user/${mockUser.id}`)}
