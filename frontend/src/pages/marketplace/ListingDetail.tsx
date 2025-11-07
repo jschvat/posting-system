@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import { useParams, useNavigate } from 'react-router-dom';
 import marketplaceApi, { MarketplaceListing } from '../../services/marketplaceApi';
 import { BuyingInterface } from '../../components/marketplace/BuyingInterface';
+import { ImageModal } from '../../components/marketplace/ImageModal';
 // Using Unicode symbols instead of react-icons for compatibility
 const LocationIcon = () => <span>📍</span>;
 const ArrowLeftIcon = () => <span>←</span>;
@@ -67,6 +68,12 @@ const Image = styled.img`
   height: 100%;
   object-fit: contain;
   background: #000;
+  cursor: pointer;
+  transition: opacity 0.2s;
+
+  &:hover {
+    opacity: 0.9;
+  }
 `;
 
 const PlaceholderImage = styled.div`
@@ -323,6 +330,7 @@ export const ListingDetail: React.FC = () => {
   const [listing, setListing] = useState<MarketplaceListing | null>(null);
   const [loading, setLoading] = useState(true);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -406,6 +414,7 @@ export const ListingDetail: React.FC = () => {
                   <Image
                     src={listing.media[currentImageIndex].file_url}
                     alt={`${listing.title} - Image ${currentImageIndex + 1}`}
+                    onClick={() => setIsModalOpen(true)}
                   />
                   {listing.media.length > 1 && (
                     <>
@@ -508,6 +517,15 @@ export const ListingDetail: React.FC = () => {
           </SellerCard>
         </RightColumn>
       </Content>
+
+      {isModalOpen && listing.media && listing.media.length > 0 && (
+        <ImageModal
+          images={listing.media}
+          currentIndex={currentImageIndex}
+          onClose={() => setIsModalOpen(false)}
+          onNavigate={(index) => setCurrentImageIndex(index)}
+        />
+      )}
     </Container>
   );
 };
