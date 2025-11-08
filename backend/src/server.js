@@ -80,12 +80,21 @@ const limiter = rateLimit({
 app.use('/api/', limiter);
 
 // CORS configuration
-app.use(cors({
+// In development, allow all origins for remote access
+// In production, use the configured origins
+const corsOptions = config.isDevelopment ? {
+  origin: true, // Allow all origins in development
+  credentials: config.cors.credentials,
+  methods: config.cors.methods,
+  allowedHeaders: config.cors.allowedHeaders
+} : {
   origin: config.cors.origin,
   credentials: config.cors.credentials,
   methods: config.cors.methods,
   allowedHeaders: config.cors.allowedHeaders
-}));
+};
+
+app.use(cors(corsOptions));
 
 // Body parsing middleware
 const maxFileSize = `${Math.round(config.upload.maxFileSize / 1048576)}mb`;

@@ -135,9 +135,20 @@ export const config: AppConfig = {
 
 /**
  * Get API base URL for frontend requests
+ * In browser, automatically uses the current hostname for remote access compatibility
  */
 export const getApiBaseUrl = (): string => {
   const api = config.server.api;
+
+  // If running in browser, use the current window location's hostname
+  // This allows remote access to work correctly (e.g., accessing via IP or domain)
+  if (typeof window !== 'undefined' && window.location) {
+    const hostname = window.location.hostname;
+    const protocol = window.location.protocol.replace(':', ''); // Remove trailing ':'
+    return `${protocol}://${hostname}:${api.port}`;
+  }
+
+  // Fallback for server-side rendering or Node.js environment
   return `${api.protocol}://${api.host}:${api.port}`;
 };
 

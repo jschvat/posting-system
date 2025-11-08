@@ -22,12 +22,13 @@ const router = express.Router();
 /**
  * Rate limiting for authentication endpoints
  * Disabled in test environment to avoid interference with tests
+ * More permissive in development for easier testing
  */
 const authLimiter = process.env.NODE_ENV === 'test'
   ? (req, res, next) => next() // Skip rate limiting in tests
   : rateLimit({
       windowMs: config.rateLimiting.auth.windowMs,
-      max: config.rateLimiting.auth.maxRequests,
+      max: config.isDevelopment ? 50 : config.rateLimiting.auth.maxRequests, // 50 attempts in dev, 5 in production
       message: {
         success: false,
         error: {
