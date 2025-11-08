@@ -18,7 +18,7 @@ const MainLayout = styled.div`
   gap: 24px;
   align-items: flex-start;
 
-  @media (max-width: 968px) {
+  @media (max-width: 1200px) {
     flex-direction: column;
   }
 `;
@@ -26,6 +26,16 @@ const MainLayout = styled.div`
 const ContentArea = styled.div`
   flex: 1;
   min-width: 0;
+  order: 1;
+`;
+
+const FilterSidebarWrapper = styled.div`
+  width: 280px;
+  order: 2;
+
+  @media (max-width: 1200px) {
+    display: none;
+  }
 `;
 
 const Header = styled.div`
@@ -235,9 +245,13 @@ const SortSelect = styled.select`
 
 const ListingsGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(2, 1fr);
   gap: 24px;
   margin-bottom: 40px;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
 `;
 
 const LoadingMessage = styled.div`
@@ -482,7 +496,6 @@ export const MarketplaceBrowse: React.FC = () => {
       )}
 
       <MainLayout>
-        <FilterSidebar filters={filters} onFiltersChange={handleFiltersChange} />
         <ContentArea>
 
           <ResultsHeader>
@@ -544,6 +557,10 @@ export const MarketplaceBrowse: React.FC = () => {
             </>
           )}
         </ContentArea>
+
+        <FilterSidebarWrapper>
+          <FilterSidebar filters={filters} onFiltersChange={handleFiltersChange} />
+        </FilterSidebarWrapper>
       </MainLayout>
     </Container>
   );

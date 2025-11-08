@@ -62,12 +62,12 @@ const FilterLabel = styled.label`
 
 const PriceInputs = styled.div`
   display: flex;
-  gap: 8px;
-  align-items: center;
+  flex-direction: column;
+  gap: 10px;
 `;
 
 const PriceInput = styled.input`
-  flex: 1;
+  width: 100%;
   padding: 8px 12px;
   border: 1px solid #d5dbdb;
   border-radius: 6px;
@@ -80,8 +80,7 @@ const PriceInput = styled.input`
 `;
 
 const PriceSeparator = styled.span`
-  color: #7f8c8d;
-  font-size: 14px;
+  display: none;
 `;
 
 const CheckboxGroup = styled.div`
