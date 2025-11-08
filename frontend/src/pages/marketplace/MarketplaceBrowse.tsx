@@ -8,9 +8,21 @@ import { FilterSidebar, FilterState } from '../../components/marketplace/FilterS
 const SearchIcon = () => <span>🔍</span>;
 
 const Container = styled.div`
-  max-width: 1400px;
+  max-width: 100%;
   margin: 0 auto;
   padding: 20px;
+
+  @media (min-width: 1920px) {
+    max-width: 1800px;
+  }
+
+  @media (max-width: 768px) {
+    padding: 12px;
+  }
+
+  @media (max-width: 480px) {
+    padding: 8px;
+  }
 `;
 
 const MainLayout = styled.div`
@@ -56,6 +68,14 @@ const Title = styled.h1`
   font-weight: 700;
   color: #2c3e50;
   margin: 0;
+
+  @media (max-width: 768px) {
+    font-size: 24px;
+  }
+
+  @media (max-width: 480px) {
+    font-size: 20px;
+  }
 `;
 
 const CreateButton = styled.button`
@@ -199,6 +219,17 @@ const CategoryTags = styled.div`
   flex-wrap: wrap;
   gap: 10px;
   margin-bottom: 20px;
+
+  @media (max-width: 768px) {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+  }
 `;
 
 const CategoryTag = styled.button<{ active?: boolean }>`
@@ -211,10 +242,16 @@ const CategoryTag = styled.button<{ active?: boolean }>`
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
+  white-space: nowrap;
 
   &:hover {
     background: ${props => props.active ? '#2980b9' : '#f8f9fa'};
     border-color: ${props => props.active ? '#2980b9' : '#3498db'};
+  }
+
+  @media (max-width: 480px) {
+    padding: 6px 12px;
+    font-size: 13px;
   }
 `;
 
@@ -249,8 +286,23 @@ const ListingsGrid = styled.div`
   gap: 24px;
   margin-bottom: 40px;
 
+  @media (min-width: 1600px) {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  @media (min-width: 2200px) {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
   @media (max-width: 768px) {
     grid-template-columns: 1fr;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  @media (max-width: 480px) {
+    gap: 12px;
+    margin-bottom: 20px;
   }
 `;
 

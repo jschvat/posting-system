@@ -139,9 +139,13 @@ const AppContainer = styled.div`
 const MainContainer = styled.div`
   display: flex;
   flex: 1;
-  max-width: 1200px;
+  max-width: 1600px;
   margin: 0 auto;
   width: 100%;
+
+  @media (min-width: 1920px) {
+    max-width: 1800px;
+  }
 `;
 
 const ContentArea = styled.main`
