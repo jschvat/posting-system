@@ -7,7 +7,28 @@ import React, { createContext, useContext, useEffect, useState, useCallback, use
 import { io, Socket } from 'socket.io-client';
 import { useAuth } from './AuthContext';
 
-const WS_URL = process.env.REACT_APP_WS_URL || 'http://localhost:3002';
+/**
+ * Get WebSocket URL dynamically based on current hostname
+ * This enables remote access to work correctly
+ */
+const getWebSocketUrl = (): string => {
+  // Check for explicit environment variable first
+  if (process.env.REACT_APP_WS_URL) {
+    return process.env.REACT_APP_WS_URL;
+  }
+
+  // If running in browser, use the current window location's hostname
+  if (typeof window !== 'undefined' && window.location) {
+    const hostname = window.location.hostname;
+    const protocol = window.location.protocol.replace(':', ''); // Remove trailing ':'
+    return `${protocol}://${hostname}:3002`;
+  }
+
+  // Fallback for server-side rendering
+  return 'http://localhost:3002';
+};
+
+const WS_URL = getWebSocketUrl();
 
 interface WebSocketContextType {
   socket: Socket | null;
