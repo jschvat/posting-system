@@ -3,9 +3,9 @@ import styled from 'styled-components';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import marketplaceApi, { MarketplaceListing, MarketplaceCategory } from '../../services/marketplaceApi';
 import { ListingCard } from '../../components/marketplace/ListingCard';
+import { FilterSidebar, FilterState } from '../../components/marketplace/FilterSidebar';
 // Using Unicode symbols instead of react-icons for compatibility
 const SearchIcon = () => <span>🔍</span>;
-const FilterIcon = () => <span>🔽</span>;
 
 const Container = styled.div`
   max-width: 1400px;
@@ -13,15 +13,65 @@ const Container = styled.div`
   padding: 20px;
 `;
 
+const MainLayout = styled.div`
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+
+  @media (max-width: 968px) {
+    flex-direction: column;
+  }
+`;
+
+const ContentArea = styled.div`
+  flex: 1;
+  min-width: 0;
+`;
+
 const Header = styled.div`
   margin-bottom: 30px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
 `;
 
 const Title = styled.h1`
   font-size: 32px;
   font-weight: 700;
   color: #2c3e50;
-  margin: 0 0 24px 0;
+  margin: 0;
+`;
+
+const CreateButton = styled.button`
+  padding: 12px 24px;
+  background: #3498db;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: #2980b9;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+  }
+
+  @media (max-width: 768px) {
+    width: 100%;
+    justify-content: center;
+  }
 `;
 
 const SearchBar = styled.div`
@@ -249,23 +299,16 @@ export const MarketplaceBrowse: React.FC = () => {
   const [listings, setListings] = useState<MarketplaceListing[]>([]);
   const [categories, setCategories] = useState<MarketplaceCategory[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showFilters, setShowFilters] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '');
   const [selectedCategory, setSelectedCategory] = useState<number | undefined>(
     searchParams.get('category') ? parseInt(searchParams.get('category')!) : undefined
   );
-  const [minPrice, setMinPrice] = useState(searchParams.get('min_price') || '');
-  const [maxPrice, setMaxPrice] = useState(searchParams.get('max_price') || '');
-  const [condition, setCondition] = useState(searchParams.get('condition') || '');
-  const [sortBy, setSortBy] = useState(searchParams.get('sort_by') || 'created_at');
   const [page, setPage] = useState(parseInt(searchParams.get('page') || '1'));
 
-  // Geolocation state
-  const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
-  const [locationRadius, setLocationRadius] = useState<number>(25); // Default 25 miles
-  const [useLocation, setUseLocation] = useState(false);
-  const [locationError, setLocationError] = useState<string>('');
+  const [filters, setFilters] = useState<FilterState>({
+    sortBy: 'relevant'
+  });
 
   const [pagination, setPagination] = useState({
     total: 0,
@@ -275,32 +318,11 @@ export const MarketplaceBrowse: React.FC = () => {
 
   useEffect(() => {
     loadCategories();
-    requestUserLocation();
   }, []);
 
   useEffect(() => {
     loadListings();
-  }, [searchQuery, selectedCategory, minPrice, maxPrice, condition, sortBy, page, useLocation, locationRadius]);
-
-  const requestUserLocation = () => {
-    if ('geolocation' in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setUserLocation({
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude
-          });
-          setLocationError('');
-        },
-        (error) => {
-          console.error('Error getting location:', error);
-          setLocationError('Unable to get your location. Location filtering is disabled.');
-        }
-      );
-    } else {
-      setLocationError('Geolocation is not supported by your browser.');
-    }
-  };
+  }, [searchQuery, selectedCategory, filters, page]);
 
   const loadCategories = async () => {
     try {
@@ -316,20 +338,60 @@ export const MarketplaceBrowse: React.FC = () => {
   const loadListings = async () => {
     setLoading(true);
     try {
-      const response = await marketplaceApi.getListings({
+      // Build params from filters
+      const params: any = {
         query: searchQuery || undefined,
         category_id: selectedCategory,
-        min_price: minPrice ? parseFloat(minPrice) : undefined,
-        max_price: maxPrice ? parseFloat(maxPrice) : undefined,
-        condition: condition || undefined,
-        latitude: (useLocation && userLocation) ? userLocation.latitude : undefined,
-        longitude: (useLocation && userLocation) ? userLocation.longitude : undefined,
-        radius: (useLocation && userLocation) ? locationRadius : undefined,
-        sort_by: sortBy as any,
-        sort_order: 'DESC',
+        min_price: filters.minPrice,
+        max_price: filters.maxPrice,
+        latitude: filters.latitude,
+        longitude: filters.longitude,
+        radius: filters.distance,
         page,
         limit: 20
-      });
+      };
+
+      // Handle condition array
+      if (filters.condition && filters.condition.length > 0) {
+        params.condition = filters.condition[0]; // API expects single condition for now
+      }
+
+      // Handle listing type array
+      if (filters.listingType && filters.listingType.length > 0) {
+        params.listing_type = filters.listingType[0]; // API expects single type for now
+      }
+
+      // Handle sort
+      if (filters.sortBy) {
+        switch (filters.sortBy) {
+          case 'price_low':
+            params.sort_by = 'price';
+            params.sort_order = 'ASC';
+            break;
+          case 'price_high':
+            params.sort_by = 'price';
+            params.sort_order = 'DESC';
+            break;
+          case 'date_new':
+            params.sort_by = 'created_at';
+            params.sort_order = 'DESC';
+            break;
+          case 'distance':
+            if (filters.latitude && filters.longitude) {
+              params.sort_by = 'distance';
+              params.sort_order = 'ASC';
+            }
+            break;
+          default:
+            params.sort_by = 'created_at';
+            params.sort_order = 'DESC';
+        }
+      } else {
+        params.sort_by = 'created_at';
+        params.sort_order = 'DESC';
+      }
+
+      const response = await marketplaceApi.getListings(params);
 
       if (response.success) {
         setListings(response.data);
@@ -373,176 +435,116 @@ export const MarketplaceBrowse: React.FC = () => {
     navigate(`/marketplace/${id}`);
   };
 
+  const handleFiltersChange = (newFilters: FilterState) => {
+    setFilters(newFilters);
+  };
+
   return (
     <Container>
       <Header>
         <Title>Marketplace</Title>
-
-        <SearchBar>
-          <SearchWrapper>
-            <SearchIcon />
-            <SearchInput
-              type="text"
-              placeholder="Search for items..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-            />
-          </SearchWrapper>
-          <FilterButton active={showFilters} onClick={() => setShowFilters(!showFilters)}>
-            <FilterIcon /> Filters
-          </FilterButton>
-        </SearchBar>
-
-        <FiltersPanel show={showFilters}>
-          <FilterGrid>
-            <FilterGroup>
-              <Label>Min Price</Label>
-              <Input
-                type="number"
-                placeholder="$0"
-                value={minPrice}
-                onChange={(e) => setMinPrice(e.target.value)}
-              />
-            </FilterGroup>
-
-            <FilterGroup>
-              <Label>Max Price</Label>
-              <Input
-                type="number"
-                placeholder="Any"
-                value={maxPrice}
-                onChange={(e) => setMaxPrice(e.target.value)}
-              />
-            </FilterGroup>
-
-            <FilterGroup>
-              <Label>Condition</Label>
-              <Select value={condition} onChange={(e) => setCondition(e.target.value)}>
-                <option value="">All Conditions</option>
-                <option value="new">New</option>
-                <option value="like_new">Like New</option>
-                <option value="good">Good</option>
-                <option value="fair">Fair</option>
-                <option value="poor">Poor</option>
-              </Select>
-            </FilterGroup>
-
-            <FilterGroup>
-              <Label>
-                <input
-                  type="checkbox"
-                  checked={useLocation}
-                  onChange={(e) => setUseLocation(e.target.checked)}
-                  disabled={!userLocation}
-                  style={{ marginRight: '8px' }}
-                />
-                Near Me
-              </Label>
-              {useLocation && userLocation && (
-                <>
-                  <Label>Radius: {locationRadius} miles</Label>
-                  <Input
-                    type="range"
-                    min="5"
-                    max="100"
-                    step="5"
-                    value={locationRadius}
-                    onChange={(e) => setLocationRadius(parseInt(e.target.value))}
-                  />
-                </>
-              )}
-              {locationError && (
-                <span style={{ fontSize: '12px', color: '#e74c3c' }}>{locationError}</span>
-              )}
-            </FilterGroup>
-          </FilterGrid>
-        </FiltersPanel>
-
-        {categories.length > 0 && (
-          <CategoryTags>
-            <CategoryTag
-              active={!selectedCategory}
-              onClick={() => handleCategoryClick(0)}
-            >
-              All Categories
-            </CategoryTag>
-            {categories.slice(0, 8).map((cat) => (
-              <CategoryTag
-                key={cat.id}
-                active={selectedCategory === cat.id}
-                onClick={() => handleCategoryClick(cat.id)}
-              >
-                {cat.name}
-              </CategoryTag>
-            ))}
-          </CategoryTags>
-        )}
+        <CreateButton onClick={() => navigate('/marketplace/create')}>
+          + Create Listing
+        </CreateButton>
       </Header>
 
-      <ResultsHeader>
-        <ResultsCount>
-          {pagination.total} {pagination.total === 1 ? 'item' : 'items'} found
-        </ResultsCount>
-        <SortSelect value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
-          <option value="created_at">Newest First</option>
-          <option value="price">Price: Low to High</option>
-          <option value="popular">Most Popular</option>
-        </SortSelect>
-      </ResultsHeader>
+      <SearchBar>
+        <SearchWrapper>
+          <SearchIcon />
+          <SearchInput
+            type="text"
+            placeholder="Search for items..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyPress={(e) => e.key === 'Enter' && loadListings()}
+          />
+        </SearchWrapper>
+      </SearchBar>
 
-      {loading ? (
-        <LoadingMessage>Loading listings...</LoadingMessage>
-      ) : listings.length === 0 ? (
-        <EmptyState>
-          <h3>No items found</h3>
-          <p>Try adjusting your search or filters</p>
-        </EmptyState>
-      ) : (
-        <>
-          <ListingsGrid>
-            {listings.map((listing) => (
-              <ListingCard
-                key={listing.id}
-                listing={listing}
-                onSave={handleSaveListing}
-                onClick={handleListingClick}
-              />
-            ))}
-          </ListingsGrid>
-
-          {pagination.pages > 1 && (
-            <Pagination>
-              <PageButton
-                onClick={() => setPage(page - 1)}
-                disabled={page === 1}
-              >
-                Previous
-              </PageButton>
-
-              {[...Array(Math.min(pagination.pages, 5))].map((_, i) => {
-                const pageNum = i + 1;
-                return (
-                  <PageButton
-                    key={pageNum}
-                    active={page === pageNum}
-                    onClick={() => setPage(pageNum)}
-                  >
-                    {pageNum}
-                  </PageButton>
-                );
-              })}
-
-              <PageButton
-                onClick={() => setPage(page + 1)}
-                disabled={!pagination.hasMore}
-              >
-                Next
-              </PageButton>
-            </Pagination>
-          )}
-        </>
+      {categories.length > 0 && (
+        <CategoryTags>
+          <CategoryTag
+            active={!selectedCategory}
+            onClick={() => handleCategoryClick(0)}
+          >
+            All Categories
+          </CategoryTag>
+          {categories.slice(0, 8).map((cat) => (
+            <CategoryTag
+              key={cat.id}
+              active={selectedCategory === cat.id}
+              onClick={() => handleCategoryClick(cat.id)}
+            >
+              {cat.name}
+            </CategoryTag>
+          ))}
+        </CategoryTags>
       )}
+
+      <MainLayout>
+        <FilterSidebar filters={filters} onFiltersChange={handleFiltersChange} />
+        <ContentArea>
+
+          <ResultsHeader>
+            <ResultsCount>
+              {pagination.total} {pagination.total === 1 ? 'item' : 'items'} found
+            </ResultsCount>
+          </ResultsHeader>
+
+          {loading ? (
+            <LoadingMessage>Loading listings...</LoadingMessage>
+          ) : listings.length === 0 ? (
+            <EmptyState>
+              <h3>No items found</h3>
+              <p>Try adjusting your search or filters</p>
+            </EmptyState>
+          ) : (
+            <>
+              <ListingsGrid>
+                {listings.map((listing) => (
+                  <ListingCard
+                    key={listing.id}
+                    listing={listing}
+                    onSave={handleSaveListing}
+                    onClick={handleListingClick}
+                  />
+                ))}
+              </ListingsGrid>
+
+              {pagination.pages > 1 && (
+                <Pagination>
+                  <PageButton
+                    onClick={() => setPage(page - 1)}
+                    disabled={page === 1}
+                  >
+                    Previous
+                  </PageButton>
+
+                  {[...Array(Math.min(pagination.pages, 5))].map((_, i) => {
+                    const pageNum = i + 1;
+                    return (
+                      <PageButton
+                        key={pageNum}
+                        active={page === pageNum}
+                        onClick={() => setPage(pageNum)}
+                      >
+                        {pageNum}
+                      </PageButton>
+                    );
+                  })}
+
+                  <PageButton
+                    onClick={() => setPage(page + 1)}
+                    disabled={!pagination.hasMore}
+                  >
+                    Next
+                  </PageButton>
+                </Pagination>
+              )}
+            </>
+          )}
+        </ContentArea>
+      </MainLayout>
     </Container>
   );
 };

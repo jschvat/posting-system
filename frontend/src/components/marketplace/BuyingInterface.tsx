@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
 import marketplaceApi, { MarketplaceListing } from '../../services/marketplaceApi';
+import { MakeOfferModal } from './MakeOfferModal';
 
 const PriceCard = styled.div`
   background: white;
@@ -196,6 +197,37 @@ const SuccessMessage = styled.div`
   font-size: 14px;
 `;
 
+const SaveButton = styled.button<{ isSaved?: boolean }>`
+  width: 100%;
+  padding: 14px 24px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 2px solid ${props => props.isSaved ? '#e74c3c' : '#ecf0f1'};
+  background: white;
+  color: ${props => props.isSaved ? '#e74c3c' : '#7f8c8d'};
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+
+  &:hover {
+    border-color: #e74c3c;
+    color: #e74c3c;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+`;
+
 interface BuyingInterfaceProps {
   listing: MarketplaceListing;
   onUpdate: () => void;
@@ -207,6 +239,8 @@ export const BuyingInterface: React.FC<BuyingInterfaceProps> = ({ listing, onUpd
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [showOfferModal, setShowOfferModal] = useState(false);
 
   const formatPrice = (price: string | number) => {
     const num = typeof price === 'string' ? parseFloat(price) : price;
@@ -227,6 +261,26 @@ export const BuyingInterface: React.FC<BuyingInterfaceProps> = ({ listing, onUpd
     if (days > 0) return `${days}d ${hours}h`;
     if (hours > 0) return `${hours}h ${minutes}m`;
     return `${minutes}m`;
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    setError('');
+    try {
+      if (listing.is_saved) {
+        await marketplaceApi.unsaveListing(listing.id);
+        setSuccess('Removed from saved');
+      } else {
+        await marketplaceApi.saveListing(listing.id);
+        setSuccess('Saved to favorites');
+      }
+      onUpdate();
+      setTimeout(() => setSuccess(''), 2000);
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to save listing');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handlePlaceBid = async () => {
@@ -319,9 +373,34 @@ export const BuyingInterface: React.FC<BuyingInterfaceProps> = ({ listing, onUpd
         </Button>
 
         {listing.allow_offers && (
-          <Button variant="secondary" style={{ marginTop: '12px' }}>
+          <Button
+            variant="secondary"
+            style={{ marginTop: '12px' }}
+            onClick={() => setShowOfferModal(true)}
+          >
             Make an Offer
           </Button>
+        )}
+
+        <SaveButton
+          isSaved={listing.is_saved}
+          onClick={handleSave}
+          disabled={saving}
+        >
+          <span>{listing.is_saved ? '❤️' : '🤍'}</span>
+          <span>{listing.is_saved ? 'Saved' : 'Save'}</span>
+        </SaveButton>
+
+        {showOfferModal && (
+          <MakeOfferModal
+            listing={listing}
+            onClose={() => setShowOfferModal(false)}
+            onSuccess={() => {
+              onUpdate();
+              setSuccess('Offer submitted successfully!');
+              setTimeout(() => setSuccess(''), 3000);
+            }}
+          />
         )}
       </PriceCard>
     );
@@ -371,6 +450,15 @@ export const BuyingInterface: React.FC<BuyingInterfaceProps> = ({ listing, onUpd
         <Button variant="primary" onClick={handlePlaceBid} disabled={loading}>
           {loading ? 'Placing Bid...' : 'Place Bid'}
         </Button>
+
+        <SaveButton
+          isSaved={listing.is_saved}
+          onClick={handleSave}
+          disabled={saving}
+        >
+          <span>{listing.is_saved ? '❤️' : '🤍'}</span>
+          <span>{listing.is_saved ? 'Saved' : 'Save'}</span>
+        </SaveButton>
 
         {listing.auction.bids && listing.auction.bids.length > 0 && (
           <BidHistory>
@@ -454,6 +542,15 @@ export const BuyingInterface: React.FC<BuyingInterfaceProps> = ({ listing, onUpd
         <Button variant="primary" onClick={handleBuyTickets} disabled={loading || remaining === 0}>
           {loading ? 'Purchasing...' : remaining === 0 ? 'Sold Out' : 'Buy Tickets'}
         </Button>
+
+        <SaveButton
+          isSaved={listing.is_saved}
+          onClick={handleSave}
+          disabled={saving}
+        >
+          <span>{listing.is_saved ? '❤️' : '🤍'}</span>
+          <span>{listing.is_saved ? 'Saved' : 'Save'}</span>
+        </SaveButton>
       </PriceCard>
     );
   }

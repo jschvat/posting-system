@@ -160,9 +160,9 @@ export interface ListingResponse {
 export interface CreateListingData {
   title: string;
   description: string;
-  category_id: number;
+  category_id?: number;
   listing_type?: 'sale' | 'raffle' | 'auction';
-  price: number;
+  price?: number;
   original_price?: number;
   quantity?: number;
   allow_offers?: boolean;
@@ -395,6 +395,59 @@ const marketplaceApi = {
     const response = await apiClient.put(`/marketplace/offers/${offerId}/counter`, {
       counter_amount: counterAmount,
       counter_message: message
+    });
+    return response.data;
+  },
+
+  withdrawOffer: async (offerId: number) => {
+    const response = await apiClient.put(`/marketplace/offers/${offerId}/withdraw`);
+    return response.data;
+  },
+
+  acceptCounterOffer: async (offerId: number) => {
+    const response = await apiClient.put(`/marketplace/offers/${offerId}/accept-counter`);
+    return response.data;
+  },
+
+  rejectCounterOffer: async (offerId: number) => {
+    const response = await apiClient.put(`/marketplace/offers/${offerId}/reject-counter`);
+    return response.data;
+  },
+
+  // Image Upload methods
+  uploadImages: async (listingId: number, images: File[], onProgress?: (progress: number) => void) => {
+    const formData = new FormData();
+    images.forEach(image => {
+      formData.append('images', image);
+    });
+
+    const response = await apiClient.post(`/marketplace/listings/${listingId}/images`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      },
+      onUploadProgress: (progressEvent) => {
+        if (onProgress && progressEvent.total) {
+          const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+          onProgress(progress);
+        }
+      }
+    });
+    return response.data;
+  },
+
+  deleteImage: async (listingId: number, imageId: number) => {
+    const response = await apiClient.delete(`/marketplace/listings/${listingId}/images/${imageId}`);
+    return response.data;
+  },
+
+  setPrimaryImage: async (listingId: number, imageId: number) => {
+    const response = await apiClient.put(`/marketplace/listings/${listingId}/images/${imageId}/primary`);
+    return response.data;
+  },
+
+  reorderImages: async (listingId: number, imageOrder: number[]) => {
+    const response = await apiClient.put(`/marketplace/listings/${listingId}/images/reorder`, {
+      imageOrder
     });
     return response.data;
   }

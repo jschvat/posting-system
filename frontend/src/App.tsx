@@ -37,6 +37,11 @@ import { NotificationsPage } from './pages/NotificationsPage';
 import { ReceiptsTestPage } from './pages/ReceiptsTestPage';
 import { MarketplaceBrowse } from './pages/marketplace/MarketplaceBrowse';
 import { ListingDetail } from './pages/marketplace/ListingDetail';
+import { CreateListing } from './pages/marketplace/CreateListing';
+import { MyListings } from './pages/marketplace/MyListings';
+import { SavedListings } from './pages/marketplace/SavedListings';
+import { ReceivedOffers } from './pages/marketplace/ReceivedOffers';
+import { SentOffers } from './pages/marketplace/SentOffers';
 
 // Import components
 import Header from './components/Header';
@@ -230,6 +235,11 @@ const AuthenticatedApp: React.FC = () => {
 
             {/* Marketplace */}
             <Route path="/marketplace" element={<MarketplaceBrowse />} />
+            <Route path="/marketplace/create" element={<CreateListing />} />
+            <Route path="/marketplace/my-listings" element={<MyListings />} />
+            <Route path="/marketplace/saved" element={<SavedListings />} />
+            <Route path="/marketplace/offers/received" element={<ReceivedOffers />} />
+            <Route path="/marketplace/offers/sent" element={<SentOffers />} />
             <Route path="/marketplace/:id" element={<ListingDetail />} />
 
             {/* Messaging Test Page */}
