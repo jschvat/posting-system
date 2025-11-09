@@ -98,6 +98,11 @@ export const messagesApi = {
     return response.data;
   },
 
+  deleteConversation: async (id: number): Promise<ApiResponse<any>> => {
+    const response = await apiClient.delete(`/conversations/${id}`);
+    return response.data;
+  },
+
   // Messages
   getMessages: async (conversationId: number, params?: {
     limit?: number;

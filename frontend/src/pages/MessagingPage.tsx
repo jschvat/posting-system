@@ -75,9 +75,41 @@ const ConversationItem = styled.div<{ active: boolean; unread: boolean }>`
   background: ${props => props.active ? props.theme.colors.background : 'transparent'};
   font-weight: ${props => props.unread ? '600' : 'normal'};
   transition: background 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 
   &:hover {
     background: ${props => props.theme.colors.background};
+  }
+
+  &:hover .delete-button {
+    opacity: 1;
+  }
+`;
+
+const ConversationContent = styled.div`
+  flex: 1;
+  min-width: 0;
+`;
+
+const DeleteButton = styled.button`
+  opacity: 0;
+  background: transparent;
+  border: none;
+  color: ${props => props.theme.colors.error};
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  transition: opacity 0.2s, background 0.2s;
+
+  &:hover {
+    background: ${props => props.theme.colors.error}22;
+  }
+
+  &:active {
+    background: ${props => props.theme.colors.error}33;
   }
 `;
 
@@ -328,6 +360,35 @@ export const MessagingPage: React.FC = () => {
     }
   };
 
+  const handleDeleteConversation = async (conversationId: number, event: React.MouseEvent) => {
+    event.stopPropagation(); // Prevent selecting the conversation
+
+    if (!window.confirm('Are you sure you want to delete this conversation?')) {
+      return;
+    }
+
+    try {
+      const response = await messagesApi.deleteConversation(conversationId);
+
+      if (response.success) {
+        // Remove conversation from list
+        setConversations(prev => prev.filter(conv => conv.id !== conversationId));
+
+        // If this was the selected conversation, clear it
+        if (selectedConversation?.id === conversationId) {
+          setSelectedConversation(null);
+          setMessages([]);
+        }
+
+        // Reload unread count
+        loadUnreadCount();
+      }
+    } catch (err) {
+      console.error('Failed to delete conversation:', err);
+      setError('Failed to delete conversation');
+    }
+  };
+
   if (!state.user) {
     return (
       <PageContainer>
@@ -361,18 +422,27 @@ export const MessagingPage: React.FC = () => {
                 unread={conv.unread_count > 0}
                 onClick={() => handleSelectConversation(conv)}
               >
-                <ConversationName>
-                  {conv.type === 'direct'
-                    ? conv.other_participants?.[0]?.username || 'Unknown User'
-                    : conv.title || 'Group Chat'
-                  }
-                  {conv.unread_count > 0 && (
-                    <UnreadBadge>{conv.unread_count}</UnreadBadge>
-                  )}
-                </ConversationName>
-                <LastMessage>
-                  {conv.last_message?.content || 'No messages yet'}
-                </LastMessage>
+                <ConversationContent>
+                  <ConversationName>
+                    {conv.type === 'direct'
+                      ? conv.other_participants?.[0]?.username || 'Unknown User'
+                      : conv.title || 'Group Chat'
+                    }
+                    {conv.unread_count > 0 && (
+                      <UnreadBadge>{conv.unread_count}</UnreadBadge>
+                    )}
+                  </ConversationName>
+                  <LastMessage>
+                    {conv.last_message?.content || 'No messages yet'}
+                  </LastMessage>
+                </ConversationContent>
+                <DeleteButton
+                  className="delete-button"
+                  onClick={(e) => handleDeleteConversation(conv.id, e)}
+                  title="Delete conversation"
+                >
+                  ✕
+                </DeleteButton>
               </ConversationItem>
             ))
           )}
